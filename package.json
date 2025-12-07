@@ -1,0 +1,54 @@
+{
+  "name": "vestroo",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "test": "vitest",
+    "test:e2e": "playwright test"
+  },
+  "dependencies": {
+    "@hookform/resolvers": "^5.2.2",
+    "@payloadcms/db-postgres": "^3.67.0",
+    "@payloadcms/next": "^3.67.0",
+    "@payloadcms/richtext-lexical": "^3.67.0",
+    "@radix-ui/react-label": "^2.1.8",
+    "@radix-ui/react-slot": "^1.2.4",
+    "@supabase/ssr": "^0.8.0",
+    "@supabase/supabase-js": "^2.86.2",
+    "clsx": "^2.1.0",
+    "framer-motion": "^12.23.25",
+    "lucide-react": "^0.556.0",
+    "next": "15.4.8",
+    "payload": "^3.67.0",
+    "react": "^19.2.1",
+    "react-dom": "^19.2.1",
+    "react-hook-form": "^7.68.0",
+    "resend": "^6.5.2",
+    "tailwind-merge": "^2.2.0",
+    "zod": "^3.22.0",
+    "zustand": "^4.5.0"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3.3.3",
+    "@playwright/test": "^1.42.0",
+    "@types/google.maps": "^3.55.0",
+    "@types/node": "^20.11.0",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "@vitest/ui": "^4.0.15",
+    "autoprefixer": "^10.4.0",
+    "eslint": "^9.18.0",
+    "eslint-config-next": "15.4.8",
+    "postcss": "^8.4.0",
+    "tailwindcss": "^3.4.0",
+    "typescript": "^5.3.0",
+    "vitest": "^4.0.15"
+  },
+  "optionalDependencies": {
+    "@libsql/win32-x64-msvc": "^0.5.22"
+  }
+}
