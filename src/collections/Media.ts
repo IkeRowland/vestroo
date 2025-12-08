@@ -16,7 +16,7 @@ export const Media: CollectionConfig = {
   },
   hooks: {
     beforeChange: [
-      ({ data, req, operation, existingDoc }) => {
+      ({ data, originalDoc }) => {
         // Normalize file paths for S3 storage
         // This handles migration from local storage to S3 storage
         if (data && typeof data === 'object') {
@@ -37,18 +37,18 @@ export const Media: CollectionConfig = {
             }
           }
 
-          // Also normalize existing document paths to prevent delete errors
+          // Also normalize original document paths to prevent delete errors
           // This helps when updating existing files that have old paths
-          if (existingDoc && typeof existingDoc === 'object') {
-            if ('url' in existingDoc && existingDoc.url && typeof existingDoc.url === 'string') {
-              if (existingDoc.url.startsWith('media/')) {
-                // Update the existing doc path in place (affects storage plugin's delete operation)
-                existingDoc.url = existingDoc.url.replace(/^media\//, '')
+          if (originalDoc && typeof originalDoc === 'object') {
+            if ('url' in originalDoc && originalDoc.url && typeof originalDoc.url === 'string') {
+              if (originalDoc.url.startsWith('media/')) {
+                // Update the original doc path in place (affects storage plugin's delete operation)
+                originalDoc.url = originalDoc.url.replace(/^media\//, '')
               }
             }
-            if ('filename' in existingDoc && existingDoc.filename && typeof existingDoc.filename === 'string') {
-              if (existingDoc.filename.startsWith('media/')) {
-                existingDoc.filename = existingDoc.filename.replace(/^media\//, '')
+            if ('filename' in originalDoc && originalDoc.filename && typeof originalDoc.filename === 'string') {
+              if (originalDoc.filename.startsWith('media/')) {
+                originalDoc.filename = originalDoc.filename.replace(/^media\//, '')
               }
             }
           }
