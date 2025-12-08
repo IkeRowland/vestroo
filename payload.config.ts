@@ -103,6 +103,8 @@ export default buildConfig({
     // Admin routes are handled by Next.js route handler at /admin
     // No need to specify routes here as they're managed by the route handler
     // Suppress hydration warnings caused by dynamic CSS injection in PayloadCMS admin
+    // Note: Some hydration warnings may still appear due to PayloadCMS CSS injection
+    // This is a known issue and doesn't affect functionality
     suppressHydrationWarning: true,
   },
   collections: [Users, Routes, VehicleTypes, PricingRules, Bookings, Media],
@@ -117,7 +119,8 @@ export default buildConfig({
       bucket: env.S3_CONFIG.bucket,
       collections: {
         media: {
-          prefix: 'media',
+          // No prefix needed - files are stored at bucket root
+          // Old files already have 'media/' in their paths, so prefix would cause double prefix
         },
       },
       config: {

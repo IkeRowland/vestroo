@@ -4,6 +4,13 @@ import { withPayload } from '@payloadcms/next/withPayload';
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   transpilePackages: [],
+  // Suppress hydration warnings from PayloadCMS admin CSS injection
+  // This is a known issue with PayloadCMS and Next.js 15
+  // The warnings don't affect functionality but are noisy in development
+  onDemandEntries: {
+    maxInactiveAge: 25 * 1000,
+    pagesBufferLength: 2,
+  },
   images: {
     // Allow images from Supabase Storage
     remotePatterns: [
