@@ -114,13 +114,13 @@ export default buildConfig({
   },
   plugins: [
     s3Storage({
+      bucket: env.S3_CONFIG.bucket,
       collections: {
         media: {
-          bucket: env.S3_CONFIG.bucket,
-          prefix: 'media', // Optional: prefix for files in the bucket
+          prefix: 'media',
         },
       },
-      options: {
+      config: {
         endpoint: env.S3_CONFIG.endpoint,
         region: env.S3_CONFIG.region,
         credentials: env.S3_CONFIG.credentials.accessKeyId && env.S3_CONFIG.credentials.secretAccessKey
