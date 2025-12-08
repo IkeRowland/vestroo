@@ -22,18 +22,22 @@ Managed via Vercel Project Settings.
 
 ### Server-Side Variables
 
-* **PAYFAST_PASSPHRASE** - Server only. Used for generating PayFast payment signatures. **NEVER exposed to client.**
+* **DATABASE_URL** (or **DATABASE_URI** as fallback) - Server only. PostgreSQL connection string from Supabase project settings. Format: `postgresql://[user]:[password]@[host]:[port]/[database]`. **NEVER exposed to client.**
 
-* **PAYFAST_MERCHANT_KEY** - PayFast merchant key (server-side only, if different from client-side key).
+* **PAYLOAD_SECRET** - Server only. Secret key for PayloadCMS authentication and encryption. Must be at least 16 characters (32+ recommended for production). **NEVER exposed to client.**
 
-* **SUPABASE_SERVICE_ROLE_KEY** - Server only. Used for server-side database operations and authentication. Bypasses RLS policies.
+* **PAYFAST_PASSPHRASE** - Server only. Used for generating PayFast payment signatures. **NEVER exposed to client.**                                            
 
-* **RESEND_API_KEY** - Server only. Resend API key for sending transactional emails (booking confirmations). **NEVER exposed to client.**
+* **PAYFAST_MERCHANT_KEY** - PayFast merchant key (server-side only, if different from client-side key).                                                        
 
-* **RESEND_FROM_EMAIL** - Server only. Email address to send confirmation emails from (e.g., `noreply@vestroo.com`). Must be verified in Resend account.
+* **SUPABASE_SERVICE_ROLE_KEY** - Server only. Used for server-side database operations and authentication. Bypasses RLS policies. **NEVER exposed to client.**                              
+
+* **RESEND_API_KEY** - Server only. Resend API key for sending transactional emails (booking confirmations). **NEVER exposed to client.**                       
+
+* **RESEND_FROM_EMAIL** - Server only. Email address to send confirmation emails from (e.g., `noreply@vestroo.com`). Must be verified in Resend account.        
 
 ### Additional Configuration
 
-* **Database Connection:** Managed via Supabase project settings (connection string, service role key).
+* **Database Connection:** Configured via `DATABASE_URL` environment variable. Connection pooling and timeout settings are configured in `payload.config.ts`.                                                         
 * **PayloadCMS Configuration:** Defined in `payload.config.ts` with environment-specific settings.
 

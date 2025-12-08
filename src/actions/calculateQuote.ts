@@ -91,7 +91,7 @@ async function findRouteByNames(
     });
     
     // First try exact match (case-insensitive)
-    let routesResult = await payload.find({
+    const routesResult = await payload.find({
       collection: 'routes',
       where: {
         and: [
@@ -293,7 +293,7 @@ export async function calculateQuote(
               name: vt.name,
               capacity: vt.passenger_capacity,
               price: Math.round(priceResult.final_price * 100) / 100, // Round to 2 decimal places
-              luggageCapacity: vt.luggage_capacity || undefined,
+              luggageCapacity: vt.luggage_capacity ? String(vt.luggage_capacity) : undefined,
               imageUrl: vt.image_url || undefined,
             };
           } catch (error) {
@@ -305,7 +305,7 @@ export async function calculateQuote(
               name: vt.name,
               capacity: vt.passenger_capacity,
               price: Math.round(fallbackPrice * 100) / 100,
-              luggageCapacity: vt.luggage_capacity || undefined,
+              luggageCapacity: vt.luggage_capacity ? String(vt.luggage_capacity) : undefined,
               imageUrl: vt.image_url || undefined,
             };
           }

@@ -89,11 +89,14 @@ export async function createBooking(bookingState: unknown) {
     const bookingReference = `VST-${Date.now().toString().slice(-8)}`;
 
     // Add payment_reference to booking data (this is the booking reference ID)
-    bookingData.payment_reference = bookingReference;
+    const bookingDataWithPayment = {
+      ...bookingData,
+      payment_reference: bookingReference,
+    };
 
     const { data: booking, error: bookingError } = await supabase
       .from('bookings')
-      .insert(bookingData)
+      .insert(bookingDataWithPayment)
       .select('id, payment_reference')
       .single();
 

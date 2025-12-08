@@ -22,10 +22,13 @@ const getCachedSiteSettings = unstable_cache(
 /**
  * Helper to get image URL from upload or URL field
  */
-function getImageUrl(upload: any, url?: string | null): string | null {
+function getImageUrl(upload: unknown, url?: string | null): string | null {
   if (url) return url
   if (upload) {
-    if (typeof upload === 'object' && upload?.url) return upload.url
+    if (typeof upload === 'object' && upload !== null && 'url' in upload) {
+      const uploadObj = upload as { url: string }
+      return uploadObj.url
+    }
     if (typeof upload === 'string') return upload
   }
   return null
@@ -47,7 +50,7 @@ async function TopBar() {
       <div className="container mx-auto max-w-7xl flex flex-wrap items-center justify-between text-sm">
         <div className="font-semibold">{topBar.company_name || 'VESTROO SHUTTLE SERVICES'}</div>
         <div className="flex flex-wrap items-center gap-4">
-          {topBar.phone_numbers?.map((phone: any, index: number) => (
+          {topBar.phone_numbers?.map((phone: { number?: string }, index: number) => (
             <a
               key={index}
               href={`tel:${phone.number?.replace(/\s/g, '')}`}
@@ -122,7 +125,7 @@ async function MainNav() {
           {/* Navigation Links */}
           {header.navigation_links && header.navigation_links.length > 0 && (
             <div className="hidden md:flex items-center gap-8">
-              {header.navigation_links.map((link: any, index: number) => (
+              {header.navigation_links.map((link: { url?: string; label: string }, index: number) => (
                 <Link
                   key={index}
                   href={link.url || '#'}

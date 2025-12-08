@@ -48,12 +48,15 @@ export async function generateMetadata(): Promise<Metadata> {
  * Helper to get image URL from upload or URL field
  */
 function getImageUrl(
-  upload: any,
+  upload: unknown,
   url?: string | null
 ): string | null {
   if (url) return url
   if (upload) {
-    if (typeof upload === 'object' && upload?.url) return upload.url
+    if (typeof upload === 'object' && upload !== null && 'url' in upload) {
+      const uploadObj = upload as { url: string }
+      return uploadObj.url
+    }
     if (typeof upload === 'string') return upload
   }
   return null
@@ -173,7 +176,7 @@ export default async function HomePage() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-12">
-              {homepage.ten_reasons.items.map((item: any, index: number) => (
+              {homepage.ten_reasons.items.map((item: { title: string; description?: string }, index: number) => (
                 <div
                   key={index}
                   className="flex items-start gap-4"
@@ -225,7 +228,7 @@ export default async function HomePage() {
         <section className="py-20 bg-white">
           <div className="container mx-auto px-4">
             <div className="max-w-4xl mx-auto text-center">
-              <div className="text-6xl md:text-8xl text-blue-200 mb-6">"</div>
+              <div className="text-6xl md:text-8xl text-blue-200 mb-6">&quot;</div>
               <blockquote className="text-2xl md:text-3xl font-medium text-gray-900 mb-8 leading-relaxed">
                 {homepage.mission_statement.quote}
               </blockquote>
@@ -364,7 +367,7 @@ export default async function HomePage() {
               {homepage.partners.title || 'OUR PARTNERS'}
             </h2>
             <div className="flex flex-wrap justify-center items-center gap-8 md:gap-12">
-              {homepage.partners.logos.map((partner: any, index: number) => {
+              {homepage.partners.logos.map((partner: { logo_upload?: unknown; logo_url?: string | null; name?: string; link?: string }, index: number) => {
                 const logoUrl = getImageUrl(partner.logo_upload, partner.logo_url)
                 if (!logoUrl) return null
 
@@ -420,7 +423,7 @@ export default async function HomePage() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              {homepage.testimonials.items.map((testimonial: any, index: number) => {
+              {homepage.testimonials.items.map((testimonial: { quote: string; rating?: number; customer_name: string; photo_upload?: unknown; photo_url?: string | null }, index: number) => {
                 const photoUrl = getImageUrl(
                   testimonial.photo_upload,
                   testimonial.photo_url
@@ -439,7 +442,7 @@ export default async function HomePage() {
                       ))}
                     </div>
                     <blockquote className="text-gray-700 mb-6 leading-relaxed">
-                      "{testimonial.quote}"
+                      &quot;{testimonial.quote}&quot;
                     </blockquote>
                     <div className="flex items-center gap-3">
                       {photoUrl && (

@@ -4,7 +4,22 @@ import { withPayload } from '@payloadcms/next/withPayload';
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   transpilePackages: [],
-  // Configure webpack to handle dynamic requires and server-only modules       
+  images: {
+    // Allow images from Supabase Storage
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: '*.supabase.co',
+        pathname: '/storage/v1/object/public/**',
+      },
+      {
+        protocol: 'https',
+        hostname: '*.storage.supabase.co',
+        pathname: '/storage/v1/object/public/**',
+      },
+    ],
+  },
+  // Configure webpack to handle dynamic requires and server-only modules
   webpack: (config, { isServer }) => {
     // Only apply these changes on server side
     if (isServer) {

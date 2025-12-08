@@ -4,6 +4,7 @@ import { getPayload } from 'payload'
 import config from '@payload-config'
 import { unstable_cache } from 'next/cache'
 import Image from 'next/image'
+import type { ReactElement } from 'react'
 
 /**
  * Fetch site settings with caching
@@ -22,10 +23,13 @@ const getCachedSiteSettings = unstable_cache(
 /**
  * Helper to get image URL from upload or URL field
  */
-function getImageUrl(upload: any, url?: string | null): string | null {
+function getImageUrl(upload: unknown, url?: string | null): string | null {
   if (url) return url
   if (upload) {
-    if (typeof upload === 'object' && upload?.url) return upload.url
+    if (typeof upload === 'object' && upload !== null && 'url' in upload) {
+      const uploadObj = upload as { url: string }
+      return uploadObj.url
+    }
     if (typeof upload === 'string') return upload
   }
   return null
@@ -35,7 +39,7 @@ function getImageUrl(upload: any, url?: string | null): string | null {
  * Get social media icon SVG
  */
 function getSocialIcon(platform: string) {
-  const icons: Record<string, JSX.Element> = {
+  const icons: Record<string, ReactElement> = {
     twitter: (
       <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
         <path d="M23 3a10.9 10.9 0 01-3.14 1.53 4.48 4.48 0 00-7.86 3v1A10.66 10.66 0 013 4s-4 9 5 13a11.64 11.64 0 01-7 2c9 5 20 0 20-11.5a4.5 4.5 0 00-.08-.83A7.72 7.72 0 0023 3z" />
@@ -113,7 +117,7 @@ export async function Footer() {
             </div>
             {footer.social_media && footer.social_media.length > 0 && (
               <div className="flex gap-4 mb-4">
-                {footer.social_media.map((social: any, index: number) => (
+                {footer.social_media.map((social: { platform: string; url?: string }, index: number) => (
                   <a
                     key={index}
                     href={social.url || '#'}
@@ -134,7 +138,7 @@ export async function Footer() {
             <div>
               <h3 className="text-white font-semibold mb-4">General Links</h3>
               <ul className="space-y-2">
-                {footer.general_links.map((link: any, index: number) => (
+                {footer.general_links.map((link: { url?: string; label: string }, index: number) => (
                   <li key={index}>
                     <Link
                       href={link.url || '#'}
@@ -153,7 +157,7 @@ export async function Footer() {
             <div>
               <h3 className="text-white font-semibold mb-4">Get In Contact</h3>
               <ul className="space-y-2">
-                {footer.contact_links.map((link: any, index: number) => (
+                {footer.contact_links.map((link: { url?: string; label: string }, index: number) => (
                   <li key={index}>
                     <Link
                       href={link.url || '#'}

@@ -1,6 +1,7 @@
 import { buildConfig } from 'payload'
 import { postgresAdapter } from '@payloadcms/db-postgres'
 import { lexicalEditor } from '@payloadcms/richtext-lexical'
+import { s3Storage } from '@payloadcms/storage-s3'
 import path from 'path'
 import { z } from 'zod'
 
@@ -66,9 +67,31 @@ const getEnv = () => {
     )
   }
 
+  // Validate S3 storage credentials for Supabase Storage
+  // Get credentials from Supabase Dashboard > Settings > Storage > S3 API
+  // Endpoint format: https://[project-ref].storage.supabase.co/storage/v1/s3
+  const s3Config = {
+    endpoint: process.env.S3_ENDPOINT || process.env.SUPABASE_STORAGE_S3_ENDPOINT,
+    region: process.env.S3_REGION || process.env.SUPABASE_STORAGE_S3_REGION || 'us-east-1',
+    credentials: {
+      accessKeyId: process.env.S3_ACCESS_KEY_ID || process.env.SUPABASE_STORAGE_S3_ACCESS_KEY_ID,
+      secretAccessKey: process.env.S3_SECRET_ACCESS_KEY || process.env.SUPABASE_STORAGE_S3_SECRET_ACCESS_KEY,
+    },
+    bucket: process.env.S3_BUCKET || process.env.SUPABASE_STORAGE_BUCKET || 'media',
+    forcePathStyle: true, // Required for Supabase Storage
+  }
+
+  // Validate S3 config (optional in development, required in production)
+  if (!isDevelopment && (!s3Config.endpoint || !s3Config.credentials.accessKeyId || !s3Config.credentials.secretAccessKey)) {
+    console.warn(
+      '⚠️  S3 storage credentials not fully configured. Media uploads may not work in production. Configure S3_ENDPOINT, S3_ACCESS_KEY_ID, and S3_SECRET_ACCESS_KEY environment variables.'
+    )
+  }
+
   return {
     DATABASE_URL: databaseUrl,
     PAYLOAD_SECRET: payloadSecret,
+    S3_CONFIG: s3Config,
   }
 }
 
@@ -89,6 +112,27 @@ export default buildConfig({
   typescript: {
     outputFile: path.resolve(__dirname, 'src/types/payload-types.ts'),
   },
+  plugins: [
+    s3Storage({
+      collections: {
+        media: {
+          bucket: env.S3_CONFIG.bucket,
+          prefix: 'media', // Optional: prefix for files in the bucket
+        },
+      },
+      options: {
+        endpoint: env.S3_CONFIG.endpoint,
+        region: env.S3_CONFIG.region,
+        credentials: env.S3_CONFIG.credentials.accessKeyId && env.S3_CONFIG.credentials.secretAccessKey
+          ? {
+              accessKeyId: env.S3_CONFIG.credentials.accessKeyId,
+              secretAccessKey: env.S3_CONFIG.credentials.secretAccessKey,
+            }
+          : undefined,
+        forcePathStyle: env.S3_CONFIG.forcePathStyle,
+      },
+    }),
+  ],
   db: postgresAdapter({
     pool: {
       connectionString: env.DATABASE_URL,

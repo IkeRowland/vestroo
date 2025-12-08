@@ -9,7 +9,8 @@ export const Media: CollectionConfig = {
     delete: ({ req: { user } }) => user?.role === 'admin', // Admin-only delete
   },
   upload: {
-    staticDir: 'media',
+    // Use S3 storage adapter configured in payload.config.ts
+    // Files will be stored in Supabase Storage
     // Allow both images and videos
     mimeTypes: ['image/*', 'video/*'],
   },
