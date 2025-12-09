@@ -4,6 +4,7 @@ import { getPayload } from 'payload'
 import config from '@payload-config'
 import { unstable_cache } from 'next/cache'
 import Image from 'next/image'
+import { getImageUrl } from '@/lib/image-url'
 
 /**
  * Fetch site settings with caching
@@ -18,21 +19,6 @@ const getCachedSiteSettings = unstable_cache(
   ['site-settings'],
   { revalidate: 3600, tags: ['site-settings'] }
 )
-
-/**
- * Helper to get image URL from upload or URL field
- */
-function getImageUrl(upload: unknown, url?: string | null): string | null {
-  if (url) return url
-  if (upload) {
-    if (typeof upload === 'object' && upload !== null && 'url' in upload) {
-      const uploadObj = upload as { url: string }
-      return uploadObj.url
-    }
-    if (typeof upload === 'string') return upload
-  }
-  return null
-}
 
 /**
  * Top bar with contact information

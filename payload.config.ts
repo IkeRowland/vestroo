@@ -100,11 +100,11 @@ const env = getEnv()
 export default buildConfig({
   admin: {
     user: 'users',
-    // Admin routes are handled by Next.js route handler at /admin
-    // No need to specify routes here as they're managed by the route handler
-    // Suppress hydration warnings caused by dynamic CSS injection in PayloadCMS admin
-    // Note: Some hydration warnings may still appear due to PayloadCMS CSS injection
-    // This is a known issue and doesn't affect functionality
+    // Official PayloadCMS solution for Next.js 15 hydration warnings (v3.6.0+)
+    // This suppresses hydration warnings in the admin panel caused by:
+    // - Dynamic CSS injection (@layer directives)
+    // - Server/client rendering differences
+    // Reference: PayloadCMS PR #9867 (December 2024)
     suppressHydrationWarning: true,
   },
   collections: [Users, Routes, VehicleTypes, PricingRules, Bookings, Media],

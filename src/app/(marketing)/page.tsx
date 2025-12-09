@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { BookingSearchForm } from '@/features/booking/components/BookingSearchForm'
 import { HeroSlider } from '@/components/homepage/HeroSlider'
 import { Check } from 'lucide-react'
+import { getImageUrl } from '@/lib/image-url'
 
 /**
  * Fetch homepage global with caching
@@ -44,23 +45,6 @@ export async function generateMetadata(): Promise<Metadata> {
   }
 }
 
-/**
- * Helper to get image URL from upload or URL field
- */
-function getImageUrl(
-  upload: unknown,
-  url?: string | null
-): string | null {
-  if (url) return url
-  if (upload) {
-    if (typeof upload === 'object' && upload !== null && 'url' in upload) {
-      const uploadObj = upload as { url: string }
-      return uploadObj.url
-    }
-    if (typeof upload === 'string') return upload
-  }
-  return null
-}
 
 /**
  * Homepage - Content managed in PayloadCMS, layout hard-coded for full design control
