@@ -61,7 +61,7 @@ graph TD
 Plaintext
 
 vestroo-platform/  
-├── .github/                    \# CI/CD (GitHub Actions)  
+├── .github/                    \# PR template (optional)  
 ├── src/  
 │   ├── app/                    \# Next.js App Router Root  
 │   │   ├── (marketing)/        \# Route Group: Public, ISR-heavy pages  

@@ -1,83 +1,28 @@
-import { getPayload } from 'payload'
-import config from '@payload-config'
 import type { Metadata } from 'next'
-import { unstable_cache } from 'next/cache'
 import Link from 'next/link'
 import Image from 'next/image'
-import { Button } from '@/components/ui/button'
 import { BookingSearchForm } from '@/features/booking/components/BookingSearchForm'
 import { HeroSlider } from '@/components/homepage/HeroSlider'
 import { Check } from 'lucide-react'
 import { getImageUrl } from '@/lib/image-url'
+import { homepageContent } from '@/content/homepage'
+import { ServicesOverview } from '@/components/marketing/ServicesOverview'
+import { TrustStrip } from '@/components/marketing/TrustStrip'
+import { buildMarketingMetadata } from '@/lib/marketing-metadata'
 
-/**
- * Fetch homepage global with caching
- */
-const getCachedHomepage = unstable_cache(
-  async () => {
-    const payload = await getPayload({ config })
-    return await payload.findGlobal({
-      slug: 'homepage',
-    })
-  },
-  ['homepage'],
-  { revalidate: 3600, tags: ['homepage'] }
-)
-
-/**
- * Generate metadata for homepage
- */
-export async function generateMetadata(): Promise<Metadata> {
-  try {
-    const homepage = await getCachedHomepage()
-
-    return {
-      title: homepage?.seo?.meta_title || 'Vestroo - Premium Shuttle Service',
-      description:
-        homepage?.seo?.meta_description ||
-        'Book your premium shuttle service with Vestroo',
-    }
-  } catch {
-    return {
-      title: 'Vestroo - Premium Shuttle Service',
-      description: 'Book your premium shuttle service with Vestroo',
-    }
-  }
+export function generateMetadata(): Metadata {
+  return buildMarketingMetadata(
+    homepageContent.seo.meta_title,
+    homepageContent.seo.meta_description,
+    '/'
+  )
 }
 
-
 /**
- * Homepage - Content managed in PayloadCMS, layout hard-coded for full design control
+ * Homepage — static marketing content; layout matches Vestroo landing design.
  */
-export default async function HomePage() {
-  let homepage
-
-  try {
-    homepage = await getCachedHomepage()
-  } catch (error) {
-    console.error('Error fetching homepage:', error)
-    homepage = null
-  }
-
-  if (!homepage) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold mb-4">Welcome to Vestroo</h1>
-          <p className="text-gray-600 mb-4">
-            Homepage content is being set up. Please add content in PayloadCMS
-            admin.
-          </p>
-          <Link
-            href="/admin/globals/homepage"
-            className="text-primary hover:underline"
-          >
-            Go to Admin Panel
-          </Link>
-        </div>
-      </div>
-    )
-  }
+export default function HomePage() {
+  const homepage = homepageContent
 
   return (
     <div className="min-h-screen">
@@ -91,7 +36,7 @@ export default async function HomePage() {
                <div className="container mx-auto w-full">
                  <div className="grid lg:grid-cols-12 gap-8 lg:gap-12 items-center w-full">
                    <div className="order-2 lg:order-1 pointer-events-auto lg:col-span-5">
-                     <BookingSearchForm />
+                     <BookingSearchForm variant="marketing" />
                    </div>
                    <div className="order-1 lg:order-2 lg:col-span-7" />
                  </div>
@@ -103,14 +48,14 @@ export default async function HomePage() {
              <div className="container mx-auto px-4">
                <div className="grid lg:grid-cols-12 gap-8 lg:gap-12 items-start">
                  <div className="order-2 lg:order-1 lg:col-span-5">
-                   <BookingSearchForm />
+                   <BookingSearchForm variant="marketing" />
                  </div>
                  <div className="order-1 lg:order-2 lg:col-span-7">
                   <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 mb-6 leading-tight">
-                    Welcome to Vestroo
+                    Chauffeured transport across South Africa
                   </h1>
                   <p className="text-xl md:text-2xl text-gray-700 mb-8">
-                    Your premium shuttle booking service
+                    Premium shuttle, corporate, VIP, tours, and discreet enquiries
                   </p>
                 </div>
               </div>
@@ -131,22 +76,40 @@ export default async function HomePage() {
               </div>
               <div>
                 {homepage.great_journeys.subtitle && (
-                  <h3 className="text-xl md:text-2xl font-bold text-gray-900 mb-6">
+                  <h3 className="text-xl md:text-2xl font-bold text-vest-rust mb-6 tracking-wide">
                     {homepage.great_journeys.subtitle}
                   </h3>
                 )}
-                <p className="text-lg text-gray-700 leading-relaxed">
-                  {homepage.great_journeys.description}
-                </p>
+                <div className="text-lg text-gray-700 leading-relaxed space-y-4">
+                  {homepage.great_journeys.description
+                    .split(/\n\n+/)
+                    .map((para, i) => (
+                      <p key={i}>{para}</p>
+                    ))}
+                </div>
               </div>
             </div>
           </div>
         </section>
       )}
 
+      {homepage.services_overview?.title ? (
+        <ServicesOverview section={homepage.services_overview} />
+      ) : null}
+
+      {homepage.trust_strip?.title ? (
+        <TrustStrip
+          eyebrow={homepage.trust_strip.eyebrow}
+          title={homepage.trust_strip.title}
+          description={homepage.trust_strip.description}
+          link_label={homepage.trust_strip.link_label}
+          link_href={homepage.trust_strip.link_href}
+        />
+      ) : null}
+
       {/* Ten Reasons Section */}
       {homepage.ten_reasons?.items && homepage.ten_reasons.items.length > 0 && (
-        <section className="py-16 bg-gray-50">
+        <section className="py-16 bg-white">
           <div className="container mx-auto px-4">
             <div className="text-center mb-12">
               <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
@@ -166,8 +129,8 @@ export default async function HomePage() {
                   className="flex items-start gap-4"
                 >
                   <div className="flex-shrink-0 mt-1">
-                    <div className="flex items-center justify-center w-6 h-6 rounded-full border-2 border-[#25A89B]">
-                      <Check className="w-4 h-4 text-[#25A89B]" strokeWidth={2.5} />
+                    <div className="flex items-center justify-center w-7 h-7 rounded-full bg-blue-600 text-white">
+                      <Check className="w-4 h-4" strokeWidth={2.5} />
                     </div>
                   </div>
                   <div>
@@ -194,7 +157,7 @@ export default async function HomePage() {
                         homepage.ten_reasons.image_url
                       ) || '/placeholder-van.jpg'
                     }
-                    alt="Our fleet"
+                    alt="Vestroo fleet — representative vehicle class"
                     width={1200}
                     height={900}
                     className="w-full h-auto"
@@ -209,16 +172,17 @@ export default async function HomePage() {
 
       {/* Mission Statement Section */}
       {homepage.mission_statement?.quote && (
-        <section className="py-20 bg-white">
+        <section className="py-20 bg-vest-section">
           <div className="container mx-auto px-4">
             <div className="max-w-4xl mx-auto text-center">
-              <div className="text-6xl md:text-8xl text-blue-200 mb-6">&quot;</div>
-              <blockquote className="text-2xl md:text-3xl font-medium text-gray-900 mb-8 leading-relaxed">
+              <blockquote className="text-xl md:text-2xl lg:text-3xl font-semibold text-gray-900 mb-8 leading-snug tracking-tight uppercase">
                 {homepage.mission_statement.quote}
               </blockquote>
               {homepage.mission_statement.author && (
-                <div className="text-lg text-gray-700">
-                  <p className="font-semibold">{homepage.mission_statement.author}</p>
+                <div className="text-base text-gray-600">
+                  <p className="font-medium tracking-wide">
+                    {homepage.mission_statement.author}
+                  </p>
                   {homepage.mission_statement.author_title && (
                     <p className="text-sm mt-1">
                       {homepage.mission_statement.author_title}
@@ -233,7 +197,7 @@ export default async function HomePage() {
 
       {/* App Download Section */}
       {homepage.app_download?.title && (
-        <section className="py-16 bg-gray-50">
+        <section className="py-16 bg-white">
           <div className="container mx-auto px-4">
             <div className="grid lg:grid-cols-2 gap-12 items-center">
               {/* Left: App Screenshot */}
@@ -248,7 +212,7 @@ export default async function HomePage() {
                           homepage.app_download.app_screenshot_url
                         ) || '/placeholder-app.jpg'
                       }
-                      alt="EZ Shuttle App"
+                      alt="Vestroo app"
                       width={600}
                       height={800}
                       className="w-auto max-h-[400px] object-contain"
@@ -287,9 +251,6 @@ export default async function HomePage() {
                         width={180}
                         height={60}
                         className="h-12 w-auto"
-                        onError={(e) => {
-                          e.currentTarget.style.display = 'none'
-                        }}
                       />
                     </Link>
                   )}
@@ -306,9 +267,6 @@ export default async function HomePage() {
                         width={180}
                         height={60}
                         className="h-12 w-auto"
-                        onError={(e) => {
-                          e.currentTarget.style.display = 'none'
-                        }}
                       />
                     </Link>
                   )}
@@ -390,23 +348,25 @@ export default async function HomePage() {
 
       {/* Testimonials Section */}
       {homepage.testimonials?.items && homepage.testimonials.items.length > 0 && (
-        <section className="py-16 bg-gray-50">
+        <section className="py-16 bg-vest-section">
           <div className="container mx-auto px-4">
             <div className="text-center mb-12">
-              <p className="text-sm text-gray-500 uppercase tracking-wide mb-2">
-                {homepage.testimonials.subtitle || 'TESTIMONIALS'}
-              </p>
+              {homepage.testimonials.subtitle ? (
+                <p className="text-sm text-gray-500 uppercase tracking-wide mb-2">
+                  {homepage.testimonials.subtitle}
+                </p>
+              ) : null}
               <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
                 {homepage.testimonials.title || 'WHAT OUR CLIENTS SAY'}
               </h2>
-              {homepage.testimonials.description && (
+              {homepage.testimonials.description ? (
                 <p className="text-lg text-gray-700 max-w-2xl mx-auto">
                   {homepage.testimonials.description}
                 </p>
-              )}
+              ) : null}
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div className="max-w-xl mx-auto">
               {homepage.testimonials.items.map((testimonial: { quote: string; rating?: number; customer_name: string; photo_upload?: unknown; photo_url?: string | null }, index: number) => {
                 const photoUrl = getImageUrl(
                   testimonial.photo_upload,
@@ -416,21 +376,25 @@ export default async function HomePage() {
                 return (
                   <div
                     key={index}
-                    className="bg-white rounded-lg p-6 shadow-md hover:shadow-lg transition-shadow"
+                    className="bg-white rounded-lg p-8 shadow-md border border-gray-100"
                   >
-                    <div className="flex items-center gap-1 mb-4">
+                    <div className="flex items-center gap-0.5 mb-4 justify-center md:justify-start">
                       {[...Array(testimonial.rating || 5)].map((_, i) => (
-                        <span key={i} className="text-yellow-400 text-lg">
+                        <span
+                          key={i}
+                          className="text-amber-500 text-xl leading-none"
+                          aria-hidden
+                        >
                           ★
                         </span>
                       ))}
                     </div>
-                    <blockquote className="text-gray-700 mb-6 leading-relaxed">
+                    <blockquote className="text-gray-700 mb-6 leading-relaxed text-center md:text-left">
                       &quot;{testimonial.quote}&quot;
                     </blockquote>
-                    <div className="flex items-center gap-3">
-                      {photoUrl && (
-                        <div className="relative w-12 h-12 rounded-full overflow-hidden flex-shrink-0">
+                    <div className="flex items-center gap-3 justify-center md:justify-start">
+                      {photoUrl ? (
+                        <div className="relative w-12 h-12 rounded-full overflow-hidden flex-shrink-0 ring-2 ring-gray-100">
                           <Image
                             src={photoUrl}
                             alt={testimonial.customer_name}
@@ -438,7 +402,7 @@ export default async function HomePage() {
                             className="object-cover"
                           />
                         </div>
-                      )}
+                      ) : null}
                       <div>
                         <p className="font-semibold text-gray-900">
                           {testimonial.customer_name}
@@ -455,26 +419,22 @@ export default async function HomePage() {
 
       {/* CTA Section (if exists) */}
       {homepage.cta_section?.title && (
-        <section className="py-16 bg-[#bc4328] text-white">
+        <section className="py-16 bg-vest-rust text-white">
           <div className="container mx-auto px-4 text-center">
             <h2 className="text-3xl md:text-4xl font-bold mb-4">
               {homepage.cta_section.title}
             </h2>
             {homepage.cta_section.description && (
-              <p className="text-xl mb-8 opacity-90">
+              <p className="text-lg md:text-xl mb-8 text-white/90 max-w-2xl mx-auto">
                 {homepage.cta_section.description}
               </p>
             )}
-            <Button
-              asChild
-              size="lg"
-              variant="secondary"
-              className="text-lg px-8 py-6"
+            <Link
+              href={homepage.cta_section.button_link || '/book/search'}
+              className="inline-flex items-center justify-center rounded-sm bg-white px-10 py-3.5 text-base font-semibold text-vest-rust shadow-sm transition-colors hover:bg-gray-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
             >
-              <Link href={homepage.cta_section.button_link || '/book/search'}>
-                {homepage.cta_section.button_text || 'Book Now'}
-              </Link>
-            </Button>
+              {homepage.cta_section.button_text || 'Get a Quote'}
+            </Link>
           </div>
         </section>
       )}

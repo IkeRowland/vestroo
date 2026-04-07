@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 
 // Route group layout - should not have html/body tags
 // Root layout handles html/body
-// Header and Footer are included for all app pages (excludes Payload admin)
+// Header and Footer wrap all book/flow pages in this route group
 export default function AppLayout({
   children,
 }: {

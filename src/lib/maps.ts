@@ -1,168 +1,212 @@
 /**
- * Google Maps API utilities
- * Handles Places Autocomplete and Distance Matrix API calls
+ * Maps integration (VST-13 contract)
+ *
+ * **Provider:** Google Maps Platform for this codebase (no Mapbox hybrid in MVP).
+ * - **Browser:** Places / Autocomplete via Maps JavaScript API using `NEXT_PUBLIC_GOOGLE_MAPS_KEY`
+ *   only in client components (e.g. `AddressAutocomplete`). Restrict this key to **HTTP referrers**
+ *   in Google Cloud Console; it must not enable unrestricted Distance Matrix server abuse.
+ * - **Server:** Distance Matrix–class calls (`calculateRouteDistance`) use **`GOOGLE_MAPS_SERVER_KEY`**
+ *   (server-only env — never `NEXT_PUBLIC_*`). Restrict that key by **server IP** (Vercel egress) or
+ *   equivalent. Quote reconciliation and `calculateQuote` use this server key, not the public key.
+ * - **Deep links:** `buildGoogleMapsUrl` / `buildAppleMapsUrl` — no keys; used from field tools and
+ *   booking UI. Aligns with `Permissions-Policy: geolocation=(self)` in `next.config.ts` (site may
+ *   request geolocation; third-party embeds are not implied).
+ *
+ * **Call sites:** `AddressAutocomplete` (client), `calculateQuote` + `reconcileBookingQuote` →
+ * `computePointToPointQuote` / `calculateRouteDistance` (server).
  */
-
-export interface PlaceResult {
-  place_id: string;
-  formatted_address: string;
-  name: string;
-  geometry: {
-    location: {
-      lat: () => number;
-      lng: () => number;
-    };
-  };
-  types: string[];
-}
-
-export interface DistanceMatrixResult {
-  distance: {
-    value: number; // in meters
-    text: string;
-  };
-  duration: {
-    value: number; // in seconds
-    text: string;
-  };
-  status: string;
-}
-
-export interface DistanceMatrixResponse {
-  rows: Array<{
-    elements: DistanceMatrixResult[];
-  }>;
-  status: string;
-}
 
 /**
- * Check if a place is an airport based on its types
+ * Map deep-link builders — no API keys; URLs are opened by the device browser / maps app.
  */
+
+export type MapsTarget =
+	| { kind: 'coords'; lat: number; lng: number; label?: string }
+	| { kind: 'query'; query: string }
+
+/** Subset of Google Places `PlaceResult` used by `AddressAutocomplete` / booking forms. */
+export type PlaceResult = {
+	place_id?: string
+	formatted_address?: string
+	name?: string
+	geometry?: {
+		location: { lat: () => number; lng: () => number }
+	}
+	types?: string[]
+}
+
+/** Heuristic: airport-type POI or name/address contains “airport”. */
 export function isAirport(place: PlaceResult): boolean {
-  const airportTypes = ['airport', 'establishment'];
-  return place.types.some((type) => airportTypes.includes(type.toLowerCase()));
+	const types = place.types ?? []
+	if (types.includes('airport')) {
+		return true
+	}
+	const label = `${place.name ?? ''} ${place.formatted_address ?? ''}`.toLowerCase()
+	return label.includes('airport')
+}
+
+function encodeQueryPart(s: string): string {
+	return encodeURIComponent(s.trim())
 }
 
 /**
- * Initialize Google Maps Places Autocomplete
- * This is a client-side utility that should be used in components
+ * Google Maps universal link (works on mobile + desktop).
  */
-export function initializePlacesAutocomplete(
-  input: HTMLInputElement,
-  onPlaceSelect: (place: PlaceResult) => void
-): google.maps.places.Autocomplete | null {
-  if (typeof window === 'undefined' || !window.google?.maps?.places) {
-    console.error('Google Maps API not loaded');
-    return null;
-  }
-
-  const autocomplete = new google.maps.places.Autocomplete(input, {
-    types: ['establishment', 'geocode'],
-    fields: ['place_id', 'formatted_address', 'name', 'geometry', 'types'],
-  });
-
-  autocomplete.addListener('place_changed', () => {
-    const place = autocomplete.getPlace();
-    if (place.geometry && place.geometry.location && place.place_id) {
-      // Map Google Maps PlaceResult to our PlaceResult type
-      const mappedPlace: PlaceResult = {
-        place_id: place.place_id,
-        formatted_address: place.formatted_address || '',
-        name: place.name || '',
-        geometry: {
-          location: place.geometry.location,
-        },
-        types: place.types || [],
-      };
-      onPlaceSelect(mappedPlace);
-    }
-  });
-
-  return autocomplete;
+export function buildGoogleMapsUrl(target: MapsTarget): string {
+	if (target.kind === 'coords') {
+		const dest = `${target.lat},${target.lng}`
+		return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(dest)}`
+	}
+	return `https://www.google.com/maps/search/?api=1&query=${encodeQueryPart(target.query)}`
 }
 
 /**
- * Calculate distance and duration between two locations using Distance Matrix API
- * This should be called server-side
- * 
- * @param origin - Origin location (can use placeId or coordinates)
- * @param destination - Destination location (can use placeId or coordinates)
- * @param apiKey - Google Maps API key
+ * Apple Maps URL scheme / web fallback host.
+ */
+export function buildAppleMapsUrl(target: MapsTarget): string {
+	if (target.kind === 'coords') {
+		const label = target.label ? encodeQueryPart(target.label) : ''
+		const base = `https://maps.apple.com/?daddr=${target.lat},${target.lng}`
+		return label ? `${base}&q=${label}` : base
+	}
+	return `https://maps.apple.com/?q=${encodeQueryPart(target.query)}`
+}
+
+/** Google Distance Matrix element / top-level status (subset). */
+export type RouteDistanceStatus =
+	| 'OK'
+	| 'ZERO_RESULTS'
+	| 'NOT_FOUND'
+	| 'REQUEST_DENIED'
+	| 'UNKNOWN_ERROR'
+
+export type RouteDistanceResult = {
+	distance: number
+	duration: number
+	status: RouteDistanceStatus
+}
+
+/**
+ * API key for Distance Matrix and other server-side Maps web services.
+ * Never use `NEXT_PUBLIC_*` for this path (see `docs/integrations-and-payments.md`).
+ */
+export function getGoogleMapsServerApiKey(): string | undefined {
+	const k = process.env.GOOGLE_MAPS_SERVER_KEY?.trim()
+	return k || undefined
+}
+
+type DistanceMatrixResponse = {
+	status: string
+	rows?: Array<{
+		elements?: Array<{
+			status: string
+			distance?: { value: number }
+			duration?: { value: number }
+		}>
+	}>
+}
+
+/**
+ * Road distance and duration via Google Distance Matrix API (server-side; pass key from env).
  */
 export async function calculateRouteDistance(
-  origin: { lat: number; lng: number; placeId?: string },
-  destination: { lat: number; lng: number; placeId?: string },
-  apiKey: string
-): Promise<{ distance: number; duration: number; status: string }> {
-  // Prefer place_id over coordinates for better accuracy
-  // When using place_id, must prefix with "place_id:"
-  const originStr = origin.placeId ? `place_id:${origin.placeId}` : `${origin.lat},${origin.lng}`;
-  const destStr = destination.placeId ? `place_id:${destination.placeId}` : `${destination.lat},${destination.lng}`;
-
-  // Add mode=driving to ensure we get road routes, and avoid=ferries for better results
-  const url = `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${encodeURIComponent(originStr)}&destinations=${encodeURIComponent(destStr)}&key=${apiKey}&units=metric&mode=driving&avoid=ferries`;
-
-  try {
-    console.log('[Distance Matrix] Request:', {
-      origin: { 
-        lat: origin.lat, 
-        lng: origin.lng,
-        placeId: origin.placeId,
-        formatted: originStr,
-      },
-      destination: { 
-        lat: destination.lat, 
-        lng: destination.lng,
-        placeId: destination.placeId,
-        formatted: destStr,
-      },
-    });
-
-    const response = await fetch(url);
-    const data: DistanceMatrixResponse = await response.json();
-
-    console.log('[Distance Matrix] Response:', {
-      status: data.status,
-      elementStatus: data.rows[0]?.elements[0]?.status,
-      fullResponse: JSON.stringify(data, null, 2),
-    });
-
-    if (data.status !== 'OK' || !data.rows[0]?.elements[0]) {
-      // Provide user-friendly error messages based on API status
-      const errorMessages: Record<string, string> = {
-        INVALID_REQUEST: 'Invalid request. Please check your pickup and dropoff locations.',
-        MAX_ELEMENTS_EXCEEDED: 'Request too large. Please contact support.',
-        OVER_QUERY_LIMIT: 'Service temporarily unavailable. Please try again later.',
-        REQUEST_DENIED: 'Request denied. Please check your API configuration.',
-        UNKNOWN_ERROR: 'An unknown error occurred. Please try again.',
-      };
-      
-      const errorMessage = errorMessages[data.status] || `Distance Matrix API error: ${data.status}`;
-      throw new Error(errorMessage);
-    }
-
-    const element = data.rows[0].elements[0];
-
-    if (element.status !== 'OK') {
-      // Provide user-friendly error messages based on element status
-      const elementErrorMessages: Record<string, string> = {
-        NOT_FOUND: 'One or both locations could not be found. Please verify your addresses.',
-        ZERO_RESULTS: 'No route found between the selected locations. Please check that both locations are valid and accessible by road.',
-        MAX_ROUTE_LENGTH_EXCEEDED: 'The route is too long. Please select locations closer together.',
-      };
-      
-      const errorMessage = elementErrorMessages[element.status] || `Unable to calculate route: ${element.status}`;
-      throw new Error(errorMessage);
-    }
-
-    return {
-      distance: element.distance.value / 1000, // Convert meters to kilometers
-      duration: element.duration.value / 60, // Convert seconds to minutes
-      status: element.status,
-    };
-  } catch (error) {
-    console.error('Error calculating route distance:', error);
-    throw error;
-  }
+	origin: { lat: number; lng: number; placeId: string },
+	destination: { lat: number; lng: number; placeId: string },
+	apiKey: string,
+): Promise<RouteDistanceResult> {
+	try {
+		const url = new URL('https://maps.googleapis.com/maps/api/distancematrix/json')
+		url.searchParams.set('origins', `${origin.lat},${origin.lng}`)
+		url.searchParams.set('destinations', `${destination.lat},${destination.lng}`)
+		url.searchParams.set('units', 'metric')
+		url.searchParams.set('key', apiKey)
+		const res = await fetch(url.toString())
+		if (!res.ok) {
+			return { distance: 0, duration: 0, status: 'UNKNOWN_ERROR' }
+		}
+		const data = (await res.json()) as DistanceMatrixResponse
+		if (data.status !== 'OK') {
+			const st = data.status
+			if (st === 'ZERO_RESULTS' || st === 'NOT_FOUND' || st === 'REQUEST_DENIED') {
+				return { distance: 0, duration: 0, status: st }
+			}
+			return { distance: 0, duration: 0, status: 'UNKNOWN_ERROR' }
+		}
+		const el = data.rows?.[0]?.elements?.[0]
+		if (!el || el.status !== 'OK') {
+			return { distance: 0, duration: 0, status: 'ZERO_RESULTS' }
+		}
+		const meters = el.distance?.value ?? 0
+		const seconds = el.duration?.value ?? 0
+		return {
+			distance: meters / 1000,
+			duration: Math.max(1, Math.ceil(seconds / 60)),
+			status: 'OK',
+		}
+	} catch {
+		return { distance: 0, duration: 0, status: 'UNKNOWN_ERROR' }
+	}
 }
 
+const EARTH_RADIUS_KM = 6371
+
+function toRad(deg: number): number {
+	return (deg * Math.PI) / 180
+}
+
+/** Great-circle distance between two WGS84 points (kilometres). */
+export function haversineDistanceKm(
+	a: { lat: number; lng: number },
+	b: { lat: number; lng: number },
+): number {
+	const dLat = toRad(b.lat - a.lat)
+	const dLng = toRad(b.lng - a.lng)
+	const la = toRad(a.lat)
+	const lb = toRad(b.lat)
+	const h =
+		Math.sin(dLat / 2) ** 2 + Math.cos(la) * Math.cos(lb) * Math.sin(dLng / 2) ** 2
+	return 2 * EARTH_RADIUS_KM * Math.asin(Math.min(1, Math.sqrt(h)))
+}
+
+/** Default assumed road speed when Directions/Matrix is not used (km/h). */
+export const DEFAULT_ROAD_SPEED_KMH = 35
+
+/**
+ * Stub ETA: straight-line distance at {@link DEFAULT_ROAD_SPEED_KMH} (or override).
+ * Prefer {@link calculateRouteDistance} when a Maps key is available.
+ */
+export function estimateTravelMinutesHaversine(
+	from: { lat: number; lng: number },
+	to: { lat: number; lng: number },
+	speedKmh: number = DEFAULT_ROAD_SPEED_KMH,
+): number {
+	const km = haversineDistanceKm(from, to)
+	if (speedKmh <= 0) {
+		return 0
+	}
+	return Math.max(1, Math.round((km / speedKmh) * 60))
+}
+
+export type LocationPrivacyTier = 'vip' | 'corporate' | 'staff'
+
+/**
+ * Coarser coordinates for lower-precision tiers (see docs/realtime-and-notifications.md).
+ * Staff tier returns inputs unchanged.
+ */
+export function roundCoordinatesForPrivacyTier(
+	lat: number,
+	lng: number,
+	tier: LocationPrivacyTier,
+): { lat: number; lng: number } {
+	if (tier === 'staff') {
+		return { lat, lng }
+	}
+	const latDec = tier === 'vip' ? 3 : 4
+	const lngDec = tier === 'vip' ? 3 : 4
+	const factorLat = 10 ** latDec
+	const factorLng = 10 ** lngDec
+	return {
+		lat: Math.round(lat * factorLat) / factorLat,
+		lng: Math.round(lng * factorLng) / factorLng,
+	}
+}

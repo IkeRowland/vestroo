@@ -7,7 +7,6 @@ import { BookingWizardStepper } from '@/features/booking/components/BookingWizar
 import { VehicleOptionCard, type VehicleOption } from '@/components/booking/VehicleOptionCard';
 import { RouteSummaryCard } from '@/components/booking/RouteSummaryCard';
 import { Button } from '@/components/ui/button';
-import { motion } from 'framer-motion';
 import { StepTransition } from '@/components/booking/StepTransition';
 
 export default function QuotePage() {
@@ -23,6 +22,8 @@ export default function QuotePage() {
     selectedVehicleId,
     selectVehicle,
     vehicleOptions: storeVehicleOptions,
+    bookingIntent,
+    hourlyBillableHours,
   } = useBookingStore();
 
   const [vehicleOptions, setVehicleOptions] = useState<VehicleOption[]>([]);
@@ -40,7 +41,12 @@ export default function QuotePage() {
     });
 
     // Check if required data is missing
-    if (!origin || !destination) {
+    if (
+      !origin ||
+      (bookingIntent !== 'hourly_hire' &&
+        bookingIntent !== 'experience_package' &&
+        !destination)
+    ) {
       console.log('[Quote Page] Missing origin or destination, redirecting to search');
       router.push('/book/search');
       return;
@@ -77,7 +83,15 @@ export default function QuotePage() {
       setIsLoading(false);
       console.warn('[Quote Page] Vehicle options is empty array');
     }
-  }, [origin, destination, date, storeVehicleOptions, quoteAmount, router]);
+  }, [
+    origin,
+    destination,
+    date,
+    storeVehicleOptions,
+    quoteAmount,
+    router,
+    bookingIntent,
+  ]);
 
   const handleVehicleSelect = (vehicleId: string) => {
     const vehicle = vehicleOptions.find((v) => v.id === vehicleId);
@@ -97,13 +111,31 @@ export default function QuotePage() {
   };
 
   // Show loading state only if we're still loading or missing critical data
-  if (isLoading || !origin || !destination || vehicleOptions.length === 0) {
+  const destinationLabel =
+    destination?.formattedAddress ??
+    (bookingIntent === 'hourly_hire'
+      ? 'As directed (hourly chauffeur hire)'
+      : bookingIntent === 'experience_package'
+        ? 'Experience area (see itinerary)'
+        : '');
+
+  if (
+    isLoading ||
+    !origin ||
+    (bookingIntent !== 'hourly_hire' &&
+      bookingIntent !== 'experience_package' &&
+      !destination) ||
+    vehicleOptions.length === 0
+  ) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#25A89B] mx-auto"></div>
           <p className="mt-4 text-slate-600">Loading quote...</p>
-          {!origin || !destination ? (
+          {!origin ||
+          (bookingIntent !== 'hourly_hire' &&
+            bookingIntent !== 'experience_package' &&
+            !destination) ? (
             <p className="mt-2 text-sm text-slate-500">Redirecting to search...</p>
           ) : vehicleOptions.length === 0 ? (
             <p className="mt-2 text-sm text-slate-500">Loading vehicle options...</p>
@@ -171,11 +203,43 @@ export default function QuotePage() {
                   )}
                 </div>
 
-                {estimatedDuration && distance && (
+                {bookingIntent === 'hourly_hire' && hourlyBillableHours != null && (
+                  <div className="bg-white rounded-lg border border-slate-200 p-4">
+                    <p className="text-sm text-slate-600">Hourly hire</p>
+                    <p className="font-semibold text-slate-900">
+                      Billable hours (incl. minimum): {hourlyBillableHours}
+                    </p>
+                    <p className="text-xs text-slate-500 mt-1">
+                      Premium dedicated chauffeur — final quote is confirmed at checkout.
+                    </p>
+                  </div>
+                )}
+                {bookingIntent === 'experience_package' && (
+                  <div className="bg-white rounded-lg border border-slate-200 p-4">
+                    <p className="text-sm text-slate-600">Tour / experience package</p>
+                    <p className="font-semibold text-slate-900">
+                      Fixed package pricing (no route-based estimate)
+                    </p>
+                    {estimatedDuration != null ? (
+                      <p className="text-xs text-slate-500 mt-1">
+                        Typical day duration: about {Math.round(estimatedDuration)} minutes on
+                        the road and at stops.
+                      </p>
+                    ) : (
+                      <p className="text-xs text-slate-500 mt-1">
+                        Total is reconciled again at checkout.
+                      </p>
+                    )}
+                  </div>
+                )}
+                {bookingIntent !== 'hourly_hire' &&
+                  bookingIntent !== 'experience_package' &&
+                  estimatedDuration &&
+                  distance && (
                   <div className="bg-white rounded-lg border border-slate-200 p-4">
                     <div className="grid grid-cols-2 gap-4 text-sm">
                       <div>
-                        <span className="text-slate-600">Estimated Duration</span>
+                        <span className="text-slate-600">Estimated trip duration</span>
                         <p className="font-semibold text-slate-900">
                           {Math.round(estimatedDuration)} minutes
                         </p>
@@ -194,7 +258,7 @@ export default function QuotePage() {
               <div className="lg:col-span-1">
                 <RouteSummaryCard
                   origin={origin.formattedAddress}
-                  destination={destination.formattedAddress}
+                  destination={destinationLabel}
                   date={date || new Date()}
                   time={formatTime(date)}
                   passengerCount={passengers}

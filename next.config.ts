@@ -1,12 +1,30 @@
 import type { NextConfig } from 'next';
-import { withPayload } from '@payloadcms/next/withPayload';
+
+const securityHeaders = [
+  { key: 'X-Content-Type-Options', value: 'nosniff' },
+  { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
+  {
+    key: 'Referrer-Policy',
+    value: 'strict-origin-when-cross-origin',
+  },
+  {
+    key: 'Permissions-Policy',
+    value:
+      'geolocation=(self), microphone=(), camera=(), payment=(), usb=()',
+  },
+] as const
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   transpilePackages: [],
-  // Suppress hydration warnings from PayloadCMS admin CSS injection
-  // This is a known issue with PayloadCMS and Next.js 15
-  // The warnings don't affect functionality but are noisy in development
+  async headers() {
+    return [
+      {
+        source: '/:path*',
+        headers: [...securityHeaders],
+      },
+    ]
+  },
   onDemandEntries: {
     maxInactiveAge: 25 * 1000,
     pagesBufferLength: 2,
@@ -23,6 +41,11 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: '*.storage.supabase.co',
         pathname: '/storage/v1/object/public/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'images.unsplash.com',
+        pathname: '/**',
       },
     ],
   },
@@ -45,5 +68,5 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default withPayload(nextConfig);
+export default nextConfig;
 

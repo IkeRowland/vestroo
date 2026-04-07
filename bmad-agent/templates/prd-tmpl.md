@@ -72,10 +72,10 @@ Anything you and the user agreed it out of scope or can be removed from scope to
 
 - **Primary Backend Language/Framework:** {e.g., Python/FastAPI, Node.js/Express, Java/Spring Boot}
 - **Primary Frontend Language/Framework (if applicable):** {e.g., TypeScript/React (Next.js), JavaScript/Vue.js}
-- **Database:** {e.g., PostgreSQL, MongoDB, AWS DynamoDB}
+- **Database:** {e.g., Supabase (hosted PostgreSQL), PostgreSQL, MongoDB, AWS DynamoDB}
 - **Key Libraries/Services (Backend):** {e.g., Authentication (JWT, OAuth provider), ORM (SQLAlchemy), Caching (Redis)}
 - **Key Libraries/Services (Frontend, if applicable):** {e.g., UI Component Library (Material-UI, Tailwind CSS + Headless UI), State Management (Redux, Zustand)}
-- **Deployment Platform/Environment:** {e.g., Docker on AWS ECS, Vercel, Netlify, Kubernetes}
+- **Deployment Platform/Environment:** {e.g., Vercel + hosted Supabase, Docker on AWS ECS, Netlify, Kubernetes}
 - **Version Control System:** {e.g., Git with GitHub/GitLab}
 
 ### Proposed Application Structure

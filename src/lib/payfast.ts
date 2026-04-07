@@ -76,13 +76,21 @@ export function verifyPayFastWebhookSignature(
 }
 
 /**
- * Get PayFast URL (sandbox or production)
+ * Base URL for PayFast (sandbox or production). Server-only; used when building checkout redirects.
  */
 export function getPayFastUrl(): string {
-  const payfastUrl = process.env.PAYFAST_URL;
-  if (!payfastUrl) {
-    throw new Error('PAYFAST_URL environment variable is not set');
+  return resolvePayFastProcessBaseUrl();
+}
+
+/**
+ * PayFast site root for `POST …/eng/process` (no trailing slash).
+ * Defaults to sandbox when unset so local dev works with only passphrase/key set.
+ */
+export function resolvePayFastProcessBaseUrl(): string {
+  const payfastUrl = process.env.PAYFAST_URL?.trim();
+  if (payfastUrl) {
+    return payfastUrl.replace(/\/$/, '');
   }
-  return payfastUrl;
+  return 'https://sandbox.payfast.co.za';
 }
 

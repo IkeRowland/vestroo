@@ -18,10 +18,22 @@ const config: Config = {
     },
     extend: {
       fontFamily: {
-        sans: ['Poppins', 'sans-serif'],
-        Poppins: ['Poppins', 'sans-serif'],
+        sans: [
+          'var(--font-montserrat)',
+          'var(--font-poppins)',
+          'system-ui',
+          'sans-serif',
+        ],
+        display: ['var(--font-montserrat)', 'system-ui', 'sans-serif'],
+        Poppins: ['var(--font-poppins)', 'sans-serif'],
       },
       colors: {
+        vest: {
+          rust: '#C04C33',
+          'rust-dark': '#a33f2a',
+          charcoal: '#222222',
+          section: '#F8F8F8',
+        },
         border: 'hsl(var(--border))',
         input: 'hsl(var(--input))',
         ring: 'hsl(var(--ring))',

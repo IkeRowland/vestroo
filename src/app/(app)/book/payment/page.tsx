@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useBookingStore } from '@/features/booking/hooks/useBookingStore';
 import { BookingWizardStepper } from '@/features/booking/components/BookingWizardStepper';
 import { PaymentSummaryCard } from '@/components/booking/PaymentSummaryCard';
@@ -11,8 +11,10 @@ import { processPayment } from '@/actions/processPayment';
 import { initializePayFastModal } from '@/lib/payfast-client';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
-export default function PaymentPage() {
+function PaymentPageInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const payfastCancelled = searchParams.get('error') === 'cancelled';
   const {
     origin,
     destination,
@@ -25,6 +27,11 @@ export default function PaymentPage() {
     estimatedDuration,
     distance,
     vehicleOptions,
+    bookingIntent,
+    hourlyDurationHours,
+    hourlyServiceAreaNotes,
+    experiencePackageId,
+    experienceAddonIds,
     setBookingId,
     setPaymentStatus,
   } = useBookingStore();
@@ -44,13 +51,37 @@ export default function PaymentPage() {
     }
   }, [customer, selectedVehicleId, router]);
 
+  const hasRequiredTrip =
+    origin &&
+    date &&
+    quoteAmount &&
+    selectedVehicleId &&
+    (bookingIntent === 'hourly_hire' ||
+      bookingIntent === 'experience_package' ||
+      destination);
+
   const handleBack = () => {
     router.push('/book/details');
   };
 
   const handlePayment = async () => {
-    if (!origin || !destination || !date || !quoteAmount || !customer || !selectedVehicleId) {
+    if (!origin || !date || !quoteAmount || !customer || !selectedVehicleId) {
       setError('Missing required booking information. Please go back and complete all steps.');
+      return;
+    }
+    if (
+      bookingIntent !== 'hourly_hire' &&
+      bookingIntent !== 'experience_package' &&
+      !destination
+    ) {
+      setError('Missing drop-off. Please go back to search.');
+      return;
+    }
+    if (
+      bookingIntent === 'experience_package' &&
+      (!experiencePackageId || !date)
+    ) {
+      setError('Missing experience package details. Please start again from the tour page.');
       return;
     }
 
@@ -61,8 +92,9 @@ export default function PaymentPage() {
     try {
       // Prepare booking state for server action
       const bookingState = {
+        bookingIntent,
         origin,
-        destination,
+        destination: destination ?? null,
         date,
         passengers,
         flightNumber,
@@ -70,13 +102,29 @@ export default function PaymentPage() {
         quoteAmount,
         estimatedDuration,
         distance,
+        hourlyDurationHours,
+        hourlyServiceAreaNotes,
+        bookingMetadata:
+          bookingIntent === 'experience_package' && experiencePackageId
+            ? {
+                experience_package_id: experiencePackageId,
+                experience_date: date.toISOString(),
+                group_size: passengers,
+                selected_addon_ids: experienceAddonIds,
+              }
+            : undefined,
         customer,
       };
 
       // Call server action to create booking and get PayFast data
       const result = await processPayment(bookingState);
 
-      if (!result.success || !result.bookingId || !result.payfastData) {
+      if (
+        !result.success ||
+        !result.bookingId ||
+        !result.payfastData ||
+        !result.payfastProcessBaseUrl
+      ) {
         setError(result.error || 'Failed to initialize payment. Please try again.');
         setPaymentStatus('failed');
         setIsProcessing(false);
@@ -88,7 +136,10 @@ export default function PaymentPage() {
 
       // Initialize PayFast payment (form submission redirects to PayFast)
       // After payment, PayFast will redirect to return_url (confirmation page)
-      await initializePayFastModal(result.payfastData);
+      await initializePayFastModal(
+        result.payfastData,
+        result.payfastProcessBaseUrl
+      );
       
       // Note: Code after this point may not execute due to form submission navigation
       // PayFast will redirect user to return_url after payment completion
@@ -103,7 +154,7 @@ export default function PaymentPage() {
     }
   };
 
-  if (!customer || !selectedVehicleId || !origin || !destination || !date || !quoteAmount) {
+  if (!customer || !selectedVehicleId || !hasRequiredTrip) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -125,8 +176,6 @@ export default function PaymentPage() {
   // Get vehicle name from vehicle options stored in the booking store
   const selectedVehicle = vehicleOptions?.find((v) => v.id === selectedVehicleId);
   const vehicleName = selectedVehicle?.name || 'Vehicle';
-  const vehicleCapacity = selectedVehicle?.capacity || 0;
-
   return (
     <StepTransition>
       <div className="min-h-screen bg-slate-50 py-8 px-4 sm:px-6 lg:px-8">
@@ -144,6 +193,17 @@ export default function PaymentPage() {
             </div>
 
             {/* Error Message */}
+            {payfastCancelled && (
+              <Alert className="mb-6 border-amber-200 bg-amber-50 text-amber-950">
+                <AlertDescription>
+                  You left the PayFast checkout without paying. No charge was made. Tap{' '}
+                  <strong>Pay securely</strong> to try again, or use{' '}
+                  <strong>Manage booking</strong> with your reservation reference if you already
+                  completed payment on a previous attempt.
+                </AlertDescription>
+              </Alert>
+            )}
+
             {error && (
               <Alert variant="destructive" className="mb-6">
                 <AlertDescription>{error}</AlertDescription>
@@ -157,7 +217,12 @@ export default function PaymentPage() {
                   fees={0}
                   total={quoteAmount}
                   origin={origin.formattedAddress}
-                  destination={destination.formattedAddress}
+                  destination={
+                    destination?.formattedAddress ??
+                    (bookingIntent === 'experience_package'
+                      ? 'Experience package'
+                      : 'As directed (hourly chauffeur hire)')
+                  }
                   date={date}
                   time={formatTime(date)}
                   passengers={passengers}
@@ -211,13 +276,27 @@ export default function PaymentPage() {
                 disabled={isProcessing}
                 className="min-w-[160px] bg-[#25A89B] hover:bg-[#1f8f83]"
               >
-                {isProcessing ? 'Processing...' : 'Pay Securely'}
+                {isProcessing ? 'Processing...' : 'Pay securely'}
               </Button>
             </div>
           </div>
         </div>
       </div>
     </StepTransition>
+  );
+}
+
+export default function PaymentPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-slate-50">
+          <div className="text-center text-slate-600">Loading…</div>
+        </div>
+      }
+    >
+      <PaymentPageInner />
+    </Suspense>
   );
 }
 

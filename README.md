@@ -1,37 +1,27 @@
 # Vestroo - Shuttle Booking Platform
 
-A modern shuttle booking platform built with Next.js 14, TypeScript, and Tailwind CSS.
+Shuttle booking platform built with **Next.js 15** (App Router), **TypeScript**, **Tailwind CSS**, and **Supabase**.
 
-## Getting Started
+## Contributing
 
-### Prerequisites
+Branches, CI, migrations in PRs, and pointers to setup and code layout: see [CONTRIBUTING.md](CONTRIBUTING.md).
 
-- Node.js 18+ 
-- npm or yarn
-- Google Maps API key
+## Security
 
-### Installation
+Report security issues privately — **do not** open public issues for undisclosed vulnerabilities. See [SECURITY.md](SECURITY.md) for scope and how to contact maintainers.
 
-1. Install dependencies:
-```bash
-npm install
-```
+## Getting started
 
-2. Set up environment variables:
-```bash
-cp .env.example .env
-```
+**Full setup (Supabase migrations, CI, env semantics, stub booking):** see [docs/local-development.md](docs/local-development.md).
 
-Update `.env` with your actual values:
-- `NEXT_PUBLIC_GOOGLE_MAPS_KEY` - Your Google Maps API key
-- Other environment variables as needed
+Quick path:
 
-3. Run the development server:
-```bash
-npm run dev
-```
-
-4. Open [http://localhost:3000](http://localhost:3000) in your browser.
+1. **Node:** 20.x LTS recommended.
+2. **Docker** is not required. Development uses a **hosted** Supabase project and the environment variables described in the docs below.
+3. `npm install`
+4. `cp .env.example .env.local` — fill placeholders (never commit secrets). See [docs/environment-vars.md](docs/environment-vars.md).
+5. Apply `supabase/migrations/` to your dev Supabase project (hosted): **`supabase link`** then **`npm run db:push`** or Dashboard — see [docs/local-development.md](docs/local-development.md).
+6. `npm run dev` → [http://localhost:3000](http://localhost:3000)
 
 ## Project Structure
 
@@ -63,6 +53,7 @@ tests/
 - `npm run build` - Build for production
 - `npm run start` - Start production server
 - `npm run lint` - Run ESLint
+- `npm run db:push` - Apply pending Supabase migrations to the linked **hosted** project (requires [Supabase CLI](https://supabase.com/docs/guides/cli); run `supabase link` first)
 - `npm test` - Run unit tests (Vitest)
 - `npm run test:e2e` - Run E2E tests (Playwright)
 
@@ -95,7 +86,7 @@ See `docs/stories/1.1.story.md` for detailed requirements.
 
 ## Tech Stack
 
-- **Framework:** Next.js 14 (App Router)
+- **Framework:** Next.js 15 (App Router)
 - **Language:** TypeScript (Strict mode)
 - **Styling:** Tailwind CSS
 - **UI Components:** Shadcn/UI

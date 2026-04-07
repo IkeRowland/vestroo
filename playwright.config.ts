@@ -1,5 +1,9 @@
 import { defineConfig, devices } from '@playwright/test';
 
+/**
+ * Local: all `projects` (multi-browser). Optional future CI job: save minutes with
+ * `npx playwright test --project=chromium` (documented in docs/hardening-and-go-live.md).
+ */
 export default defineConfig({
   testDir: './tests/e2e',
   fullyParallel: true,

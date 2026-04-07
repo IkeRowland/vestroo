@@ -1,17 +1,21 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
-// Middleware for additional request handling
-// Can be extended for auth, redirects, etc.
-// Note: Route detection for PayloadCMS is handled via official suppressHydrationWarning config
-// See payload.config.ts admin.suppressHydrationWarning
+// Middleware for additional request handling (auth, redirects, headers, etc.)
 export function middleware(request: NextRequest) {
-  const response = NextResponse.next()
-  
-  // Add any custom middleware logic here
-  // (e.g., authentication, redirects, headers)
-  
-  return response
+  const pathname = request.nextUrl.pathname
+  if (pathname.startsWith('/ops') || pathname.startsWith('/field')) {
+    const requestHeaders = new Headers(request.headers)
+    requestHeaders.set('x-pathname', pathname)
+
+    return NextResponse.next({
+      request: {
+        headers: requestHeaders,
+      },
+    })
+  }
+
+  return NextResponse.next()
 }
 
 export const config = {

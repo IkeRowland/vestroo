@@ -11,13 +11,12 @@ interface BookingWizardStepperProps {
   className?: string;
 }
 
-// Temporarily removed payment step - will be added back when Payfast is configured
 const steps: { key: BookingStep; label: string; number: number }[] = [
   { key: 'search', label: 'Search', number: 1 },
   { key: 'quote', label: 'Quote', number: 2 },
   { key: 'details', label: 'Details', number: 3 },
-  // { key: 'payment', label: 'Payment', number: 4 }, // Temporarily removed
-  { key: 'confirmation', label: 'Confirmation', number: 4 },
+  { key: 'payment', label: 'Payment', number: 4 },
+  { key: 'confirmation', label: 'Confirmation', number: 5 },
 ];
 
 export function BookingWizardStepper({ currentStep, className }: BookingWizardStepperProps) {

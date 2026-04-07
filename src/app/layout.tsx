@@ -1,24 +1,45 @@
-import type { Metadata } from 'next';
-import './globals.css';
+import type { Metadata } from 'next'
+import { Montserrat, Poppins } from 'next/font/google'
+import './globals.css'
+import { getSiteUrl } from '@/lib/site-url'
+
+const montserrat = Montserrat({
+  subsets: ['latin'],
+  variable: '--font-montserrat',
+  display: 'swap',
+})
+
+const poppins = Poppins({
+  weight: ['400', '500', '600', '700', '800'],
+  subsets: ['latin'],
+  variable: '--font-poppins',
+  display: 'swap',
+})
 
 export const metadata: Metadata = {
-  title: 'Vestroo - Shuttle Booking Platform',
-  description: 'Book your shuttle service',
-};
+  metadataBase: new URL(getSiteUrl()),
+  title: {
+    default: 'Vestroo — premium passenger transport',
+    template: '%s | Vestroo',
+  },
+  description:
+    'Chauffeured passenger transport in South Africa — premium shuttle, corporate, VIP, tours, and discreet enquiries.',
+}
 
-// Root layout must have html/body tags in Next.js 15 App Router
-// PayloadCMS handles hydration warnings via suppressHydrationWarning config
-// See payload.config.ts admin.suppressHydrationWarning (officially supported since v3.6.0)
 export default function RootLayout({
   children,
 }: {
-  children: React.ReactNode;
+  children: React.ReactNode
 }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html
+      lang="en-ZA"
+      className={`${montserrat.variable} ${poppins.variable}`}
+      suppressHydrationWarning
+    >
       <body suppressHydrationWarning className="suppress-hydration-warning">
         {children}
       </body>
     </html>
-  );
+  )
 }

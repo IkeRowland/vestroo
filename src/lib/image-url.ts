@@ -24,6 +24,11 @@ export function convertToSupabaseUrl(url: string): string {
     return url
   }
 
+  // Next.js `public/images/*` — do not rewrite to Supabase storage
+  if (url.startsWith('/images/')) {
+    return url
+  }
+
   // Get Supabase URL from environment
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   if (!supabaseUrl) {

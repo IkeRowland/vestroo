@@ -17,4 +17,5 @@
 * **(marketing):** Public, ISR-heavy pages for SEO optimization.
 * **(app):** Dynamic Booking Application with protected routes.
 * **(payload):** PayloadCMS Admin Routes (Managed by Payload).
+* **(ops):** Staff operations console under **`/ops/*`** — route table, auth, and shell layout are documented in **[ops-console.md](ops-console.md)** (this file stays booking-corridor focused).
 

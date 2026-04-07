@@ -1,29 +1,11 @@
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { getPayload } from 'payload'
-import config from '@payload-config'
-import { unstable_cache } from 'next/cache'
 import Image from 'next/image'
 import type { ReactElement } from 'react'
 import { getImageUrl } from '@/lib/image-url'
+import { siteSettings } from '@/content/site-settings'
+import { VestrooMark } from '@/components/brand/VestrooMark'
 
-/**
- * Fetch site settings with caching
- */
-const getCachedSiteSettings = unstable_cache(
-  async () => {
-    const payload = await getPayload({ config })
-    return await payload.findGlobal({
-      slug: 'site-settings',
-    })
-  },
-  ['site-settings'],
-  { revalidate: 3600, tags: ['site-settings'] }
-)
-
-/**
- * Get social media icon SVG
- */
 function getSocialIcon(platform: string) {
   const icons: Record<string, ReactElement> = {
     twitter: (
@@ -55,17 +37,8 @@ function getSocialIcon(platform: string) {
   return icons[platform.toLowerCase()] || null
 }
 
-/**
- * Footer component - fetches data from PayloadCMS SiteSettings global
- */
-export async function Footer() {
-  const siteSettings = await getCachedSiteSettings()
-  const footer = siteSettings?.footer
-
-  if (!footer) {
-    return null
-  }
-
+export function Footer() {
+  const footer = siteSettings.footer
   const logoUrl = getImageUrl(footer.logo_image_upload, footer.logo_image_url)
   const currentYear = new Date().getFullYear()
   const copyrightText =
@@ -73,10 +46,9 @@ export async function Footer() {
     `© Copyright ${currentYear}. All Rights Reserved By Vestroo`
 
   return (
-    <footer className="bg-[#2C2C2C] text-gray-300">
+    <footer className="bg-vest-charcoal text-gray-300">
       <div className="container mx-auto max-w-7xl px-4 py-12">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-          {/* Logo and Social Media */}
           <div>
             <div className="flex items-center gap-3 mb-4">
               {footer.logo_type === 'image' && logoUrl ? (
@@ -90,11 +62,7 @@ export async function Footer() {
                 </div>
               ) : (
                 <>
-                  <div className="w-[84px] h-[84px] bg-[#00A651] rounded-full flex items-center justify-center">
-                    <span className="text-white font-bold text-2xl">
-                      {footer.logo_text || 'V'}
-                    </span>
-                  </div>
+                  <VestrooMark size="footer" className="shrink-0" />
                   <div className="text-white font-bold">
                     {footer.company_name || 'Vestroo'}
                   </div>
@@ -103,61 +71,68 @@ export async function Footer() {
             </div>
             {footer.social_media && footer.social_media.length > 0 && (
               <div className="flex gap-4 mb-4">
-                {footer.social_media.map((social: { platform: string; url?: string }, index: number) => (
-                  <a
-                    key={index}
-                    href={social.url || '#'}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center hover:bg-[#00A651] transition-colors"
-                    aria-label={social.platform}
-                  >
-                    {getSocialIcon(social.platform)}
-                  </a>
-                ))}
+                {footer.social_media.map(
+                  (social: { platform: string; url?: string }, index: number) => (
+                    <a
+                      key={index}
+                      href={social.url || '#'}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center hover:bg-vest-rust transition-colors"
+                      aria-label={social.platform}
+                    >
+                      {getSocialIcon(social.platform)}
+                    </a>
+                  )
+                )}
               </div>
             )}
           </div>
 
-          {/* General Links */}
           {footer.general_links && footer.general_links.length > 0 && (
             <div>
-              <h3 className="text-white font-semibold mb-4">General Links</h3>
+              <h3 className="text-white font-semibold mb-4">
+                {footer.general_column_title}
+              </h3>
               <ul className="space-y-2">
-                {footer.general_links.map((link: { url?: string; label: string }, index: number) => (
-                  <li key={index}>
-                    <Link
-                      href={link.url || '#'}
-                      className="hover:text-[#00A651] transition-colors"
-                    >
-                      &gt; {link.label}
-                    </Link>
-                  </li>
-                ))}
+                {footer.general_links.map(
+                  (link: { url?: string; label: string }, index: number) => (
+                    <li key={index}>
+                      <Link
+                        href={link.url || '#'}
+                        className="hover:text-vest-rust transition-colors"
+                      >
+                        &gt; {link.label}
+                      </Link>
+                    </li>
+                  )
+                )}
               </ul>
             </div>
           )}
 
-          {/* Get In Contact */}
           {footer.contact_links && footer.contact_links.length > 0 && (
             <div>
-              <h3 className="text-white font-semibold mb-4">Get In Contact</h3>
+              <h3 className="text-white font-semibold mb-4">
+                {footer.contact_column_title}
+              </h3>
               <ul className="space-y-2">
-                {footer.contact_links.map((link: { url?: string; label: string }, index: number) => (
-                  <li key={index}>
-                    <Link
-                      href={link.url || '#'}
-                      className="hover:text-[#00A651] transition-colors"
-                    >
-                      &gt; {link.label}
-                    </Link>
-                  </li>
-                ))}
+                {footer.contact_links.map(
+                  (link: { url?: string; label: string }, index: number) => (
+                    <li key={index}>
+                      <Link
+                        href={link.url || '#'}
+                        className="hover:text-vest-rust transition-colors"
+                      >
+                        &gt; {link.label}
+                      </Link>
+                    </li>
+                  )
+                )}
               </ul>
             </div>
           )}
 
-          {/* Careers */}
           {footer.careers?.enabled && (
             <div>
               <h3 className="text-white font-semibold mb-4">Careers</h3>
@@ -167,10 +142,10 @@ export async function Footer() {
               {footer.careers.button_text && (
                 <Button
                   variant="outline"
-                  className="bg-transparent border-gray-600 text-gray-300 hover:bg-[#00A651] hover:border-[#00A651] hover:text-white"
+                  className="bg-transparent border-gray-600 text-gray-300 hover:bg-vest-rust hover:border-vest-rust hover:text-white uppercase text-xs tracking-wide font-semibold rounded-sm"
                   asChild
                 >
-                  <Link href={footer.careers.button_url || '/careers'}>
+                  <Link href={footer.careers.button_url || '/contact'}>
                     {footer.careers.button_text}
                   </Link>
                 </Button>
@@ -179,13 +154,12 @@ export async function Footer() {
           )}
         </div>
 
-        {/* Bottom Bar */}
         <div className="border-t border-gray-700 mt-8 pt-6 flex flex-col md:flex-row justify-between items-center gap-4">
           <div className="text-sm">{copyrightText}</div>
           {footer.terms_text && (
             <Link
               href={footer.terms_url || '/terms'}
-              className="text-sm hover:text-[#00A651] transition-colors"
+              className="text-sm hover:text-vest-rust transition-colors"
             >
               {footer.terms_text}
             </Link>

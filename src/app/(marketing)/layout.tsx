@@ -1,15 +1,12 @@
-import type { Metadata } from 'next'
 import { Header } from '@/components/layout/Header'
 import { Footer } from '@/components/layout/Footer'
 
-export const metadata: Metadata = {
-  title: 'Vestroo - Premium Shuttle Service',
-  description: 'Book your premium shuttle service with Vestroo',
-}
+/** ISR for static marketing content modules (see VST-4). */
+export const revalidate = 3600
 
 /**
  * Marketing layout - shared layout for marketing pages
- * Includes Header and Footer matching EZ Shuttle design
+ * Includes Header and Footer for marketing pages
  */
 export default function MarketingLayout({
   children,

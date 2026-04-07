@@ -1,6 +1,7 @@
 'use client';
 
-import { create } from 'zustand'
+import { create } from 'zustand';
+import type { BookingIntent } from '@/lib/booking-quote-types';
 
 /**
  * Location type from Google Maps Places API
@@ -25,6 +26,14 @@ export interface BookingState {
   date: Date | null;
   passengers: number;
   flightNumber: string | null;
+  bookingIntent: BookingIntent;
+  hourlyDurationHours: number | null;
+  hourlyServiceAreaNotes: string | null;
+  hourlyBillableHours: number | null;
+
+  /** VST-10 experience packages */
+  experiencePackageId: string | null;
+  experienceAddonIds: string[];
 
   // Step 2: Quote
   selectedVehicleId: string | null;
@@ -53,6 +62,19 @@ export interface BookingState {
 
   // Actions
   setTripDetails: (details: Partial<Pick<BookingState, 'origin' | 'destination' | 'date' | 'passengers' | 'flightNumber'>>) => void;
+  setBookingProduct: (
+    details: Partial<
+      Pick<
+        BookingState,
+        | 'bookingIntent'
+        | 'hourlyDurationHours'
+        | 'hourlyServiceAreaNotes'
+        | 'hourlyBillableHours'
+        | 'experiencePackageId'
+        | 'experienceAddonIds'
+      >
+    >
+  ) => void;
   selectVehicle: (vehicleId: string, amount: number) => void;
   setQuoteDetails: (details: Partial<Pick<BookingState, 'quoteAmount' | 'estimatedDuration' | 'distance' | 'vehicleOptions'>>) => void;
   setCustomerDetails: (customer: BookingState['customer']) => void;
@@ -67,6 +89,12 @@ const initialState = {
   date: null,
   passengers: 1,
   flightNumber: null,
+  bookingIntent: 'point_to_point' as BookingIntent,
+  hourlyDurationHours: null,
+  hourlyServiceAreaNotes: null,
+  hourlyBillableHours: null,
+  experiencePackageId: null,
+  experienceAddonIds: [],
   selectedVehicleId: null,
   quoteAmount: null,
   estimatedDuration: null,
@@ -81,6 +109,12 @@ export const useBookingStore = create<BookingState>((set) => ({
   ...initialState,
 
   setTripDetails: (details) =>
+    set((state) => ({
+      ...state,
+      ...details,
+    })),
+
+  setBookingProduct: (details) =>
     set((state) => ({
       ...state,
       ...details,

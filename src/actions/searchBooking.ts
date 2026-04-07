@@ -90,7 +90,9 @@ export async function searchBooking(
       customerPhone: booking.customer_phone || 'N/A',
       origin: booking.origin_name || 'N/A',
       destination: booking.destination_name || 'N/A',
-      pickupDateTime: new Date(booking.trip_date),
+      pickupDateTime: new Date(
+        booking.pickup_datetime || booking.trip_date || booking.created_at
+      ),
       passengerCount: booking.passenger_count || 1,
       vehicleId: booking.vehicle_id || 'N/A',
       totalAmount: booking.total_amount || 0,

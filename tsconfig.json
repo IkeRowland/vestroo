@@ -28,9 +28,6 @@
       ],
       "~/*": [
         "./*"
-      ],
-      "@payload-config": [
-        "./payload.config.ts"
       ]
     }
   },
@@ -42,6 +39,9 @@
     ".next/dev/types/**/*.ts"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "src/legacy/**/*",
+    "src/features/capstone-reference/**/*",
+    "docs/capstone-reference/**/*"
   ]
 }

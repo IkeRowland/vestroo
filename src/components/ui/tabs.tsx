@@ -54,7 +54,7 @@ const TabsTrigger = React.forwardRef<HTMLButtonElement, TabsTriggerProps>(
           'focus-visible:outline-none',
           'disabled:pointer-events-none disabled:opacity-50',
           isActive
-            ? 'bg-[#bc4328] text-white font-medium rounded-t-lg shadow-sm'
+            ? 'bg-vest-rust text-white font-medium rounded-t-lg shadow-sm'
             : 'bg-transparent text-gray-500 hover:bg-gray-50 hover:text-gray-700 font-normal',
           className
         )}

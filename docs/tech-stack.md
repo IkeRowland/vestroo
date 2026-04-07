@@ -14,3 +14,7 @@
 | **Testing** | Vitest | Latest | Unit Testing (Pricing Logic). |
 | **Hosting** | Vercel | N/A | Serverless deployment. |
 
+## Local development (database)
+
+The app talks to **hosted** Supabase projects (dev / staging / production). This repository does **not** run a local Supabase stack with **Docker**. Apply `supabase/migrations/` with the **Supabase CLI** (**`supabase link`**, **`supabase db push`** or **`npm run db:push`**) as described in [local-development.md](local-development.md).
+

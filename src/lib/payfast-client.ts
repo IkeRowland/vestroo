@@ -8,10 +8,13 @@ import { PayFastPaymentParams } from './payfast';
  * After payment, PayFast redirects back to return_url
  * Reference: https://developers.payfast.co.za/documentation/#onsite-payments
  */
-export function initializePayFastModal(payfastData: PayFastPaymentParams): Promise<void> {
+export function initializePayFastModal(
+  payfastData: PayFastPaymentParams,
+  processBaseUrl?: string
+): Promise<void> {
   return new Promise((resolve) => {
-    // Get PayFast URL from environment or use default
-    const payfastUrl = process.env.NEXT_PUBLIC_PAYFAST_URL || 'https://sandbox.payfast.co.za';
+    const payfastUrl =
+      processBaseUrl?.replace(/\/$/, '') || 'https://sandbox.payfast.co.za';
 
     // Create a form element
     const form = document.createElement('form');

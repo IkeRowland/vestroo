@@ -2,13 +2,15 @@
 
 ## Description
 
-This epic covers the administrative interface and content management system that allows Vestroo staff to manage routes, pricing, bookings, and marketing content through a "WordPress-like" self-hosted CMS experience.
+This epic covers the **content management system** and **admin-style** tooling where implemented via **PayloadCMS** (or equivalent): marketing pages, and **certain** structured content (e.g. route-like or pricing-like records **if** maintained in the CMS).
+
+**Day-to-day staff operations**—**user/role management**, **corporate clients**, **fleet and categories**, **service routes/areas**, **booking operations** in the live **`/ops/*` Next.js console**—are specified under **[Epic 5 — FE.5.11](epic-5.md)** with **data and RLS** under **[Epic 6 — BE.6.7](epic-6.md)**. This epic and those epics MUST stay aligned (no duplicate contradictory sources of truth).
 
 ## Goals
 
-* Enable route management (create, edit, activate/deactivate)
-* Provide dynamic pricing management capabilities
-* Allow comprehensive booking review and management
+* Enable route management (create, edit, activate/deactivate) **where owned by PayloadCMS**; otherwise **operational route/service-area** authoring lives under **Epic 5 / 6**
+* Provide dynamic pricing management capabilities **where owned by CMS**; **ops** pricing config aligns with **Epic 5 FE.5.11** / **Epic 6** as product splits responsibility
+* Allow comprehensive booking review and management **via CMS only if** product keeps that path; **primary** staff booking ops → **Epic 5 FE.5.11**
 * Enable content editing for all static marketing pages
 
 ## User Stories / Requirements

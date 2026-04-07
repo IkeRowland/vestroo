@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { AddressAutocomplete } from '@/components/ui/AddressAutocomplete';
 import { Button } from '@/components/ui/button';
@@ -8,15 +9,16 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
-import { Checkbox } from '@/components/ui/checkbox';
 import { TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useBookingStore } from '../hooks/useBookingStore';
 import { z } from 'zod';
 import type { PlaceResult } from '@/lib/maps';
 import { isAirport } from '@/lib/maps';
 import { calculateQuote, type SearchParams } from '@/actions/calculateQuote';
+import { calculateHourlyQuote } from '@/actions/calculateHourlyQuote';
 import { searchBooking, type BookingSearchResult } from '@/actions/searchBooking';
 import { Select } from '@/components/ui/select';
+import { cn } from '@/lib/utils';
 
 /**
  * Validation schema for booking search form
@@ -45,12 +47,30 @@ const searchFormSchema = z.object({
 
 export type SearchFormData = z.infer<typeof searchFormSchema>;
 
+export type BookingSearchFormProps = {
+  /** Used e.g. for nav "LOGIN" → `/book/search?tab=login` */
+  initialTab?: 'create-booking' | 'modify-booking';
+  /** Homepage hero card: rust header, “Get a quote”, reference-style tabs */
+  variant?: 'default' | 'marketing';
+};
+
 /**
  * Booking Search Form component
  * Matches the desired UI/UX design with tabs and modern layout
  */
-export function BookingSearchForm() {
+export function BookingSearchForm({
+  initialTab = 'create-booking',
+  variant = 'default',
+}: BookingSearchFormProps) {
   const router = useRouter();
+  const [activeTab, setActiveTab] = useState<
+    'create-booking' | 'modify-booking'
+  >(initialTab);
+
+  useEffect(() => {
+    setActiveTab(initialTab);
+  }, [initialTab]);
+
   const {
     origin,
     destination,
@@ -59,9 +79,12 @@ export function BookingSearchForm() {
     flightNumber,
     setTripDetails,
     setQuoteDetails,
+    setBookingProduct,
   } = useBookingStore();
 
-  const [activeTab, setActiveTab] = useState('create-booking');
+  const [bookingFlowMode, setBookingFlowMode] = useState<'p2p' | 'hourly'>('p2p');
+  const [hourlyDurationStr, setHourlyDurationStr] = useState('3');
+
   const [originAddress, setOriginAddress] = useState(origin?.formattedAddress || '');
   const [destinationAddress, setDestinationAddress] = useState(
     destination?.formattedAddress || ''
@@ -94,8 +117,6 @@ export function BookingSearchForm() {
   const [passengerCount, setPassengerCount] = useState(passengers || 2);
   const [flightNum, setFlightNum] = useState(flightNumber || '');
   const [returnTrip, setReturnTrip] = useState(false);
-  const [babySeat, setBabySeat] = useState(false);
-  const [trailer, setTrailer] = useState(false);
   const [specialInstructions, setSpecialInstructions] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
@@ -162,16 +183,17 @@ export function BookingSearchForm() {
       return;
     }
 
+    const formatted = place.formatted_address ?? '';
     const location = {
       placeId: place.place_id,
-      formattedAddress: place.formatted_address,
-      name: place.name || place.formatted_address,
+      formattedAddress: formatted,
+      name: place.name ?? formatted,
       latitude: place.geometry.location.lat(),
       longitude: place.geometry.location.lng(),
       isAirport: isAirport(place),
     };
-    
-    setOriginAddress(place.formatted_address);
+
+    setOriginAddress(formatted);
     setTripDetails({ origin: location });
     
     // Clear error immediately
@@ -189,16 +211,17 @@ export function BookingSearchForm() {
       return;
     }
 
+    const formatted = place.formatted_address ?? '';
     const location = {
       placeId: place.place_id,
-      formattedAddress: place.formatted_address,
-      name: place.name || place.formatted_address,
+      formattedAddress: formatted,
+      name: place.name ?? formatted,
       latitude: place.geometry.location.lat(),
       longitude: place.geometry.location.lng(),
       isAirport: isAirport(place),
     };
-    
-    setDestinationAddress(place.formatted_address);
+
+    setDestinationAddress(formatted);
     setTripDetails({ destination: location });
     
     // Clear error immediately
@@ -295,6 +318,72 @@ export function BookingSearchForm() {
       e.preventDefault();
       setErrors({});
       setIsLoading(true);
+
+      if (bookingFlowMode === 'hourly') {
+        const storeState = useBookingStore.getState();
+        const pickup = storeState.origin;
+        if (!pickup) {
+          setErrors((prev) => ({
+            ...prev,
+            origin: 'Please select a pickup location from the dropdown suggestions',
+          }));
+          setIsLoading(false);
+          return;
+        }
+        if (!selectedDate || !selectedTime) {
+          setErrors((prev) => ({
+            ...prev,
+            ...(selectedDate ? {} : { date: 'Please select a date' }),
+            ...(selectedTime ? {} : { time: 'Please select a time' }),
+          }));
+          setIsLoading(false);
+          return;
+        }
+        const durationHours = parseFloat(hourlyDurationStr);
+        if (!Number.isFinite(durationHours) || durationHours < 0.5) {
+          setErrors((prev) => ({
+            ...prev,
+            hourlyDuration: 'Enter duration (minimum 0.5 hours)',
+          }));
+          setIsLoading(false);
+          return;
+        }
+        const [hours, minutes] = selectedTime.split(':').map(Number);
+        const dateWithTime = new Date(selectedDate);
+        dateWithTime.setHours(hours, minutes, 0, 0);
+        setTripDetails({ date: dateWithTime, destination: null });
+        try {
+          const result = await calculateHourlyQuote({
+            pickup,
+            date: dateWithTime,
+            passengers: passengerCount,
+            durationHours,
+          });
+          if (!result.success) {
+            setErrors({ submit: result.error });
+            setIsLoading(false);
+            return;
+          }
+          setBookingProduct({
+            bookingIntent: 'hourly_hire',
+            hourlyDurationHours: durationHours,
+            hourlyServiceAreaNotes: null,
+            hourlyBillableHours: result.data.billableHours,
+          });
+          setQuoteDetails({
+            quoteAmount: result.data.vehicleOptions[0]?.price ?? 0,
+            estimatedDuration: null,
+            distance: null,
+            vehicleOptions: result.data.vehicleOptions,
+          });
+          router.push('/book/quote');
+        } catch {
+          setErrors({ submit: 'An error occurred. Please try again.' });
+        } finally {
+          setIsLoading(false);
+        }
+        return;
+      }
 
       // Get fresh values from store to ensure we have the latest state
       // Access store directly to get current state (not destructured values which might be stale)
@@ -394,7 +483,14 @@ export function BookingSearchForm() {
       };
 
       searchFormSchema.parse(formData);
-      
+
+      setBookingProduct({
+        bookingIntent: 'point_to_point',
+        hourlyDurationHours: null,
+        hourlyServiceAreaNotes: null,
+        hourlyBillableHours: null,
+      });
+
       // Calculate quote
       const result = await calculateQuote(formData);
 
@@ -491,7 +587,19 @@ export function BookingSearchForm() {
   }, [activeTab]);
 
   return (
-    <div className="w-full min-w-[320px] mx-auto bg-white rounded-lg shadow-lg border border-gray-200">
+    <div
+      className={cn(
+        'w-full min-w-[320px] mx-auto bg-white shadow-lg border border-gray-200',
+        variant === 'marketing'
+          ? 'flex flex-col rounded-lg overflow-hidden min-h-[520px] sm:min-h-[600px] md:min-h-[760px] lg:min-h-[820px]'
+          : 'rounded-lg'
+      )}
+    >
+      {variant === 'marketing' && (
+        <div className="bg-vest-rust text-white text-center py-3 px-4 text-sm font-semibold tracking-wide">
+          All-Inclusive Booking
+        </div>
+      )}
       {/* Tabs */}
       <div className="flex flex-wrap items-center justify-between px-4 pt-3 pb-2.5 bg-gray-100 border-b border-gray-200 gap-2">
         <TabsList className="flex gap-0">
@@ -501,7 +609,7 @@ export function BookingSearchForm() {
             onClick={() => setActiveTab('create-booking')}
             className="rounded-t-lg"
           >
-            Create New Booking
+            {variant === 'marketing' ? 'One-way booking' : 'Create New Booking'}
           </TabsTrigger>
           <TabsTrigger
             value="modify-booking"
@@ -509,12 +617,17 @@ export function BookingSearchForm() {
             onClick={() => setActiveTab('modify-booking')}
             className="rounded-t-lg"
           >
-            Modify or Cancel Booking
+            {variant === 'marketing' ? 'Manage booking' : 'Modify or Cancel Booking'}
           </TabsTrigger>
         </TabsList>
       </div>
 
-      <div className="px-4 py-4 space-y-4 bg-white">
+      <div
+        className={cn(
+          'px-4 py-4 space-y-4 bg-white',
+          variant === 'marketing' && 'flex min-h-0 flex-1 flex-col'
+        )}
+      >
       {activeTab === 'modify-booking' ? (
         // Modify Booking Form
         <div className="space-y-6 w-full">
@@ -654,6 +767,45 @@ export function BookingSearchForm() {
       ) : (
         // Create New Booking Form
       <form onSubmit={handleSubmit} className="space-y-6 w-full">
+        <div className="flex rounded-lg border border-gray-200 p-1 bg-gray-50 gap-1">
+          <button
+            type="button"
+            onClick={() => setBookingFlowMode('p2p')}
+            className={cn(
+              'flex-1 rounded-md py-2 px-2 text-xs font-semibold transition-colors',
+              bookingFlowMode === 'p2p'
+                ? 'bg-white text-gray-900 shadow-sm'
+                : 'text-gray-600 hover:text-gray-900'
+            )}
+          >
+            Point-to-point trip
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setBookingFlowMode('hourly');
+              setTripDetails({ destination: null });
+            }}
+            className={cn(
+              'flex-1 rounded-md py-2 px-2 text-xs font-semibold transition-colors',
+              bookingFlowMode === 'hourly'
+                ? 'bg-white text-gray-900 shadow-sm'
+                : 'text-gray-600 hover:text-gray-900'
+            )}
+          >
+            Hourly chauffeur hire
+          </button>
+        </div>
+        <p className="text-center text-xs text-gray-600">
+          <Link
+            href="/tours"
+            className="font-semibold text-vest-rust hover:underline underline-offset-2"
+          >
+            Tours &amp; experiences
+          </Link>{' '}
+          — curated packages with online quote &amp; checkout
+        </p>
+
         {/* Ride Details */}
         <div className="space-y-3 w-full">
           <h2 className="text-xs font-semibold text-gray-800 font-Poppins uppercase tracking-wider">Ride Details</h2>
@@ -665,7 +817,11 @@ export function BookingSearchForm() {
                 value={originAddress}
                 onChange={setOriginAddress}
                 onSelect={handleOriginSelect}
-                placeholder="Pickup Address"
+                placeholder={
+                  bookingFlowMode === 'hourly'
+                    ? 'Pickup service point / address'
+                    : 'Pickup Address'
+                }
                 required
                 error={errors.origin}
                 buttonStyle={true}
@@ -674,7 +830,32 @@ export function BookingSearchForm() {
               />
             </div>
 
+            {bookingFlowMode === 'hourly' && (
+              <div className="space-y-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="hourly-duration" className="text-xs font-medium text-gray-700">
+                    Duration (hours)
+                  </Label>
+                  <Input
+                    id="hourly-duration"
+                    type="number"
+                    step="0.5"
+                    min={0.5}
+                    value={hourlyDurationStr}
+                    onChange={(e) => setHourlyDurationStr(e.target.value)}
+                    className="h-12 text-xs font-bold w-full"
+                  />
+                  {errors.hourlyDuration && (
+                    <p className="text-xs text-red-500" role="alert">
+                      {errors.hourlyDuration}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* Dropoff Address - Button Style with Swap Button */}
+            {bookingFlowMode === 'p2p' && (
             <div className="flex items-start gap-2 w-full">
               <div className="flex-1 min-w-0 relative">
                 <AddressAutocomplete
@@ -682,7 +863,7 @@ export function BookingSearchForm() {
                   value={destinationAddress}
                   onChange={setDestinationAddress}
                   onSelect={handleDestinationSelect}
-                  placeholder="Dropoff Address"
+                  placeholder="Drop-off service point / address"
                   required
                   error={errors.destination}
                   buttonStyle={true}
@@ -702,10 +883,11 @@ export function BookingSearchForm() {
                 </svg>
               </button>
             </div>
+            )}
             {errors.origin && (
               <p className="text-xs text-red-500" role="alert">{errors.origin}</p>
             )}
-            {errors.destination && (
+            {bookingFlowMode === 'p2p' && errors.destination && (
               <p className="text-xs text-red-500" role="alert">{errors.destination}</p>
             )}
           </div>
@@ -725,6 +907,7 @@ export function BookingSearchForm() {
                   onChange={handleDateChange}
                   required
                   className="h-12 text-xs font-bold w-full"
+                  suppressHydrationWarning
                 />
                 <div className="absolute right-3 top-3 pointer-events-none">
                   <svg className="h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -752,6 +935,7 @@ export function BookingSearchForm() {
                   onChange={handleTimeChange}
                   required
                   className="pl-10 pr-10 h-12 text-xs font-bold w-full"
+                  suppressHydrationWarning
                 />
                 <div className="absolute right-3 top-3 pointer-events-none">
                   <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -778,6 +962,7 @@ export function BookingSearchForm() {
                     onChange={handleReturnDateChange}
                     required={returnTrip}
                     className="h-12 text-xs font-bold w-full"
+                    suppressHydrationWarning
                   />
                   <div className="absolute right-3 top-3 pointer-events-none">
                     <svg className="h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -805,6 +990,7 @@ export function BookingSearchForm() {
                     onChange={handleReturnTimeChange}
                     required={returnTrip}
                     className="pl-10 pr-10 h-12 text-xs font-bold w-full"
+                    suppressHydrationWarning
                   />
                   <div className="absolute right-3 top-3 pointer-events-none">
                     <svg className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -871,25 +1057,6 @@ export function BookingSearchForm() {
           )}
         </div>
 
-        {/* Additional Request */}
-        <div className="space-y-3 w-full">
-          <h2 className="text-xs font-semibold text-gray-800 font-Poppins uppercase tracking-wider">Additional Request</h2>
-          <div className="space-y-2">
-            <Checkbox
-              id="baby-seat"
-              label="Add baby seat"
-              checked={babySeat}
-              onChange={(e) => setBabySeat(e.target.checked)}
-            />
-            <Checkbox
-              id="trailer"
-              label="Trailer"
-              checked={trailer}
-              onChange={(e) => setTrailer(e.target.checked)}
-            />
-          </div>
-        </div>
-
         {/* Special Instruction */}
         <div className="space-y-3 w-full">
           <h2 className="text-xs font-semibold text-gray-800 font-Poppins uppercase tracking-wider">Special Instruction</h2>
@@ -926,10 +1093,19 @@ export function BookingSearchForm() {
         {/* Submit Button */}
         <Button
           type="submit"
-          className="w-full bg-[#bc4328] hover:bg-[#a83a22] active:bg-[#95301c] text-white py-3.5 text-sm font-medium rounded-lg shadow-md transition-colors"
+          className={cn(
+            'w-full text-white py-3.5 text-sm font-medium shadow-md transition-colors',
+            variant === 'marketing'
+              ? 'rounded-sm bg-vest-rust hover:bg-vest-rust-dark active:bg-[#8f3523]'
+              : 'rounded-lg bg-vest-rust hover:bg-vest-rust-dark active:bg-[#8f3523]'
+          )}
           disabled={isLoading}
         >
-          {isLoading ? 'Calculating Quote...' : 'Get Instant Quote'}
+          {isLoading
+            ? 'Calculating Quote...'
+            : variant === 'marketing'
+              ? 'Get a quote'
+              : 'Get Instant Quote'}
         </Button>
       </form>
       )}

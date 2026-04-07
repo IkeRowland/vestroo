@@ -83,7 +83,7 @@ If the project includes a significant user interface, a separate Frontend Archit
 ├── .gitignore                  # Git ignore rules
 ├── package.json / requirements.txt / pom.xml # Project manifest and dependencies
 ├── tsconfig.json / pyproject.toml # Language-specific configuration (if applicable)
-├── Dockerfile                  # Docker build instructions (if applicable)
+├── Dockerfile                  # Docker build instructions (if applicable; Vercel + hosted Supabase often omit this)
 └── README.md                   # Project overview and setup instructions
 ```
 
@@ -235,8 +235,9 @@ Must be definitive selections; do not list open-ended choices (e.g., for web scr
 | **Cloud Services**   | {e.g., AWS Lambda}      | {N/A}             | {Serverless compute}                    | {...}                    |
 |                      | {e.g., AWS S3}          | {N/A}             | {Object storage for assets/state}       | {...}                    |
 |                      | {e.g., AWS EventBridge} | {N/A}             | {Event bus / scheduled tasks}           | {...}                    |
-| **Infrastructure**   | {e.g., AWS CDK}         | {e.g., Latest}    | {Infrastructure as Code tool}           | {...}                    |
+| **Infrastructure**   | {e.g., Vercel + hosted Supabase (no project Dockerfile)} | {N/A}             | {App hosting + managed PostgreSQL}      | {...}                    |
 |                      | {e.g., Docker}          | {e.g., Latest}    | {Containerization}                      | {...}                    |
+|                      | {e.g., AWS CDK}         | {e.g., Latest}    | {Infrastructure as Code tool}           | {...}                    |
 | **UI Libraries**     | {e.g., Material UI}     | {e.g., 5.x}       | {React component library}               | {...}                    |
 | **State Management** | {e.g., Redux Toolkit}   | {e.g., Latest}    | {Frontend state management}             | {...}                    |
 | **Testing**          | {e.g., Jest}            | {e.g., Latest}    | {Unit/Integration testing framework}    | {...}                    |

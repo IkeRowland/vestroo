@@ -148,7 +148,7 @@ export function renderBookingConfirmationEmailHTML(data: BookingEmailData): stri
               <div style="background-color: #fff7ed; border-radius: 8px; padding: 30px; margin: 30px 0; border-left: 4px solid #f59e0b;">
                 <h2 style="margin: 0 0 15px; color: #333333; font-size: 18px; font-weight: 600;">What to Expect</h2>
                 <ul style="margin: 0; padding-left: 20px; color: #333333; font-size: 14px; line-height: 1.8;">
-                  <li>Your driver will arrive at the pickup location on <strong>${formattedDate}</strong> at <strong>${formattedTime}</strong></li>
+                  <li>Your chauffeur will arrive at the pickup location on <strong>${formattedDate}</strong> at <strong>${formattedTime}</strong></li>
                   <li>Please ensure you're ready 10 minutes before the scheduled pickup time</li>
                   <li>Have your booking reference (${data.bookingId}) ready for verification</li>
                   ${data.flightNumber ? `<li>We'll monitor your flight (${data.flightNumber}) for any delays</li>` : ''}
@@ -225,7 +225,7 @@ ${data.transactionId ? `Transaction ID: ${data.transactionId}\n` : ''}Payment St
 
 WHAT TO EXPECT
 --------------
-- Your driver will arrive at the pickup location on ${formatDate(data.pickupDateTime)} at ${formatTime(data.pickupDateTime)}
+- Your chauffeur will arrive at the pickup location on ${formatDate(data.pickupDateTime)} at ${formatTime(data.pickupDateTime)}
 - Please ensure you're ready 10 minutes before the scheduled pickup time
 - Have your booking reference (${data.bookingId}) ready for verification
 ${data.flightNumber ? `- We'll monitor your flight (${data.flightNumber}) for any delays\n` : ''}
