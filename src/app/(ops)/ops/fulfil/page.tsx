@@ -1,4 +1,9 @@
 import { AssignBookingPanel } from '@/features/ops/components/AssignBookingPanel'
+import {
+	OpsFilterRow,
+	OpsPageHeader,
+} from '@/features/ops/components/ops-primitives'
+import { OpsErrorState } from '@/features/ops/components/OpsErrorState'
 import { createUserServerClient } from '@/lib/supabase/server'
 
 export default async function OpsFulfilPage() {
@@ -44,20 +49,34 @@ export default async function OpsFulfilPage() {
 
 	return (
 		<div>
-			<h1 className="text-2xl font-semibold text-white">Fulfil queue</h1>
-			<p className="mt-1 max-w-3xl text-sm text-zinc-400">
-				Paid bookings without a <code className="text-zinc-300">booking_trips</code> row.
-				Assignment creates <code className="text-zinc-300">trips</code>, links the booking,
-				writes <code className="text-zinc-300">chauffeur_assignments</code>, and finds or
-				creates a <code className="text-zinc-300">chauffeur_schedules</code> row for the run
-				date.
-			</p>
-			{bErr ? (
-				<p className="mt-4 text-sm text-red-300">Bookings: {bErr.message}</p>
-			) : null}
-			{rErr ? (
-				<p className="mt-2 text-sm text-red-300">Service runs: {rErr.message}</p>
-			) : null}
+			<OpsPageHeader
+				title="Fulfil"
+				description={
+					<>
+						Paid bookings without a <code className="text-ops-foreground/90">booking_trips</code> row.
+						Assignment creates a <code className="text-ops-foreground/90">trips</code> row, links the
+						booking, writes <code className="text-ops-foreground/90">chauffeur_assignments</code>, and finds
+						or creates <code className="text-ops-foreground/90">chauffeur_schedules</code> for the run
+						date.
+					</>
+				}
+			/>
+
+			<OpsFilterRow className="mt-4" aria-label="Queue context">
+				<span className="text-ops-dense text-ops-muted">
+					Queue and runs load from Supabase on each navigation; assignment runs as a server action.
+				</span>
+			</OpsFilterRow>
+
+			<div className="mt-4 space-y-3">
+				{bErr ? (
+					<OpsErrorState title="Bookings could not be loaded" message={bErr.message} />
+				) : null}
+				{rErr ? (
+					<OpsErrorState title="Service runs could not be loaded" message={rErr.message} />
+				) : null}
+			</div>
+
 			<div className="mt-6">
 				<AssignBookingPanel
 					bookings={queue.map((b) => ({

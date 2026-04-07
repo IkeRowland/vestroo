@@ -17,12 +17,17 @@ type OpsTopBarProps = {
 export function OpsTopBar({ staff, onOpenMobileNav }: OpsTopBarProps) {
 	const pathname = usePathname() ?? ''
 	const crumbs = getOpsBreadcrumbs(pathname)
+	const focusRing =
+		'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ops'
 
 	return (
-		<header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-3 border-b border-zinc-800 bg-zinc-950/95 px-3 backdrop-blur supports-[backdrop-filter]:bg-zinc-950/80 md:px-4">
+		<header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-3 border-b border-ops-border bg-ops-topbar/95 px-3 backdrop-blur supports-[backdrop-filter]:bg-ops-topbar/80 md:px-4">
 			<button
 				type="button"
-				className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md border border-zinc-700 text-zinc-200 hover:bg-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500 md:hidden"
+				className={cn(
+					'inline-flex min-h-11 min-w-11 items-center justify-center rounded-md border border-ops-border text-ops-foreground hover:bg-ops-surface-hover md:hidden',
+					focusRing,
+				)}
 				onClick={onOpenMobileNav}
 				aria-label="Open navigation menu"
 			>
@@ -33,25 +38,28 @@ export function OpsTopBar({ staff, onOpenMobileNav }: OpsTopBarProps) {
 				className="min-w-0 flex-1 overflow-x-auto"
 				aria-label="Breadcrumb"
 			>
-				<ol className="flex flex-wrap items-center gap-1.5 text-sm text-zinc-400">
+				<ol className="flex flex-wrap items-center gap-1.5 text-sm text-ops-muted">
 					{crumbs.length === 0 ? (
-						<li className="font-medium text-zinc-100">Operations</li>
+						<li className="font-medium text-ops-foreground">Operations</li>
 					) : null}
 					{crumbs.map((c, i) => {
 						const last = i === crumbs.length - 1
 						return (
 							<li key={`${c.href}-${i}`} className="flex items-center gap-1.5">
 								{i > 0 && (
-									<span className="text-zinc-600" aria-hidden>
+									<span className="text-ops-muted/60" aria-hidden>
 										/
 									</span>
 								)}
 								{last ? (
-									<span className="font-medium text-zinc-100">{c.label}</span>
+									<span className="font-medium text-ops-foreground">{c.label}</span>
 								) : (
 									<Link
 										href={c.href}
-										className="truncate rounded-sm text-zinc-300 underline-offset-4 hover:text-white hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500"
+										className={cn(
+											'truncate rounded-sm text-ops-muted underline-offset-4 hover:text-ops-foreground hover:underline',
+											focusRing,
+										)}
 									>
 										{c.label}
 									</Link>
@@ -66,7 +74,8 @@ export function OpsTopBar({ staff, onOpenMobileNav }: OpsTopBarProps) {
 				<Link
 					href="/ops/search"
 					className={cn(
-						'hidden min-h-11 max-w-[200px] flex-1 items-center gap-2 rounded-md border border-zinc-700 bg-zinc-900 px-3 text-sm text-zinc-400 transition hover:border-zinc-600 hover:text-zinc-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500 sm:flex',
+						'hidden min-h-11 max-w-[200px] flex-1 items-center gap-2 rounded-md border border-ops-border bg-ops-surface px-3 text-sm text-ops-muted transition hover:border-ops-border hover:text-ops-foreground sm:flex',
+						focusRing,
 					)}
 					aria-label="Go to staff booking search"
 				>
@@ -75,14 +84,17 @@ export function OpsTopBar({ staff, onOpenMobileNav }: OpsTopBarProps) {
 				</Link>
 				<Link
 					href="/ops/search"
-					className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-md border border-zinc-700 text-zinc-300 hover:bg-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500 sm:hidden"
+					className={cn(
+						'inline-flex min-h-11 min-w-11 items-center justify-center rounded-md border border-ops-border text-ops-muted hover:bg-ops-surface-hover sm:hidden',
+						focusRing,
+					)}
 					aria-label="Staff booking search"
 				>
 					<Search className="h-5 w-5" aria-hidden />
 				</Link>
 
 				<div
-					className="flex min-h-11 items-center gap-1.5 rounded-md border border-dashed border-zinc-700 px-2.5 text-xs text-zinc-500"
+					className="flex min-h-11 items-center gap-1.5 rounded-md border border-dashed border-ops-border px-2.5 text-xs text-ops-muted"
 					role="status"
 					aria-label="Notifications coming soon"
 				>
@@ -90,14 +102,14 @@ export function OpsTopBar({ staff, onOpenMobileNav }: OpsTopBarProps) {
 					<span className="hidden lg:inline">Soon</span>
 				</div>
 
-				<div className="hidden h-8 w-px bg-zinc-800 sm:block" aria-hidden />
+				<div className="hidden h-8 w-px bg-ops-border sm:block" aria-hidden />
 
 				<div className="hidden flex-col items-end text-right text-xs sm:flex">
-					<span className="max-w-[160px] truncate font-medium capitalize text-zinc-200">
+					<span className="max-w-[160px] truncate font-medium capitalize text-ops-foreground">
 						{staff.role}
 					</span>
 					{staff.email ? (
-						<span className="max-w-[160px] truncate text-zinc-500" title={staff.email}>
+						<span className="max-w-[160px] truncate text-ops-muted" title={staff.email}>
 							{staff.email}
 						</span>
 					) : null}

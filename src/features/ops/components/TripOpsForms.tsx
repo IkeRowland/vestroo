@@ -8,7 +8,22 @@ import {
 	swapTripVehicleAction,
 	updateTripStatusAction,
 } from '@/actions/opsDispatch'
+import {
+	AlertDialog,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Select } from '@/components/ui/select'
 import type { TripFulfilmentStatusDb } from '@/types/database.types'
+import { cn } from '@/lib/utils'
 
 const STATUSES: TripFulfilmentStatusDb[] = [
 	'booking',
@@ -17,6 +32,9 @@ const STATUSES: TripFulfilmentStatusDb[] = [
 	'completed',
 	'cancelled',
 ]
+
+const fieldClass =
+	'min-h-11 border-ops-border bg-ops-canvas text-ops-foreground focus-visible:ring-ops'
 
 export function TripOpsForms({
 	tripId,
@@ -32,28 +50,46 @@ export function TripOpsForms({
 	const router = useRouter()
 	const [note, setNote] = useState('')
 	const [revisedEnd, setRevisedEnd] = useState('')
-	const [msg, setMsg] = useState('')
+	const [msg, setMsg] = useState<{ tone: 'ok' | 'err'; text: string } | null>(null)
 	const [busy, setBusy] = useState(false)
+	const [confirmCancelOpen, setConfirmCancelOpen] = useState(false)
 
-	async function onStatus(next: TripFulfilmentStatusDb) {
-		setMsg('')
+	async function applyStatus(next: TripFulfilmentStatusDb) {
+		setMsg(null)
 		setBusy(true)
 		const res = await updateTripStatusAction({ tripId, status: next })
 		setBusy(false)
-		setMsg(res.ok ? 'Status updated.' : res.message)
+		setMsg(
+			res.ok
+				? { tone: 'ok', text: 'Status updated.' }
+				: { tone: 'err', text: res.message },
+		)
 		if (res.ok) router.refresh()
+	}
+
+	function onStatusClick(next: TripFulfilmentStatusDb) {
+		if (next === 'cancelled' && currentStatus !== 'cancelled') {
+			setConfirmCancelOpen(true)
+			return
+		}
+		void applyStatus(next)
+	}
+
+	async function onConfirmCancel() {
+		setConfirmCancelOpen(false)
+		await applyStatus('cancelled')
 	}
 
 	async function onDelay(e: React.FormEvent) {
 		e.preventDefault()
-		setMsg('')
+		setMsg(null)
 		if (!revisedEnd.trim()) {
-			setMsg('Pick a revised end time')
+			setMsg({ tone: 'err', text: 'Choose a revised end time.' })
 			return
 		}
 		const parsed = new Date(revisedEnd).getTime()
 		if (Number.isNaN(parsed)) {
-			setMsg('Invalid date')
+			setMsg({ tone: 'err', text: 'That date and time is not valid.' })
 			return
 		}
 		setBusy(true)
@@ -64,7 +100,11 @@ export function TripOpsForms({
 			revisedEndEstimateIso: iso,
 		})
 		setBusy(false)
-		setMsg(res.ok ? 'Delay recorded.' : res.message)
+		setMsg(
+			res.ok
+				? { tone: 'ok', text: 'Delay recorded.' }
+				: { tone: 'err', text: res.message },
+		)
 		if (res.ok) {
 			setNote('')
 			setRevisedEnd('')
@@ -74,75 +114,128 @@ export function TripOpsForms({
 
 	async function onSwap(e: React.FormEvent<HTMLFormElement>) {
 		e.preventDefault()
-		setMsg('')
+		setMsg(null)
 		const fd = new FormData(e.currentTarget)
 		const newVehicleId = String(fd.get('newVehicleId') ?? '')
 		setBusy(true)
 		const res = await swapTripVehicleAction({ tripId, newVehicleId })
 		setBusy(false)
-		setMsg(res.ok ? 'Vehicle updated.' : res.message)
+		setMsg(
+			res.ok
+				? { tone: 'ok', text: 'Vehicle updated.' }
+				: { tone: 'err', text: res.message },
+		)
 		if (res.ok) router.refresh()
 	}
 
 	return (
-		<div className="mt-3 space-y-3 border-t border-zinc-800 pt-3 text-sm">
+		<div className="mt-3 space-y-3 border-t border-ops-border pt-3 text-sm">
+			<AlertDialog open={confirmCancelOpen} onOpenChange={setConfirmCancelOpen}>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>Mark this trip as cancelled?</AlertDialogTitle>
+						<AlertDialogDescription>
+							This updates trip status for dispatch and reporting. Re-opening a cancelled trip may
+							require a new assignment flow — confirm only when the booking is not proceeding.
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel type="button">Keep current status</AlertDialogCancel>
+						<Button
+							type="button"
+							disabled={busy}
+							className="min-h-11 bg-red-700 text-white hover:bg-red-600"
+							onClick={() => void onConfirmCancel()}
+						>
+							Confirm cancellation
+						</Button>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
+
+			{msg ? (
+				<Alert
+					variant={msg.tone === 'err' ? 'destructive' : 'default'}
+					className={
+						msg.tone === 'err'
+							? 'border-red-900/60 bg-red-950/50 text-red-100'
+							: 'border-emerald-900/50 bg-emerald-950/30 text-emerald-100'
+					}
+					role="status"
+				>
+					<AlertDescription>{msg.text}</AlertDescription>
+				</Alert>
+			) : null}
+
 			<div className="flex flex-wrap gap-2">
-				<span className="w-full text-zinc-500">Status</span>
+				<span className="w-full text-ops-muted">Trip status</span>
 				{STATUSES.map((s) => (
 					<button
 						key={s}
 						type="button"
 						disabled={busy || s === currentStatus}
-						onClick={() => onStatus(s)}
-						className="min-h-10 rounded border border-zinc-700 px-2.5 py-1.5 text-xs font-medium capitalize text-zinc-200 hover:bg-zinc-800 disabled:opacity-40"
+						onClick={() => onStatusClick(s)}
+						className="min-h-10 rounded border border-ops-border px-2.5 py-1.5 text-xs font-medium capitalize text-ops-foreground hover:bg-ops-surface-hover disabled:opacity-40"
 					>
 						{s.replace(/_/g, ' ')}
 					</button>
 				))}
 			</div>
-			<form onSubmit={onDelay} className="grid gap-2 sm:grid-cols-2">
-				<label className="block sm:col-span-2">
-					<span className="text-zinc-500">Delay note</span>
-					<input
+			<form onSubmit={onDelay} className="grid gap-3 sm:grid-cols-2">
+				<div className="sm:col-span-2">
+					<Label htmlFor={`delay-note-${tripId}`} className="text-ops-muted">
+						Delay note
+					</Label>
+					<Input
+						id={`delay-note-${tripId}`}
 						value={note}
 						onChange={(e) => setNote(e.target.value)}
-						className="mt-1 w-full rounded border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-white min-h-11"
+						className={cn('mt-1', fieldClass)}
 						placeholder="Traffic, airport hold, …"
 						required
 					/>
-				</label>
-				<label className="block sm:col-span-2">
-					<span className="text-zinc-500">Revised end (ISO local)</span>
-					<input
+				</div>
+				<div className="sm:col-span-2">
+					<Label htmlFor={`delay-end-${tripId}`} className="text-ops-muted">
+						Revised end (local)
+					</Label>
+					<Input
+						id={`delay-end-${tripId}`}
 						value={revisedEnd}
 						onChange={(e) => setRevisedEnd(e.target.value)}
 						type="datetime-local"
-						className="mt-1 w-full rounded border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-white min-h-11"
+						className={cn('mt-1', fieldClass)}
 						required
 					/>
-				</label>
-				<button
+				</div>
+				<Button
 					type="submit"
 					disabled={busy}
-					className="min-h-11 rounded bg-zinc-800 px-3 py-2 text-xs font-semibold text-white hover:bg-zinc-700 sm:col-span-2"
+					className="min-h-11 bg-ops-surface-hover text-ops-foreground hover:bg-ops-surface-active sm:col-span-2"
 				>
 					Save delay
-				</button>
+				</Button>
 			</form>
 			{vehicles.filter((v) => v.id !== currentVehicleId).length === 0 ? (
-				<p className="text-xs text-zinc-500">
+				<p className="text-xs text-ops-muted">
 					Add another fleet vehicle to enable swaps from this trip.
 				</p>
 			) : (
 				<form onSubmit={onSwap} className="flex flex-wrap items-end gap-2">
-					<label className="min-w-[12rem] flex-1">
-						<span className="text-zinc-500">Swap vehicle</span>
-						<select
+					<div className="min-w-[12rem] flex-1">
+						<Label htmlFor={`swap-veh-${tripId}`} className="text-ops-muted">
+							Swap vehicle
+						</Label>
+						<Select
+							id={`swap-veh-${tripId}`}
 							name="newVehicleId"
 							required
-							className="mt-1 w-full rounded border border-zinc-700 bg-zinc-950 px-3 py-2.5 text-sm text-white min-h-11"
+							className={cn('mt-1', fieldClass)}
+							defaultValue=""
 						>
-							<option value="">Select replacement…</option>
+							<option value="" disabled>
+								Select replacement…
+							</option>
 							{vehicles
 								.filter((v) => v.id !== currentVehicleId)
 								.map((v) => (
@@ -150,22 +243,17 @@ export function TripOpsForms({
 										{v.name}
 									</option>
 								))}
-						</select>
-					</label>
-					<button
+						</Select>
+					</div>
+					<Button
 						type="submit"
 						disabled={busy}
-						className="min-h-11 rounded bg-amber-800 px-3 py-2 text-xs font-semibold text-white hover:bg-amber-700"
+						className="min-h-11 bg-amber-800 text-white hover:bg-amber-700"
 					>
 						Apply swap
-					</button>
+					</Button>
 				</form>
 			)}
-			{msg ? (
-				<p className="text-xs text-zinc-400" role="status">
-					{msg}
-				</p>
-			) : null}
 		</div>
 	)
 }

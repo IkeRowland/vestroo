@@ -27,6 +27,26 @@
     --ring: 171 64% 41%;
     --radius: 0.5rem;
   }
+
+  /**
+   * Ops / authenticated-field internal theme (FE.5.2).
+   * Scoped to [data-ops-theme] so marketing/booking :root tokens stay unchanged.
+   * Tailwind: bg-ops-canvas, border-ops-border, text-ops-foreground, w-ops-sidebar, etc.
+   */
+  [data-ops-theme='dark'] {
+    --ops-sidebar-width: 14rem;
+    --ops-sidebar-collapsed-width: 4.5rem;
+    /* HSL components only (no hsl() wrapper) — matches shadcn-style globals above */
+    --ops-canvas: 240 10% 3.9%;
+    --ops-surface: 240 6% 10%;
+    --ops-surface-hover: 240 4% 16%;
+    --ops-surface-active: 240 5% 20%;
+    --ops-border: 240 4% 16%;
+    --ops-foreground: 0 0% 98%;
+    --ops-muted: 240 5% 65%;
+    --ops-topbar: 240 10% 3.9%;
+    --ops-ring: 240 5% 45%;
+  }
 }
 
 @layer base {

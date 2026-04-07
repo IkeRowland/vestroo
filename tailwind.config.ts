@@ -67,11 +67,43 @@ const config: Config = {
           DEFAULT: 'hsl(var(--card))',
           foreground: 'hsl(var(--card-foreground))',
         },
+        ops: {
+          canvas: 'hsl(var(--ops-canvas) / <alpha-value>)',
+          surface: 'hsl(var(--ops-surface) / <alpha-value>)',
+          'surface-hover': 'hsl(var(--ops-surface-hover) / <alpha-value>)',
+          'surface-active': 'hsl(var(--ops-surface-active) / <alpha-value>)',
+          border: 'hsl(var(--ops-border) / <alpha-value>)',
+          foreground: 'hsl(var(--ops-foreground) / <alpha-value>)',
+          muted: 'hsl(var(--ops-muted) / <alpha-value>)',
+          topbar: 'hsl(var(--ops-topbar) / <alpha-value>)',
+        },
       },
       borderRadius: {
         lg: 'var(--radius)',
         md: 'calc(var(--radius) - 2px)',
         sm: 'calc(var(--radius) - 4px)',
+      },
+      width: {
+        'ops-sidebar': 'var(--ops-sidebar-width)',
+        'ops-sidebar-collapsed': 'var(--ops-sidebar-collapsed-width)',
+      },
+      maxWidth: {
+        'ops-sidebar-drawer': '85vw',
+      },
+      fontSize: {
+        'ops-page-title': [
+          '1.5rem',
+          { lineHeight: '2rem', fontWeight: '600' },
+        ],
+        'ops-table-header': [
+          '0.75rem',
+          { lineHeight: '1rem', fontWeight: '600' },
+        ],
+        'ops-table-body': ['0.875rem', { lineHeight: '1.25rem' }],
+        'ops-dense': ['0.75rem', { lineHeight: '1rem' }],
+      },
+      ringColor: {
+        ops: 'hsl(var(--ops-ring))',
       },
     },
   },

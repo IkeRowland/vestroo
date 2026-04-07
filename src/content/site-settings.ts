@@ -11,9 +11,9 @@ export const siteSettings = {
     client_login_url: '/book/search?tab=login',
   },
   header: {
-    logo_type: 'text' as 'text' | 'image',
+    logo_type: 'image' as 'text' | 'image',
     logo_text: 'V',
-    logo_image_url: null as string | null,
+    logo_image_url: '/images/vestro-logo.png',
     logo_image_upload: null,
     company_name: 'VESTROO',
     tagline: '',
@@ -28,9 +28,9 @@ export const siteSettings = {
     ],
   },
   footer: {
-    logo_type: 'text' as 'text' | 'image',
+    logo_type: 'image' as 'text' | 'image',
     logo_text: 'V',
-    logo_image_url: null as string | null,
+    logo_image_url: '/images/vestro-logo.png',
     logo_image_upload: null,
     company_name: 'Vestroo',
     general_column_title: 'General Info',
