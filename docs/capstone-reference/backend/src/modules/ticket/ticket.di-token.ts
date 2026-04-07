@@ -1,3 +1,0 @@
-export const TICKET_SERVICE = Symbol('TICKET_SERVICE');
-export const TICKET_REPOSITORY = Symbol('TICKET_REPOSITORY');
-export const TRIP_SEAT_REPOSITORY = Symbol('TRIP_SEAT_REPOSITORY'); 

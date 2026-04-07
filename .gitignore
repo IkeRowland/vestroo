@@ -43,3 +43,7 @@ src/types/supabase.generated.ts
 /playwright-report/
 /playwright/.cache/
 
+# excluded from version control (local docs & agent tooling)
+/bmad-agent/
+/docs/
+
