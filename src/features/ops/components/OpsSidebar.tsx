@@ -36,10 +36,11 @@ export function OpsSidebar({
 	}
 
 	const focusRing =
-		'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ops'
+		'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ops focus-visible:ring-offset-2 focus-visible:ring-offset-ops-canvas'
 
 	return (
 		<nav
+			id="ops-sidebar-panel"
 			className={cn(
 				'fixed inset-y-0 left-0 z-40 flex flex-col border-r border-ops-border bg-ops-surface transition-transform duration-200 md:sticky md:top-0 md:z-0 md:h-screen md:shrink-0 md:translate-x-0',
 				collapsed ? 'md:w-ops-sidebar-collapsed' : 'md:w-ops-sidebar',

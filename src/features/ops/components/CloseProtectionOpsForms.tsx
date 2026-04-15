@@ -8,6 +8,7 @@ import {
 	createCloseProtectionEngagementAction,
 	updateCloseProtectionEngagementAction,
 } from '@/actions/opsCloseProtection'
+import { Button } from '@/components/ui/button'
 import type { CloseProtectionEngagementStatusDb } from '@/types/database.types'
 
 const STATUSES: CloseProtectionEngagementStatusDb[] = [
@@ -38,20 +39,16 @@ export function CloseProtectionCreateForm({ bookingId }: { bookingId: string }) 
 	return (
 		<form
 			onSubmit={onCreate}
-			className="rounded-lg border border-zinc-800 bg-zinc-900/50 p-4"
+			className="rounded-lg border border-ops-border bg-ops-surface p-4 shadow-sm"
 		>
-			<p className="text-sm text-zinc-400">
-				Booking <span className="font-mono text-zinc-300">{bookingId}</span>
+			<p className="text-sm text-ops-muted">
+				Booking <span className="font-mono text-ops-foreground">{bookingId}</span>
 			</p>
-			<button
-				type="submit"
-				disabled={busy}
-				className="mt-3 min-h-11 rounded-md bg-emerald-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-600 disabled:opacity-60"
-			>
+			<Button type="submit" disabled={busy} className="mt-3 min-h-11">
 				{busy ? 'Creating…' : 'Create engagement'}
-			</button>
+			</Button>
 			{msg ? (
-				<p className="mt-2 text-sm text-red-300" role="status">
+				<p className="mt-2 text-sm text-destructive" role="status">
 					{msg}
 				</p>
 			) : null}
@@ -101,23 +98,23 @@ export function CloseProtectionEngagementEditForm({
 	return (
 		<form
 			onSubmit={onSave}
-			className="space-y-4 rounded-lg border border-zinc-800 bg-zinc-900/50 p-4"
+			className="space-y-4 rounded-lg border border-ops-border bg-ops-surface p-4 shadow-sm"
 		>
-			<div className="text-sm text-zinc-400">
+			<div className="text-sm text-ops-muted">
 				Booking{' '}
 				<Link
 					href={`/ops/close-protection?bookingId=${encodeURIComponent(bookingId)}`}
-					className="font-mono text-emerald-400 underline-offset-2 hover:underline"
+					className="font-mono text-primary underline-offset-2 hover:underline"
 				>
 					{bookingId}
 				</Link>
 			</div>
 			<label className="block text-sm">
-				<span className="text-zinc-400">Status</span>
+				<span className="text-ops-muted">Status</span>
 				<select
 					value={status}
 					onChange={(ev) => setStatus(ev.target.value)}
-					className="mt-1 w-full rounded-md border border-zinc-700 bg-zinc-950 px-3 py-2.5 text-sm text-white min-h-11"
+					className="mt-1 min-h-11 w-full rounded-md border border-ops-border bg-ops-surface px-3 py-2.5 text-sm text-ops-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ops"
 				>
 					{STATUSES.map((s) => (
 						<option key={s} value={s}>
@@ -127,32 +124,28 @@ export function CloseProtectionEngagementEditForm({
 				</select>
 			</label>
 			<label className="block text-sm">
-				<span className="text-zinc-400">Trip id (optional, must be linked via booking_trips)</span>
+				<span className="text-ops-muted">Trip id (optional, must be linked via booking_trips)</span>
 				<input
 					value={tripId}
 					onChange={(ev) => setTripId(ev.target.value)}
 					placeholder="uuid or empty to clear"
-					className="mt-1 w-full rounded-md border border-zinc-700 bg-zinc-950 px-3 py-2.5 font-mono text-sm text-white min-h-11"
+					className="mt-1 min-h-11 w-full rounded-md border border-ops-border bg-ops-surface px-3 py-2.5 font-mono text-sm text-ops-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ops"
 				/>
 			</label>
 			<label className="block text-sm">
-				<span className="text-zinc-400">Coordination notes (staff only)</span>
+				<span className="text-ops-muted">Coordination notes (staff only)</span>
 				<textarea
 					value={notes}
 					onChange={(ev) => setNotes(ev.target.value)}
 					rows={8}
-					className="mt-1 w-full rounded-md border border-zinc-700 bg-zinc-950 px-3 py-2.5 text-sm text-white"
+					className="mt-1 w-full rounded-md border border-ops-border bg-ops-surface px-3 py-2.5 text-sm text-ops-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ops"
 				/>
 			</label>
-			<button
-				type="submit"
-				disabled={busy}
-				className="min-h-11 rounded-md bg-emerald-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-600 disabled:opacity-60"
-			>
+			<Button type="submit" disabled={busy} className="min-h-11">
 				{busy ? 'Saving…' : 'Save'}
-			</button>
+			</Button>
 			{msg ? (
-				<p className="text-sm text-zinc-300" role="status">
+				<p className="text-sm text-ops-muted" role="status">
 					{msg}
 				</p>
 			) : null}

@@ -20,7 +20,7 @@ export default async function OpsRosterPage() {
 
 	if (pErr) {
 		return (
-			<div className="rounded-lg border border-red-900 bg-red-950/40 p-4 text-sm text-red-200">
+			<div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">
 				{pErr.message}
 			</div>
 		)
@@ -35,15 +35,20 @@ export default async function OpsRosterPage() {
 
 	return (
 		<div>
-			<h1 className="text-2xl font-semibold text-white">Chauffeur roster</h1>
-			<p className="mt-1 max-w-3xl text-sm text-zinc-400">
-				Profiles with <code className="text-zinc-300">role = chauffeur</code> and upcoming
-				<code className="text-zinc-300"> chauffeur_schedules</code> from today onward. Reads use
-				the staff JWT (dispatcher/admin) so RLS policies for{' '}
-				<code className="text-zinc-300">is_staff</code> apply.
+			<h1 className="text-ops-page-title text-ops-foreground">Chauffeur roster</h1>
+			<p className="mt-1 max-w-3xl text-sm text-ops-muted">
+				Profiles with{' '}
+				<code className="rounded bg-muted px-1 font-mono text-sm text-ops-foreground">role = chauffeur</code> and
+				upcoming
+				<code className="rounded bg-muted px-1 font-mono text-sm text-ops-foreground">
+					{' '}
+					chauffeur_schedules
+				</code>{' '}
+				from today onward. Reads use the staff JWT (dispatcher/admin) so RLS policies for{' '}
+				<code className="rounded bg-muted px-1 font-mono text-sm text-ops-foreground">is_staff</code> apply.
 			</p>
 			{sErr ? (
-				<p className="mt-2 text-sm text-amber-200">Schedules: {sErr.message}</p>
+				<p className="mt-2 text-sm font-medium text-amber-800">Schedules: {sErr.message}</p>
 			) : null}
 			<ul className="mt-6 space-y-4">
 				{(chauffeurs ?? []).map((c) => {
@@ -52,35 +57,35 @@ export default async function OpsRosterPage() {
 					return (
 						<li
 							key={id}
-							className="rounded-lg border border-zinc-800 bg-zinc-900/50 p-4"
+							className="rounded-lg border border-ops-border bg-ops-surface p-4 shadow-sm"
 						>
 							<div className="flex flex-wrap items-baseline justify-between gap-2">
-								<span className="text-lg font-medium text-white">
+								<span className="text-lg font-medium text-ops-foreground">
 									{(c.full_name as string) || 'Unnamed'}
 								</span>
-								<span className="text-xs capitalize text-zinc-500">
+								<span className="text-xs capitalize text-ops-muted">
 									{c.status as string}
 								</span>
 							</div>
-							<p className="mt-1 text-xs text-zinc-600">
+							<p className="mt-1 text-xs text-ops-muted">
 								Profile id <span className="font-mono">{id.slice(0, 8)}…</span>
 							</p>
 							{rows.length === 0 ? (
-								<p className="mt-2 text-sm text-zinc-500">No upcoming shifts in range.</p>
+								<p className="mt-2 text-sm text-ops-muted">No upcoming shifts in range.</p>
 							) : (
-								<ul className="mt-3 space-y-2 text-sm text-zinc-300">
+								<ul className="mt-3 space-y-2 text-sm text-ops-foreground">
 									{rows.map((s) => (
 										<li
 											key={s.id as string}
-											className="rounded border border-zinc-800/80 bg-zinc-950/60 px-3 py-2"
+											className="rounded border border-ops-border bg-muted/50 px-3 py-2"
 										>
-											<span className="font-medium text-zinc-200">
+											<span className="font-medium text-ops-foreground">
 												{String(s.work_date)}
 											</span>
 											{s.shift ? (
-												<span className="text-zinc-500"> · {s.shift as string}</span>
+												<span className="text-ops-muted"> · {s.shift as string}</span>
 											) : null}
-											<span className="block text-xs text-zinc-500">
+											<span className="block text-xs text-ops-muted">
 												Vehicle{' '}
 												<span className="font-mono">
 													{String(s.vehicle_id).slice(0, 8)}…
@@ -97,7 +102,7 @@ export default async function OpsRosterPage() {
 				})}
 			</ul>
 			{(chauffeurs ?? []).length === 0 ? (
-				<p className="mt-6 text-sm text-zinc-500">No chauffeur profiles.</p>
+				<p className="mt-6 text-sm text-ops-muted">No chauffeur profiles.</p>
 			) : null}
 		</div>
 	)

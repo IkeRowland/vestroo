@@ -35,25 +35,27 @@ export default async function OpsExperiencesPage() {
   const rows = (data ?? []) as ExperienceBookingRow[]
 
   return (
-    <div className="space-y-6">
+    <div className="min-w-0 max-w-full space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-white">Experience bookings</h1>
-        <p className="mt-1 text-sm text-zinc-400">
+        <h1 className="text-ops-page-title text-ops-foreground">Experience bookings</h1>
+        <p className="mt-1 text-sm text-ops-muted">
           Recent web bookings with{' '}
-          <code className="rounded bg-zinc-800 px-1">booking_intent = experience_package</code>.
-          Read-only list (VST-10).
+          <code className="rounded bg-muted px-1 font-mono text-sm text-ops-foreground">
+            booking_intent = experience_package
+          </code>
+          . Read-only list (VST-10).
         </p>
       </div>
 
       {error ? (
-        <p className="text-sm text-red-400" role="alert">
+        <p className="text-sm text-destructive" role="alert">
           {error.message}
         </p>
       ) : null}
 
-      <div className="overflow-x-auto rounded-lg border border-zinc-800">
-        <table className="min-w-full text-left text-sm text-zinc-200">
-          <thead className="bg-zinc-900 text-xs uppercase tracking-wide text-zinc-400">
+      <div className="overflow-x-auto rounded-lg border border-ops-border bg-ops-surface shadow-sm">
+        <table className="min-w-full text-left text-sm text-ops-foreground">
+          <thead className="bg-muted/80 text-xs font-semibold uppercase tracking-wide text-ops-muted">
             <tr>
               <th className="px-3 py-2">Created</th>
               <th className="px-3 py-2">Reference</th>
@@ -66,7 +68,7 @@ export default async function OpsExperiencesPage() {
           <tbody>
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-3 py-8 text-center text-zinc-500">
+                <td colSpan={6} className="px-3 py-8 text-center text-ops-muted">
                   No experience package bookings yet.
                 </td>
               </tr>
@@ -77,7 +79,7 @@ export default async function OpsExperiencesPage() {
                 return (
                   <tr
                     key={row.id}
-                    className="border-t border-zinc-800 odd:bg-zinc-900/40"
+                    className="border-t border-ops-border odd:bg-muted/40"
                   >
                     <td className="px-3 py-2 whitespace-nowrap">
                       {new Date(row.created_at).toLocaleString('en-ZA')}
@@ -99,7 +101,7 @@ export default async function OpsExperiencesPage() {
                     <td className="px-3 py-2">
                       <Link
                         href={`/ops/search`}
-                        className="text-teal-400 hover:underline text-xs"
+                        className="text-xs text-primary hover:underline"
                       >
                         Search
                       </Link>

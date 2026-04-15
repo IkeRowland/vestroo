@@ -43,7 +43,7 @@ export default async function OpsTripsPage() {
 	const rows = trips ?? []
 
 	return (
-		<div>
+		<div className="min-w-0 max-w-full">
 			<OpsPageHeader
 				title="Trips"
 				description={

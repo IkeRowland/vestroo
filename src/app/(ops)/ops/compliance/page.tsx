@@ -25,7 +25,7 @@ export default async function OpsCompliancePage() {
 	])
 
 	return (
-		<div>
+		<div className="min-w-0 max-w-full">
 			<OpsPageHeader
 				title="Compliance"
 				description={

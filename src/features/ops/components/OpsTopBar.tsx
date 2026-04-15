@@ -18,10 +18,10 @@ export function OpsTopBar({ staff, onOpenMobileNav }: OpsTopBarProps) {
 	const pathname = usePathname() ?? ''
 	const crumbs = getOpsBreadcrumbs(pathname)
 	const focusRing =
-		'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ops'
+		'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ops focus-visible:ring-offset-2 focus-visible:ring-offset-ops-canvas'
 
 	return (
-		<header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-3 border-b border-ops-border bg-ops-topbar/95 px-3 backdrop-blur supports-[backdrop-filter]:bg-ops-topbar/80 md:px-4">
+		<header className="sticky top-0 z-30 flex h-14 w-full min-w-0 max-w-full shrink-0 items-center gap-2 border-b border-ops-border bg-ops-topbar/95 px-3 backdrop-blur supports-[backdrop-filter]:bg-ops-topbar/80 md:gap-3 md:px-4">
 			<button
 				type="button"
 				className={cn(
@@ -70,11 +70,11 @@ export function OpsTopBar({ staff, onOpenMobileNav }: OpsTopBarProps) {
 				</ol>
 			</nav>
 
-			<div className="flex shrink-0 items-center gap-2 md:gap-3">
+			<div className="flex min-w-0 shrink items-center gap-2 md:gap-3">
 				<Link
 					href="/ops/search"
 					className={cn(
-						'hidden min-h-11 max-w-[200px] flex-1 items-center gap-2 rounded-md border border-ops-border bg-ops-surface px-3 text-sm text-ops-muted transition hover:border-ops-border hover:text-ops-foreground sm:flex',
+						'hidden min-h-11 min-w-0 max-w-[10rem] items-center gap-2 overflow-hidden rounded-md border border-ops-border bg-ops-surface px-2.5 text-sm text-ops-muted transition hover:border-ops-border hover:text-ops-foreground sm:flex sm:max-w-[12rem] sm:px-3',
 						focusRing,
 					)}
 					aria-label="Go to staff booking search"

@@ -80,11 +80,11 @@ export default async function FieldTripDetailPage({ params }: { params: PagePara
 	const publishLive = status === 'assigned' || status === 'en_route'
 
 	return (
-		<div className="space-y-6">
+		<div className="min-w-0 max-w-full space-y-6 pb-[min(42vh,18rem)] sm:pb-40">
 			<p>
 				<Link
 					href="/field"
-					className="text-sm font-medium text-amber-400 hover:text-amber-300"
+					className="inline-flex min-h-11 items-center text-sm font-medium text-amber-400 hover:text-amber-300"
 				>
 					← All assignments
 				</Link>
@@ -100,9 +100,27 @@ export default async function FieldTripDetailPage({ params }: { params: PagePara
 					{trip.time_start_estimate ? String(trip.time_start_estimate) : '—'} →{' '}
 					{trip.time_end_estimate ? String(trip.time_end_estimate) : '—'}
 				</p>
+				{status === 'assigned' ? (
+					<p className="mt-3 text-sm text-slate-400">
+						When you are ready to drive, use <strong className="text-slate-200">Confirm assignment</strong>{' '}
+						below (moves to <strong className="text-slate-200">en route</strong>).
+					</p>
+				) : null}
+				{status === 'en_route' ? (
+					<p className="mt-3 text-sm text-slate-400">
+						After the service ends, tap <strong className="text-slate-200">Mark completed</strong> below.
+					</p>
+				) : null}
 			</div>
 
 			<FieldLocationPublisher tripId={tripId} enabled={publishLive} />
+
+			{!mapsTarget ? (
+				<p className="text-xs text-slate-500">
+					No navigation target yet. Add booking addresses or tie the trip to a service run with
+					route points (see docs/field-tools.md).
+				</p>
+			) : null}
 
 			<FieldTripDetailActions
 				tripId={tripId}
@@ -113,14 +131,8 @@ export default async function FieldTripDetailPage({ params }: { params: PagePara
 				maskedPhone={showContact ? maskedPhone : null}
 				googleMapsUrl={googleMapsUrl}
 				appleMapsUrl={appleMapsUrl}
+				stickyFooter
 			/>
-
-			{!mapsTarget ? (
-				<p className="text-xs text-slate-500">
-					No navigation target yet. Add booking addresses or tie the trip to a service run with
-					route points (see docs/field-tools.md).
-				</p>
-			) : null}
 		</div>
 	)
 }

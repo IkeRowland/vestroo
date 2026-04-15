@@ -1,5 +1,5 @@
 /**
- * Layout numbers documented to match `[data-ops-theme='dark']` in `src/app/globals.css`
+ * Layout numbers documented to match `[data-ops-theme]` in `src/app/globals.css`
  * (`--ops-sidebar-width`, `--ops-sidebar-collapsed-width`). Change CSS and this file together.
  */
 export const OPS_LAYOUT_WIDTHS_REM = {

@@ -32,23 +32,23 @@ export function OpsInvoicingHooksPanel() {
   }
 
   return (
-    <div className="max-w-xl rounded-lg border border-zinc-800 bg-zinc-900/40 p-4">
-      <h1 className="text-lg font-semibold text-white">Corporate invoicing hooks</h1>
-      <p className="mt-1 text-sm text-zinc-400">
+    <div className="max-w-xl rounded-lg border border-ops-border bg-ops-surface p-4 shadow-sm">
+      <h1 className="text-lg font-semibold text-ops-foreground">Corporate invoicing hooks</h1>
+      <p className="mt-1 text-sm text-ops-muted">
         MVP staff tool: set invoice request flag and short references on a booking (no PDF).
       </p>
       <form onSubmit={onSubmit} className="mt-4 space-y-3">
-        <label className="block text-sm text-zinc-300">
+        <label className="block text-sm text-ops-foreground">
           Booking ID (UUID)
           <input
-            className="mt-1 w-full rounded border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-white"
+            className="mt-1 w-full rounded-md border border-ops-border bg-ops-surface px-3 py-2 text-sm text-ops-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ops"
             value={bookingId}
             onChange={(ev) => setBookingId(ev.target.value)}
             placeholder="00000000-0000-4000-8000-000000000000"
             required
           />
         </label>
-        <label className="flex items-center gap-2 text-sm text-zinc-300">
+        <label className="flex items-center gap-2 text-sm text-ops-foreground">
           <input
             type="checkbox"
             checked={invoiceRequested}
@@ -56,19 +56,19 @@ export function OpsInvoicingHooksPanel() {
           />
           Invoice requested
         </label>
-        <label className="block text-sm text-zinc-300">
+        <label className="block text-sm text-ops-foreground">
           Purchase order ref (optional)
           <input
-            className="mt-1 w-full rounded border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-white"
+            className="mt-1 w-full rounded-md border border-ops-border bg-ops-surface px-3 py-2 text-sm text-ops-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ops"
             value={purchaseOrderRef}
             onChange={(ev) => setPurchaseOrderRef(ev.target.value)}
             maxLength={120}
           />
         </label>
-        <label className="block text-sm text-zinc-300">
+        <label className="block text-sm text-ops-foreground">
           Billing entity ref (optional)
           <input
-            className="mt-1 w-full rounded border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-white"
+            className="mt-1 w-full rounded-md border border-ops-border bg-ops-surface px-3 py-2 text-sm text-ops-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ops"
             value={billingEntityRef}
             onChange={(ev) => setBillingEntityRef(ev.target.value)}
             maxLength={120}
@@ -78,7 +78,7 @@ export function OpsInvoicingHooksPanel() {
           {pending ? 'Saving…' : 'Save'}
         </Button>
         {message && (
-          <p className="text-sm text-zinc-300" role="status">
+          <p className="text-sm text-ops-muted" role="status">
             {message}
           </p>
         )}

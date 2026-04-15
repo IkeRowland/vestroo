@@ -41,6 +41,11 @@ export type OpsNavGroup = {
 
 /**
  * Domain-grouped navigation for `/ops/*` (FE.5.1). Labels follow VST / ops-console wording.
+ *
+ * **FE.5.11 (Story 5.11) audit:** Sidebar groups cover **fulfilment & bookings**, **fleet**, **chauffeur roster**
+ * (scheduling — not staff identity admin), **finance & compliance**, **engagements**. Routes without nav yet
+ * (**`/ops/users`**, **`/ops/clients`**, service-area authoring) are **deferred** — see **`docs/ops-console.md`**
+ * § FE.5.11 and **`docs/capstone-backend-module-matrix.md`** § FE.5.11 / BE.6.7.
  */
 export const OPS_NAV_GROUPS: readonly OpsNavGroup[] = [
 	{

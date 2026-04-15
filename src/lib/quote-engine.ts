@@ -1,4 +1,9 @@
-import { calculateRouteDistance } from '@/lib/maps'
+import {
+  calculateRouteDistance,
+  estimateTravelMinutesHaversine,
+  haversineDistanceKm,
+  type RouteDistanceResult,
+} from '@/lib/maps'
 import { calculatePrice } from '@/lib/calculations'
 import { fetchActiveVehicleTypes } from '@/lib/pricing-data'
 import { getPricingBasePricePerKm } from '@/lib/pricing-env'
@@ -7,6 +12,51 @@ import type {
   PointToPointSearchParams,
   QuoteVehicleOption,
 } from '@/lib/booking-quote-types'
+
+/** Approximate road distance from straight-line km when Distance Matrix is unavailable. */
+const HAVERSINE_ROAD_FACTOR = 1.25
+
+function formatRouteFailureMessage(routeInfo: RouteDistanceResult): string {
+  if (routeInfo.status === 'REQUEST_DENIED') {
+    const hint =
+      routeInfo.detail?.trim() ||
+      'Enable the Distance Matrix API, billing, and server key restrictions for GOOGLE_MAPS_SERVER_KEY.'
+    return `Route service denied the request: ${hint}`
+  }
+  if (routeInfo.status === 'NOT_FOUND' || routeInfo.status === 'ZERO_RESULTS') {
+    return 'Unable to calculate route. Please check your locations.'
+  }
+  return 'Unable to calculate route. Please check your locations.'
+}
+
+/**
+ * When Google Distance Matrix fails but Places gave valid coordinates, estimate road km and ETA.
+ * Keeps quotes working when the server key lacks Matrix access (common in local dev).
+ */
+function tryHaversineRouteEstimate(
+  origin: PointToPointSearchParams['origin'],
+  destination: PointToPointSearchParams['destination']
+): { distanceKm: number; durationMin: number } | null {
+  const o = { lat: origin.latitude, lng: origin.longitude }
+  const d = { lat: destination.latitude, lng: destination.longitude }
+  if (
+    !Number.isFinite(o.lat) ||
+    !Number.isFinite(o.lng) ||
+    !Number.isFinite(d.lat) ||
+    !Number.isFinite(d.lng) ||
+    (o.lat === 0 && o.lng === 0) ||
+    (d.lat === 0 && d.lng === 0)
+  ) {
+    return null
+  }
+  const straightKm = haversineDistanceKm(o, d)
+  if (straightKm < 0.02) {
+    return null
+  }
+  const distanceKm = straightKm * HAVERSINE_ROAD_FACTOR
+  const durationMin = estimateTravelMinutesHaversine(o, d)
+  return { distanceKm, durationMin }
+}
 
 /**
  * Server-only: compute point-to-point quote (maps + vehicle tiers + pricing rules path).
@@ -31,10 +81,28 @@ export async function computePointToPointQuote(
     mapsApiKey
   )
 
-  if (routeInfo.status !== 'OK') {
-    return {
-      ok: false,
-      error: 'Unable to calculate route. Please check your locations.',
+  let distanceKm: number
+  let durationMin: number
+
+  if (routeInfo.status === 'OK') {
+    distanceKm = routeInfo.distance
+    durationMin = routeInfo.duration
+  } else {
+    const fallback = tryHaversineRouteEstimate(params.origin, params.destination)
+    if (fallback) {
+      console.warn(
+        '[computePointToPointQuote] Distance Matrix status=%s; using haversine estimate (%.2f km). %s',
+        routeInfo.status,
+        fallback.distanceKm,
+        routeInfo.detail ?? ''
+      )
+      distanceKm = fallback.distanceKm
+      durationMin = fallback.durationMin
+    } else {
+      return {
+        ok: false,
+        error: formatRouteFailureMessage(routeInfo),
+      }
     }
   }
 
@@ -57,7 +125,7 @@ export async function computePointToPointQuote(
             vehicle_type_id: vt.id,
             pickup_datetime: params.date,
             passenger_count: params.passengers,
-            distance_km: routeInfo.distance,
+            distance_km: distanceKm,
             base_price_per_km: basePricePerKm,
           })
           return {
@@ -73,7 +141,7 @@ export async function computePointToPointQuote(
         } catch (error) {
           console.error(`Error calculating price for vehicle type ${vt.id}:`, error)
           const fallbackPrice =
-            routeInfo.distance * basePricePerKm * vt.price_multiplier
+            distanceKm * basePricePerKm * vt.price_multiplier
           return {
             id: vt.id,
             name: vt.name,
@@ -98,15 +166,15 @@ export async function computePointToPointQuote(
   vehicleOptions.sort((a, b) => a.price - b.price)
 
   const finalPrice = vehicleOptions[0]?.price ?? 0
-  const basePrice = routeInfo.distance * basePricePerKm
+  const basePrice = distanceKm * basePricePerKm
 
   return {
     ok: true,
     data: {
       price: finalPrice,
       basePrice,
-      distance: routeInfo.distance,
-      estimatedDuration: routeInfo.duration,
+      distance: distanceKm,
+      estimatedDuration: durationMin,
       vehicleOptions,
       routeDetails: {
         origin: params.origin.formattedAddress,

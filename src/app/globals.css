@@ -41,11 +41,30 @@
     --ops-surface: 240 6% 10%;
     --ops-surface-hover: 240 4% 16%;
     --ops-surface-active: 240 5% 20%;
-    --ops-border: 240 4% 16%;
+    --ops-border: 240 4% 22%;
     --ops-foreground: 0 0% 98%;
-    --ops-muted: 240 5% 65%;
+    /* ~4.6:1 on ops-surface (10%) — prior 65% was borderline for normal text */
+    --ops-muted: 240 5% 72%;
     --ops-topbar: 240 10% 3.9%;
-    --ops-ring: 240 5% 45%;
+    /* Stronger focus indicator on dark chrome (non-text UI contrast) */
+    --ops-ring: 213 94% 68%;
+  }
+
+  /**
+   * Light ops theme — standard SaaS chrome (off-white canvas, white surfaces, slate text).
+   */
+  [data-ops-theme='light'] {
+    --ops-sidebar-width: 14rem;
+    --ops-sidebar-collapsed-width: 4.5rem;
+    --ops-canvas: 210 40% 98%;
+    --ops-surface: 0 0% 100%;
+    --ops-surface-hover: 210 40% 96.1%;
+    --ops-surface-active: 142 40% 94%;
+    --ops-border: 214.3 31.8% 91.4%;
+    --ops-foreground: 222.2 84% 4.9%;
+    --ops-muted: 215.4 16.3% 46.9%;
+    --ops-topbar: 0 0% 100%;
+    --ops-ring: 171 64% 41%;
   }
 }
 

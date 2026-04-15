@@ -139,7 +139,7 @@ export function AssignBookingPanel({
 		<Form {...form}>
 			<form
 				onSubmit={form.handleSubmit(onSubmit)}
-				className="space-y-4 rounded-lg border border-ops-border bg-ops-surface/40 p-4"
+				className="min-w-0 max-w-full space-y-4 rounded-lg border border-ops-border bg-ops-surface/40 p-4"
 			>
 				{feedback ? (
 					<Alert

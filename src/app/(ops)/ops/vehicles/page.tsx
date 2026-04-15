@@ -50,7 +50,7 @@ export default async function OpsVehiclesPage() {
 	const tripRows = trips ?? []
 
 	return (
-		<div>
+		<div className="min-w-0 max-w-full">
 			<OpsPageHeader
 				title="Vehicle availability"
 				description={

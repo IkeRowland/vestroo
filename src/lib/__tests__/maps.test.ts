@@ -1,6 +1,10 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { buildAppleMapsUrl, buildGoogleMapsUrl } from '@/lib/maps'
+import {
+	buildAppleMapsUrl,
+	buildGoogleMapsUrl,
+	calculateRouteDistance,
+} from '@/lib/maps'
 
 describe('maps deep links', () => {
 	it('builds Google Maps dir URL for coordinates', () => {
@@ -26,5 +30,79 @@ describe('maps deep links', () => {
 		const u = buildAppleMapsUrl({ kind: 'query', query: 'V&A Waterfront' })
 		expect(u).toContain('maps.apple.com')
 		expect(u).toContain(encodeURIComponent('V&A Waterfront'))
+	})
+})
+
+describe('calculateRouteDistance', () => {
+	const origin = { lat: -26.1, lng: 28.0, placeId: 'a' }
+	const dest = { lat: -26.2, lng: 28.1, placeId: 'b' }
+
+	afterEach(() => {
+		vi.unstubAllGlobals()
+	})
+
+	it('parses OK element into km and minutes', async () => {
+		vi.stubGlobal(
+			'fetch',
+			vi.fn().mockResolvedValue({
+				ok: true,
+				json: () =>
+					Promise.resolve({
+						status: 'OK',
+						rows: [
+							{
+								elements: [
+									{
+										status: 'OK',
+										distance: { value: 10_000 },
+										duration: { value: 900 },
+									},
+								],
+							},
+						],
+					}),
+			}),
+		)
+
+		const r = await calculateRouteDistance(origin, dest, 'key')
+		expect(r.status).toBe('OK')
+		expect(r.distance).toBe(10)
+		expect(r.duration).toBe(15)
+	})
+
+	it('returns REQUEST_DENIED with Google error_message', async () => {
+		vi.stubGlobal(
+			'fetch',
+			vi.fn().mockResolvedValue({
+				ok: true,
+				json: () =>
+					Promise.resolve({
+						status: 'REQUEST_DENIED',
+						error_message: 'The provided API key is invalid.',
+					}),
+			}),
+		)
+
+		const r = await calculateRouteDistance(origin, dest, 'key')
+		expect(r.status).toBe('REQUEST_DENIED')
+		expect(r.detail).toBe('The provided API key is invalid.')
+	})
+
+	it('maps element NOT_FOUND to status NOT_FOUND', async () => {
+		vi.stubGlobal(
+			'fetch',
+			vi.fn().mockResolvedValue({
+				ok: true,
+				json: () =>
+					Promise.resolve({
+						status: 'OK',
+						rows: [{ elements: [{ status: 'NOT_FOUND' }] }],
+					}),
+			}),
+		)
+
+		const r = await calculateRouteDistance(origin, dest, 'key')
+		expect(r.status).toBe('NOT_FOUND')
+		expect(r.detail).toBe('NOT_FOUND')
 	})
 })

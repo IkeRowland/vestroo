@@ -84,6 +84,8 @@ export type RouteDistanceResult = {
 	distance: number
 	duration: number
 	status: RouteDistanceStatus
+	/** Google `error_message` or element status when `status` is not OK */
+	detail?: string
 }
 
 /**
@@ -97,6 +99,7 @@ export function getGoogleMapsServerApiKey(): string | undefined {
 
 type DistanceMatrixResponse = {
 	status: string
+	error_message?: string
 	rows?: Array<{
 		elements?: Array<{
 			status: string
@@ -127,14 +130,30 @@ export async function calculateRouteDistance(
 		const data = (await res.json()) as DistanceMatrixResponse
 		if (data.status !== 'OK') {
 			const st = data.status
+			const detail = data.error_message
 			if (st === 'ZERO_RESULTS' || st === 'NOT_FOUND' || st === 'REQUEST_DENIED') {
-				return { distance: 0, duration: 0, status: st }
+				return {
+					distance: 0,
+					duration: 0,
+					status: st as RouteDistanceStatus,
+					detail,
+				}
 			}
-			return { distance: 0, duration: 0, status: 'UNKNOWN_ERROR' }
+			return {
+				distance: 0,
+				duration: 0,
+				status: 'UNKNOWN_ERROR',
+				detail,
+			}
 		}
 		const el = data.rows?.[0]?.elements?.[0]
 		if (!el || el.status !== 'OK') {
-			return { distance: 0, duration: 0, status: 'ZERO_RESULTS' }
+			const elStatus = el?.status ?? 'UNKNOWN'
+			const top: RouteDistanceStatus =
+				elStatus === 'NOT_FOUND' || elStatus === 'ZERO_RESULTS'
+					? elStatus
+					: 'ZERO_RESULTS'
+			return { distance: 0, duration: 0, status: top, detail: elStatus }
 		}
 		const meters = el.distance?.value ?? 0
 		const seconds = el.duration?.value ?? 0

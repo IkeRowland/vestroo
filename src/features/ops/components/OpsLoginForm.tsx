@@ -3,6 +3,8 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { createClientClient } from '@/lib/supabase/client'
 
 export function OpsLoginForm({ nextPath }: { nextPath: string }) {
@@ -30,10 +32,10 @@ export function OpsLoginForm({ nextPath }: { nextPath: string }) {
 	return (
 		<form onSubmit={onSubmit} className="space-y-4">
 			<div>
-				<label htmlFor="ops-email" className="block text-sm font-medium text-zinc-300">
+				<label htmlFor="ops-email" className="block text-sm font-medium text-foreground">
 					Email
 				</label>
-				<input
+				<Input
 					id="ops-email"
 					name="email"
 					type="email"
@@ -41,14 +43,14 @@ export function OpsLoginForm({ nextPath }: { nextPath: string }) {
 					required
 					value={email}
 					onChange={(e) => setEmail(e.target.value)}
-					className="mt-1 w-full rounded-md border border-zinc-700 bg-zinc-950 px-3 py-2.5 text-sm text-white outline-none ring-emerald-600 focus:ring-2 min-h-11"
+					className="mt-1 min-h-11"
 				/>
 			</div>
 			<div>
-				<label htmlFor="ops-password" className="block text-sm font-medium text-zinc-300">
+				<label htmlFor="ops-password" className="block text-sm font-medium text-foreground">
 					Password
 				</label>
-				<input
+				<Input
 					id="ops-password"
 					name="password"
 					type="password"
@@ -56,21 +58,17 @@ export function OpsLoginForm({ nextPath }: { nextPath: string }) {
 					required
 					value={password}
 					onChange={(e) => setPassword(e.target.value)}
-					className="mt-1 w-full rounded-md border border-zinc-700 bg-zinc-950 px-3 py-2.5 text-sm text-white outline-none ring-emerald-600 focus:ring-2 min-h-11"
+					className="mt-1 min-h-11"
 				/>
 			</div>
 			{err ? (
-				<p className="text-sm text-red-400" role="alert">
+				<p className="text-sm text-destructive" role="alert">
 					{err}
 				</p>
 			) : null}
-			<button
-				type="submit"
-				disabled={loading}
-				className="w-full min-h-11 rounded-md bg-emerald-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-600 disabled:opacity-60"
-			>
+			<Button type="submit" disabled={loading} className="min-h-11 w-full">
 				{loading ? 'Signing in…' : 'Sign in'}
-			</button>
+			</Button>
 		</form>
 	)
 }

@@ -87,19 +87,19 @@ export function OpsBoardRealtimeBridge() {
 
 	return (
 		<div className="mt-2 space-y-2">
-			<p className="text-xs text-zinc-500">
+			<p className="text-xs text-ops-muted">
 				Live updates: Realtime → debounced refresh ({OPS_BOARD_REALTIME_DEBOUNCE_MS / 1000}s). Polling
-				fallback: see <span className="font-mono text-zinc-400">docs/ops-console.md</span>.
+				fallback: see <span className="font-mono text-ops-muted">docs/ops-console.md</span>.
 			</p>
 			{etas.length > 0 ? (
-				<div className="rounded-md border border-zinc-800 bg-zinc-950/60 p-3">
-					<p className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+				<div className="rounded-md border border-ops-border bg-muted/60 p-3">
+					<p className="text-xs font-medium uppercase tracking-wide text-ops-muted">
 						Recent vehicle ETAs (from tracking)
 					</p>
-					<ul className="mt-2 space-y-1 text-xs text-zinc-300">
+					<ul className="mt-2 space-y-1 text-xs text-ops-foreground">
 						{etas.map((r) => (
 							<li key={`${r.vehicle_id}-${r.updated_at}`} className="flex justify-between gap-2">
-								<span className="font-mono text-zinc-400">{r.vehicle_id.slice(0, 8)}…</span>
+								<span className="font-mono text-ops-muted">{r.vehicle_id.slice(0, 8)}…</span>
 								<span>ETA {formatEta(r.estimated_arrival)}</span>
 							</li>
 						))}

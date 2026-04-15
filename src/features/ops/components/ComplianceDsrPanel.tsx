@@ -22,7 +22,7 @@ import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
 
 const inputOps =
-	'min-h-11 rounded-md border border-ops-border bg-ops-canvas px-3 py-2 text-sm text-ops-foreground placeholder:text-ops-muted/70 focus-visible:ring-ops'
+	'min-h-11 rounded-md border border-ops-border bg-ops-surface px-3 py-2 text-sm text-ops-foreground placeholder:text-ops-muted/70 focus-visible:ring-ops'
 
 export function ComplianceDsrPanel() {
 	const [exportJson, setExportJson] = useState<string | null>(null)
@@ -68,18 +68,18 @@ export function ComplianceDsrPanel() {
 	}
 
 	return (
-		<section className="mt-8 rounded-lg border border-amber-900/60 bg-amber-950/20 px-4 py-4">
-			<h2 className="text-lg font-semibold text-amber-100">Data subject requests (admin only)</h2>
-			<p className="mt-1 text-xs text-amber-200/80">
-				Exports and anonymisation are logged to <code className="text-amber-100">ops_audit_log</code> (
-				<code className="text-amber-100">dsr_export</code>,{' '}
-				<code className="text-amber-100">dsr_anonymise</code>). Legal review and{' '}
-				<code className="text-amber-100">auth.users</code> follow-up are out of band — see{' '}
-				<code className="text-amber-100">docs/compliance-and-safety.md</code>.
+		<section className="mt-8 rounded-lg border border-amber-200 bg-amber-50 px-4 py-4">
+			<h2 className="text-lg font-semibold text-amber-950">Data subject requests (admin only)</h2>
+			<p className="mt-1 text-xs text-amber-900/85">
+				Exports and anonymisation are logged to <code className="font-mono text-amber-800">ops_audit_log</code> (
+				<code className="font-mono text-amber-800">dsr_export</code>,{' '}
+				<code className="font-mono text-amber-800">dsr_anonymise</code>). Legal review and{' '}
+				<code className="font-mono text-amber-800">auth.users</code> follow-up are out of band — see{' '}
+				<code className="font-mono text-amber-800">docs/compliance-and-safety.md</code>.
 			</p>
 
 			<div className="mt-4 space-y-3">
-				<p className="text-sm font-medium text-zinc-200">Minimal export (customer profiles)</p>
+				<p className="text-sm font-medium text-ops-foreground">Minimal export (customer profiles)</p>
 				<form
 					className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end"
 					action={(fd) => {
@@ -100,7 +100,7 @@ export function ComplianceDsrPanel() {
 						})
 					}}
 				>
-					<div className="block text-xs text-zinc-400">
+					<div className="block text-xs text-ops-muted">
 						<Label htmlFor="dsr-profile-id" className="mb-1 block">
 							Profile UUID
 						</Label>
@@ -112,7 +112,7 @@ export function ComplianceDsrPanel() {
 							className={cn('w-full min-w-[14rem]', inputOps)}
 						/>
 					</div>
-					<div className="block text-xs text-zinc-400">
+					<div className="block text-xs text-ops-muted">
 						<Label htmlFor="dsr-email" className="mb-1 block">
 							Email (exact match on profiles.email)
 						</Label>
@@ -127,7 +127,7 @@ export function ComplianceDsrPanel() {
 					<Button
 						type="submit"
 						disabled={pending}
-						className="min-h-11 rounded-md border border-amber-700 bg-amber-900/40 px-4 py-2 text-sm font-medium text-amber-50 hover:bg-amber-900/60 disabled:opacity-50"
+						className="min-h-11 rounded-md border border-amber-300 bg-amber-100 px-4 py-2 text-sm font-medium text-amber-950 hover:bg-amber-200 disabled:opacity-50"
 					>
 						{pending ? 'Exporting…' : 'Run export'}
 					</Button>
@@ -135,14 +135,14 @@ export function ComplianceDsrPanel() {
 				{exportErr ? (
 					<Alert
 						variant="destructive"
-						className="border-red-900/60 bg-red-950/50 text-red-100"
+						className="border-red-200 bg-red-50 text-red-900"
 						role="alert"
 					>
 						<AlertDescription>{exportErr}</AlertDescription>
 					</Alert>
 				) : null}
 				{exportJson ? (
-					<pre className="max-h-64 overflow-auto rounded border border-zinc-800 bg-zinc-950 p-3 text-xs text-zinc-300">
+					<pre className="max-h-64 overflow-auto rounded border border-ops-border bg-muted p-3 text-xs text-ops-foreground">
 						{exportJson}
 					</pre>
 				) : null}
@@ -172,15 +172,15 @@ export function ComplianceDsrPanel() {
 				</AlertDialogContent>
 			</AlertDialog>
 
-			<div className="mt-6 space-y-3 border-t border-amber-900/40 pt-4">
-				<p className="text-sm font-medium text-zinc-200">Anonymise customer profile</p>
-				<p className="text-xs text-zinc-500">
+			<div className="mt-6 space-y-3 border-t border-amber-200 pt-4">
+				<p className="text-sm font-medium text-ops-foreground">Anonymise customer profile</p>
+				<p className="text-xs text-ops-muted">
 					Sets profile fields to placeholders, redacts linked booking guest fields, clears close protection
-					coordination notes for those bookings, and nulls <code className="text-zinc-400">trips.customer_id</code>{' '}
-					for the subject. Type <strong className="text-zinc-300">ANONYMISE</strong> to unlock confirmation.
+					coordination notes for those bookings, and nulls <code className="text-ops-foreground">trips.customer_id</code>{' '}
+					for the subject. Type <strong className="text-ops-foreground">ANONYMISE</strong> to unlock confirmation.
 				</p>
 				<div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end">
-					<div className="block text-xs text-zinc-400">
+					<div className="block text-xs text-ops-muted">
 						<Label htmlFor="anon-profile" className="mb-1 block">
 							Customer profile UUID
 						</Label>
@@ -193,7 +193,7 @@ export function ComplianceDsrPanel() {
 							className={cn('w-full min-w-[14rem]', inputOps)}
 						/>
 					</div>
-					<div className="block text-xs text-zinc-400">
+					<div className="block text-xs text-ops-muted">
 						<Label htmlFor="anon-phrase" className="mb-1 block">
 							Confirmation phrase
 						</Label>
@@ -210,7 +210,7 @@ export function ComplianceDsrPanel() {
 						type="button"
 						disabled={pending}
 						onClick={openAnonDialog}
-						className="min-h-11 rounded-md border border-red-900/60 bg-red-950/40 px-4 py-2 text-sm font-medium text-red-100 hover:bg-red-950/60 disabled:opacity-50"
+						className="min-h-11 rounded-md border border-red-200 bg-red-50 px-4 py-2 text-sm font-medium text-red-900 hover:bg-red-100 disabled:opacity-50"
 					>
 						Review anonymisation…
 					</Button>
@@ -220,8 +220,8 @@ export function ComplianceDsrPanel() {
 						variant={anonFeedback.ok ? 'default' : 'destructive'}
 						className={
 							anonFeedback.ok
-								? 'border-emerald-900/50 bg-emerald-950/30 text-emerald-100'
-								: 'border-red-900/60 bg-red-950/50 text-red-100'
+								? 'border-emerald-200 bg-emerald-50 text-emerald-900'
+								: 'border-red-200 bg-red-50 text-red-900'
 						}
 						role="status"
 					>

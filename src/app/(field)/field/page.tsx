@@ -46,12 +46,13 @@ export default async function FieldHomePage() {
 	})
 
 	return (
-		<div className="space-y-8">
+		<div className="min-w-0 max-w-full space-y-8">
 			<div>
-				<h1 className="text-2xl font-bold text-white">My work</h1>
+				<h1 className="text-2xl font-bold text-white">Today&apos;s assignments</h1>
 				<p className="mt-1 text-sm text-slate-400">
-					Trips where you are assigned as chauffeur. Confirm when you head out, then mark
-					completed when the service ends.
+					Open a trip to move through the workflow: <strong className="text-slate-200">assigned</strong>{' '}
+					→ confirm when you depart → <strong className="text-slate-200">en route</strong> → mark{' '}
+					<strong className="text-slate-200">completed</strong> when the service ends.
 				</p>
 			</div>
 
@@ -67,7 +68,7 @@ export default async function FieldHomePage() {
 							<li key={t.id as string}>
 								<Link
 									href={`/field/trips/${t.id as string}`}
-									className="block rounded-lg border border-slate-800 bg-slate-900/50 px-4 py-3 transition hover:border-amber-700/50 hover:bg-slate-900"
+									className="flex min-h-11 flex-col justify-center rounded-lg border border-slate-800 bg-slate-900/50 px-4 py-3 transition hover:border-amber-700/50 hover:bg-slate-900 active:bg-slate-900/80"
 								>
 									<div className="flex flex-wrap items-center justify-between gap-2">
 										<span className="font-medium capitalize text-white">
@@ -81,6 +82,12 @@ export default async function FieldHomePage() {
 										{formatWhen(t.time_start_estimate as string)} →{' '}
 										{formatWhen(t.time_end_estimate as string)}
 									</p>
+									{(t.status as string) === 'assigned' ? (
+										<p className="mt-2 text-xs text-amber-200/90">Next: open to confirm before you drive</p>
+									) : null}
+									{(t.status as string) === 'en_route' ? (
+										<p className="mt-2 text-xs text-emerald-200/90">Next: mark completed when finished</p>
+									) : null}
 								</Link>
 							</li>
 						))}
@@ -100,7 +107,7 @@ export default async function FieldHomePage() {
 							<li key={t.id as string}>
 								<Link
 									href={`/field/trips/${t.id as string}`}
-									className="block rounded-lg border border-slate-800/80 bg-slate-900/30 px-4 py-3 text-slate-300 hover:bg-slate-900/50"
+									className="flex min-h-11 flex-col justify-center rounded-lg border border-slate-800/80 bg-slate-900/30 px-4 py-3 text-slate-300 hover:bg-slate-900/50 active:bg-slate-900/70"
 								>
 									<div className="flex flex-wrap items-center justify-between gap-2">
 										<span className="font-medium capitalize">

@@ -48,7 +48,7 @@ export default async function OpsFulfilPage() {
 		})) ?? []
 
 	return (
-		<div>
+		<div className="min-w-0 max-w-full">
 			<OpsPageHeader
 				title="Fulfil"
 				description={

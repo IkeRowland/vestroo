@@ -11,11 +11,11 @@ export default async function OpsShellLayout({
 	return (
 		<div
 			className="min-h-screen bg-ops-canvas text-ops-foreground antialiased"
-			data-ops-theme="dark"
+			data-ops-theme="light"
 		>
 			<a
 				href="#ops-main"
-				className="absolute left-[-10000px] top-auto z-[100] h-px w-px overflow-hidden focus:left-4 focus:top-4 focus:h-auto focus:w-auto focus:overflow-visible focus:rounded-md focus:border focus:border-ops-border focus:bg-ops-surface focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-ops-foreground focus:outline-none focus:ring-2 focus:ring-ops"
+				className="absolute left-[-10000px] top-auto z-[100] h-px w-px overflow-hidden focus:left-4 focus:top-4 focus:z-[100] focus:h-auto focus:w-auto focus:overflow-visible focus:rounded-md focus:border focus:border-ops-border focus:bg-ops-surface focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-ops-foreground focus:outline-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ops focus-visible:ring-offset-2 focus-visible:ring-offset-ops-canvas"
 			>
 				Skip to main content
 			</a>

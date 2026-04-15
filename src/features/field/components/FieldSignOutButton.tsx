@@ -10,7 +10,7 @@ export function FieldSignOutButton() {
 	return (
 		<button
 			type="button"
-			className="min-h-11 rounded-md border border-slate-600 px-3 py-2.5 text-sm font-medium text-slate-200 hover:bg-slate-800"
+			className="min-h-11 rounded-md border border-slate-600 px-3 py-2.5 text-sm font-medium text-slate-200 hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950"
 			onClick={async () => {
 				const supabase = createClientClient()
 				await supabase.auth.signOut()

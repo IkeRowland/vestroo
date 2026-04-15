@@ -15,7 +15,7 @@ export default async function OpsBookingSearchPage({ searchParams }: PageProps) 
 	const initialTab = tab === 'login' ? 'modify-booking' : 'create-booking'
 
 	return (
-		<div className="rounded-lg border border-zinc-800 bg-zinc-900/40 py-4 px-4">
+		<div className="rounded-lg border border-ops-border bg-ops-surface px-4 py-4 shadow-sm">
 			<div className="mx-auto max-w-7xl">
 				<div className="flex justify-center">
 					<BookingSearchForm initialTab={initialTab} />
