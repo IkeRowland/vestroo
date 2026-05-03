@@ -22,6 +22,8 @@ export default function ContactDetailsPage() {
     quoteAmount,
     bookingIntent,
     setCustomerDetails,
+    setRiderContact,
+    setPurchaseOrderRef,
   } = useBookingStore();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -55,6 +57,11 @@ export default function ContactDetailsPage() {
         email: data.email,
         phone: data.phone,
       });
+      const rn = (data.riderName ?? '').trim();
+      const re = (data.riderEmail ?? '').trim();
+      const rp = (data.riderPhone ?? '').trim();
+      setRiderContact(rn || re || rp ? { name: rn, email: re, phone: rp } : null);
+      setPurchaseOrderRef((data.purchaseOrderRef ?? '').trim());
 
       router.push('/book/payment');
     } catch (err) {

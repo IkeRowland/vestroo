@@ -30,7 +30,11 @@ export function CloseProtectionCreateForm({ bookingId }: { bookingId: string }) 
 		const res = await createCloseProtectionEngagementAction({ bookingId })
 		setBusy(false)
 		if (!res.ok) {
-			setMsg(res.message)
+			setMsg(
+				res.error.correlationId
+					? `${res.error.message} (ref ${res.error.correlationId.slice(0, 8)}…)`
+					: res.error.message,
+			)
 			return
 		}
 		router.push(`/ops/close-protection/${res.engagementId}`)
@@ -91,7 +95,13 @@ export function CloseProtectionEngagementEditForm({
 			...tripPayload,
 		})
 		setBusy(false)
-		setMsg(res.ok ? 'Saved.' : res.message)
+		setMsg(
+			res.ok
+				? 'Saved.'
+				: res.error.correlationId
+					? `${res.error.message} (ref ${res.error.correlationId.slice(0, 8)}…)`
+					: res.error.message,
+		)
 		if (res.ok) router.refresh()
 	}
 

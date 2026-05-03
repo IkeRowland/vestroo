@@ -1,0 +1,30 @@
+# Ops data freshness contract (normative)
+
+This document is the **single index** for how each primary `src/app/(ops)/ops/**` surface obtains updates and how **stale** state is surfaced to staff (Epic 11 / E2 / Theme B / **US-B2**).
+
+| Route | Primary data strategy | Channels / triggers | Stale UX & recovery |
+| ----- | --------------------- | -------------------- | ------------------- |
+| `/ops` (index) | **RSC** per navigation + `Suspense` fallback | Root **`middleware.ts`** calls `supabase.auth.getUser()` once per `/ops` request to refresh session cookies before RSC (reduces `refresh_token_already_used` races). Server reads six head-count aggregates (`loadOpsDashboardKpis`); `createUserServerClient` is React-`cache()`’d per request. No Supabase Realtime — staff use **Refresh** or re-navigate for updates | `OpsDataFreshnessBar` (fetched-at); load failure → `OpsFetchErrorIsland` + **correlation id**; `Suspense` fallback uses `OpsLoadingRegion` pattern — see [`docs/ops-dashboard-kpis-v1.md`](ops-dashboard-kpis-v1.md) |
+| `/ops/board` | **Realtime** + RSC | Supabase Realtime `postgres_changes` on `trips`, `vehicle_trackings`, `service_runs` → debounced `router.refresh()` (see `OpsBoardRealtimeBridge`) | Server **last fetched** bar (`OpsDataFreshnessBar`); bridge shows **stale amber banner** if no debounced refresh for ~10 min while subscriptions are healthy; **subscription faults** use `OpsErrorState` variant `subscription` with **Refresh page** + reference id; doc pointer in bridge copy |
+| `/ops/bookings` | **Realtime** + RSC | Supabase Realtime `postgres_changes` on `bookings` (**INSERT** + **UPDATE**; no `DELETE` listener) → debounced `router.refresh()` via `OpsBookingsRealtimeBridge` (**2s** debounce, same rationale as board — `docs/realtime-and-notifications.md`); authenticated browser client (`createClientClient`); **RLS** filters realtime payloads per staff JWT (**Epic 11 E1**) | `OpsDataFreshnessBar` (**last fetched** from RSC); bridge parity with board: **`OpsErrorState`** (`subscription`) + correlation id on channel **fault**; **amber “may be stale”** if ~10 min without a debounced refresh while subscription healthy; explicit **Refresh** on the freshness bar always. No in-repo env flag to disable Realtime — non-live behaviour follows **subscription failure** (same pattern as board unless a flag is added later) |
+| `/ops/trips` | RSC per navigation | `revalidatePath` from dispatch actions after mutations | `OpsDataFreshnessBar` + **Refresh**; fetch errors → `OpsFetchErrorIsland` (refresh + link to board) |
+| `/ops/fulfil` | RSC per navigation | Same as trips for assign flow; queue tab via `?queue=paid\|pending\|trip_request` (default `paid`) | `OpsDataFreshnessBar`; fetch errors → `OpsFetchErrorIsland` |
+| `/ops/calendar` | RSC per navigation | Same | `OpsDataFreshnessBar`; fetch errors → `OpsFetchErrorIsland` |
+| `/ops/vehicles` | RSC per navigation + **server actions** | List + overlap snapshot on load; **fleet CRUD** (`createOpsVehicleAction`, `updateOpsVehicleAction`, `archiveOpsVehicleAction` in `src/actions/opsVehicles.ts`) calls **`revalidatePath('/ops/vehicles')`** after mutations — staff **Refresh** or revisit to pick up catalogue changes | `OpsDataFreshnessBar`; fetch errors → `OpsFetchErrorIsland`; mutation feedback in `OpsVehiclesFleetPanel` (banner + correlation id on failure) |
+| `/ops/roster` | RSC per navigation | Same | `OpsDataFreshnessBar`; profile or schedule fetch errors → `OpsFetchErrorIsland` |
+| `/ops/search` | RSC per navigation | GET `searchParams` drive a **`bookings` grid** (`createUserServerClient`); offset/limit paging (page size **25**, max page **200** — see `docs/ops-booking-search-v1.md` + `parseOpsBookingGridSearchParams`); sort tie-breaker **`id`**; **no** unbounded list without at least one filter param | `OpsDataFreshnessBar`; fetch errors → `OpsFetchErrorIsland` (**Refresh** re-runs the server read); after mutations elsewhere, staff use **Refresh** or re-navigate to `/ops/search` to pick up new rows |
+| `/ops/experiences` | RSC per navigation + **server actions** | **`experience_packages`** catalogue (`createOpsExperiencePackageAction`, `updateOpsExperiencePackageAction`, `deactivateOpsExperiencePackageAction` in `src/actions/opsExperiencePackages.ts`) calls **`revalidatePath('/ops/experiences')`**, **`/tours`**, and affected **`/tours/[slug]`** after mutations; experience **bookings** list is still RSC-only | `OpsDataFreshnessBar`; fetch errors → `OpsFetchErrorIsland`; package panel shows mutation banners + correlation id on failure |
+| `/ops/invoicing` | RSC + server action | `updateBookingInvoicingHooksAction` mutates `bookings` | `OpsDataFreshnessBar`; action errors → `OpsErrorState` in panel with refresh |
+| `/ops/compliance` | Server actions for lists + admin DSR | `listComplianceIncidentsAction`, `listExpiringComplianceDocumentsAction`, DSR actions | `OpsDataFreshnessBar`; list failures → `OpsFetchErrorIsland` (includes **correlation id** when returned) |
+| `/ops/close-protection` | Server actions | `listCloseProtectionEngagementsAction`, create/update actions | `OpsDataFreshnessBar`; list failure → `OpsFetchErrorIsland` |
+| `/ops/close-protection/[id]` | Server action + RSC | `getCloseProtectionEngagementByIdAction` | No realtime; staff rely on navigation + **Refresh** from browser or returning to list (detail remains `notFound` on hard failure) |
+
+### Realtime reconnect behaviour (board)
+
+The Supabase JS client **re-establishes** the Realtime WebSocket when connectivity returns. `OpsBoardRealtimeBridge` tracks per-channel subscribe status (`SUBSCRIBED`, `CHANNEL_ERROR`, `TIMED_OUT`). On hard channel errors, staff see **`OpsErrorState`** with **Refresh page** and a **client-generated reference id** for support correlation. After channels return to `SUBSCRIBED`, the fault banner clears automatically.
+
+### Related docs
+
+- `docs/ops-dashboard-kpis-v1.md` — v1 dashboard KPI definitions and drill targets  
+- `docs/realtime-and-notifications.md` — debounce rationale for board refresh  
+- `docs/ops-server-action-logging.md` — structured logs for mutations  

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 
+import { OpsBreadcrumbStrip } from '@/features/ops/components/OpsBreadcrumbStrip'
 import { OpsSidebar } from '@/features/ops/components/OpsSidebar'
 import { OpsTopBar } from '@/features/ops/components/OpsTopBar'
 import type { StaffSession } from '@/lib/ops-auth'
@@ -95,6 +96,7 @@ export function OpsShellClient({ staff, children }: OpsShellClientProps) {
 
 			<div className="flex min-w-0 flex-1 flex-col">
 				<OpsTopBar staff={staff} onOpenMobileNav={() => setMobileOpen(true)} />
+				<OpsBreadcrumbStrip />
 				<main
 					id="ops-main"
 					className="mx-auto w-full min-w-0 max-w-7xl flex-1 px-4 py-4 md:px-6 md:py-6"

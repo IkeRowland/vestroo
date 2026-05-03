@@ -5,7 +5,7 @@ export default function FieldUnauthorizedPage() {
 		<div className="flex min-h-screen flex-col items-center justify-center px-4 text-center">
 			<h1 className="text-xl font-semibold text-white">Access denied</h1>
 			<p className="mt-2 max-w-md text-sm text-slate-400">
-				The field app is restricted to chauffeur profiles. Customer, dispatcher, and
+				The field app is restricted to driver profiles. Customer, dispatcher, and
 				admin accounts use the booking site or ops console instead.
 			</p>
 			<Link

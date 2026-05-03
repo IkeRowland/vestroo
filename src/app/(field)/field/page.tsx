@@ -1,6 +1,7 @@
 import Link from 'next/link'
 
-import { requireChauffeurPage } from '@/lib/field-auth'
+import { requireFieldDriverPage } from '@/lib/field-auth'
+import { TRIP_DRIVER_PROFILE_FK_COLUMN } from '@/lib/supabase-select-fragments'
 import { createUserServerClient } from '@/lib/supabase/server'
 
 function formatWhen(iso: string | null): string {
@@ -16,7 +17,7 @@ function formatWhen(iso: string | null): string {
 }
 
 export default async function FieldHomePage() {
-	const session = await requireChauffeurPage()
+	const session = await requireFieldDriverPage()
 	const supabase = await createUserServerClient()
 
 	const { data: trips, error } = await supabase
@@ -24,7 +25,7 @@ export default async function FieldHomePage() {
 		.select(
 			'id, status, time_start_estimate, time_end_estimate, service_type, service_run_id',
 		)
-		.eq('chauffeur_id', session.userId)
+		.eq(TRIP_DRIVER_PROFILE_FK_COLUMN, session.userId)
 		.order('time_start_estimate', { ascending: true })
 
 	if (error) {

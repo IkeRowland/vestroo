@@ -14,16 +14,16 @@ describe('operational-notifications', () => {
 		expect(tripRefLabel(tripId)).toBe('Trip a0000000')
 	})
 
-	it('builds assignment rows for chauffeur and optional customer', () => {
-		const chauffeurId = 'b0000000-0000-4000-8000-000000000001'
+	it('builds assignment rows for driver profile and optional customer', () => {
+		const driverProfileId = 'b0000000-0000-4000-8000-000000000001'
 		const customerId = 'c0000000-0000-4000-8000-000000000002'
 		const rows = buildAssignmentNotifications({
 			tripId,
 			customerId,
-			chauffeurId,
+			driverProfileId,
 		})
 		expect(rows).toHaveLength(2)
-		expect(rows[0]?.recipient_id).toBe(chauffeurId)
+		expect(rows[0]?.recipient_id).toBe(driverProfileId)
 		expect(rows[0]?.kind).toBe('assignment')
 		expect(rows[1]?.recipient_id).toBe(customerId)
 	})
@@ -32,7 +32,7 @@ describe('operational-notifications', () => {
 		const rows = buildAssignmentNotifications({
 			tripId,
 			customerId: null,
-			chauffeurId: 'b0000000-0000-4000-8000-000000000001',
+			driverProfileId: 'b0000000-0000-4000-8000-000000000001',
 		})
 		expect(rows).toHaveLength(1)
 	})
@@ -41,7 +41,7 @@ describe('operational-notifications', () => {
 		const rows = buildTripChangeNotifications({
 			tripId,
 			customerId: 'c0000000-0000-4000-8000-000000000002',
-			chauffeurId: 'b0000000-0000-4000-8000-000000000001',
+			driverProfileId: 'b0000000-0000-4000-8000-000000000001',
 			label: 'delay recorded',
 			kind: 'change',
 			meta: { flag: true },

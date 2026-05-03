@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useBookingStore } from '@/features/booking/hooks/useBookingStore';
+import { pickVehicleIdFromServiceTypeHint } from '@/lib/quote-accept-prefill';
 import { BookingWizardStepper } from '@/features/booking/components/BookingWizardStepper';
 import { VehicleOptionCard, type VehicleOption } from '@/components/booking/VehicleOptionCard';
 import { RouteSummaryCard } from '@/components/booking/RouteSummaryCard';
@@ -24,6 +25,9 @@ export default function QuotePage() {
     vehicleOptions: storeVehicleOptions,
     bookingIntent,
     hourlyBillableHours,
+    experiencePackageSlug,
+    preferredVehicleTypeHint,
+    setPreferredVehicleTypeHint,
   } = useBookingStore();
 
   const [vehicleOptions, setVehicleOptions] = useState<VehicleOption[]>([]);
@@ -66,6 +70,16 @@ export default function QuotePage() {
       setVehicleOptions(mappedOptions);
       setIsLoading(false);
       console.log('[Quote Page] Loaded vehicle options:', mappedOptions.length, mappedOptions);
+      if (preferredVehicleTypeHint?.trim() && mappedOptions.length > 0) {
+        const pickId = pickVehicleIdFromServiceTypeHint(preferredVehicleTypeHint, mappedOptions);
+        if (pickId) {
+          const v = mappedOptions.find((x) => x.id === pickId);
+          if (v) {
+            selectVehicle(pickId, v.price);
+          }
+          setPreferredVehicleTypeHint(null);
+        }
+      }
     } else if (storeVehicleOptions === null) {
       // If vehicle options is explicitly null (not loaded yet)
       // If we have quote amount, something went wrong - redirect
@@ -91,6 +105,9 @@ export default function QuotePage() {
     quoteAmount,
     router,
     bookingIntent,
+    preferredVehicleTypeHint,
+    selectVehicle,
+    setPreferredVehicleTypeHint,
   ]);
 
   const handleVehicleSelect = (vehicleId: string) => {
@@ -107,6 +124,10 @@ export default function QuotePage() {
   };
 
   const handleBack = () => {
+    if (bookingIntent === 'experience_package' && experiencePackageSlug) {
+      router.push(`/tours/${experiencePackageSlug}`);
+      return;
+    }
     router.push('/book/search');
   };
 
@@ -114,7 +135,7 @@ export default function QuotePage() {
   const destinationLabel =
     destination?.formattedAddress ??
     (bookingIntent === 'hourly_hire'
-      ? 'As directed (hourly chauffeur hire)'
+      ? 'As directed (hourly driver hire)'
       : bookingIntent === 'experience_package'
         ? 'Experience area (see itinerary)'
         : '');
@@ -210,7 +231,7 @@ export default function QuotePage() {
                       Billable hours (incl. minimum): {hourlyBillableHours}
                     </p>
                     <p className="text-xs text-slate-500 mt-1">
-                      Premium dedicated chauffeur — final quote is confirmed at checkout.
+                      Premium dedicated driver — final quote is confirmed at checkout.
                     </p>
                   </div>
                 )}

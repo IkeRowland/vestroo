@@ -6,7 +6,7 @@ import {
   normalizeItinerarySteps,
 } from '@/lib/experience-package-data'
 import { parseAddonCatalog } from '@/lib/experience-package-quote'
-import { ExperiencePackageBookPanel } from '@/features/booking/components/ExperiencePackageBookPanel'
+import { ExperienceTourBookingShell } from '@/features/booking/components/ExperienceTourBookingShell'
 import { buildMarketingMetadata } from '@/lib/marketing-metadata'
 
 type PageProps = { params: Promise<{ slug: string }> }
@@ -101,8 +101,9 @@ export default async function TourDetailPage({ params }: PageProps) {
         </div>
 
         <div className="lg:col-span-1">
-          <ExperiencePackageBookPanel
+          <ExperienceTourBookingShell
             packageId={pkg.id}
+            packageSlug={pkg.slug}
             packageTitle={pkg.title}
             addons={addons}
           />

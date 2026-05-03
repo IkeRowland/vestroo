@@ -52,11 +52,11 @@ export function validateNavigationToStep(
 }
 
 /**
- * Gets the next step in the booking flow
- * Temporarily skips payment step - will be added back when Payfast is configured
+ * Gets the next step in the booking flow.
+ * Epic 16 / Theme N — payment step is currently skipped here; settlement happens out of
+ * band by EFT (US-N3) once the booking is recorded.
  */
 export function getNextStep(currentStep: NavigationStep): NavigationStep | null {
-  // Temporarily removed payment step
   const steps: NavigationStep[] = ['search', 'quote', 'details', 'confirmation'];
   const currentIndex = steps.indexOf(currentStep);
   if (currentIndex < steps.length - 1) {
@@ -66,11 +66,10 @@ export function getNextStep(currentStep: NavigationStep): NavigationStep | null 
 }
 
 /**
- * Gets the previous step in the booking flow
- * Temporarily skips payment step - will be added back when Payfast is configured
+ * Gets the previous step in the booking flow.
+ * Epic 16 / Theme N — payment step is currently skipped here (see `getNextStep`).
  */
 export function getPreviousStep(currentStep: NavigationStep): NavigationStep | null {
-  // Temporarily removed payment step
   const steps: NavigationStep[] = ['search', 'quote', 'details', 'confirmation'];
   const currentIndex = steps.indexOf(currentStep);
   if (currentIndex > 0) {

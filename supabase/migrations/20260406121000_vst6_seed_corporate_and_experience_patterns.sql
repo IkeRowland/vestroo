@@ -1,5 +1,7 @@
 -- VST-6: Seed one corporate-oriented service pattern and one experience-package template pattern.
--- Requires at least one row in vehicle_pricings (core schema). Safe to re-run (fixed UUIDs).
+-- Historical: required vehicle_pricings at migrate time (skipped if empty). As of
+-- `20260428103000_service_routes_pricing_optional_ops_fulfil.sql`, routes may omit pricing; use that
+-- migration or **Add default patterns** in ops Service runs when pricing was never loaded.
 
 do $$
 declare

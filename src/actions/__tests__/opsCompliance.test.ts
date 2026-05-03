@@ -119,7 +119,7 @@ describe('opsCompliance auth branches', () => {
 		})
 		expect(res.ok).toBe(false)
 		expect(res.export).toBe(null)
-		expect(res.message).toBe('Admin only')
+		expect(res.error.message).toBe('Admin only')
 		expect(createUserServerClient).not.toHaveBeenCalled()
 	})
 
@@ -199,6 +199,6 @@ describe('opsCompliance auth branches', () => {
 			confirmPhrase: 'ANONYMISE',
 		})
 		expect(res.ok).toBe(false)
-		expect(res.message).toBe('Admin only')
+		expect(res.error.message).toBe('Admin only')
 	})
 })

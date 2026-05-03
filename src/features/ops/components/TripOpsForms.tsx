@@ -62,7 +62,12 @@ export function TripOpsForms({
 		setMsg(
 			res.ok
 				? { tone: 'ok', text: 'Status updated.' }
-				: { tone: 'err', text: res.message },
+				: {
+						tone: 'err',
+						text: res.error.correlationId
+							? `${res.error.message} (ref ${res.error.correlationId.slice(0, 8)}…)`
+							: res.error.message,
+					},
 		)
 		if (res.ok) router.refresh()
 	}
@@ -103,7 +108,12 @@ export function TripOpsForms({
 		setMsg(
 			res.ok
 				? { tone: 'ok', text: 'Delay recorded.' }
-				: { tone: 'err', text: res.message },
+				: {
+						tone: 'err',
+						text: res.error.correlationId
+							? `${res.error.message} (ref ${res.error.correlationId.slice(0, 8)}…)`
+							: res.error.message,
+					},
 		)
 		if (res.ok) {
 			setNote('')
@@ -120,10 +130,17 @@ export function TripOpsForms({
 		setBusy(true)
 		const res = await swapTripVehicleAction({ tripId, newVehicleId })
 		setBusy(false)
+		const extra =
+			res.ok === false && 'conflictTripId' in res && res.conflictTripId
+				? ` (conflict trip ${String(res.conflictTripId).slice(0, 8)}…)`
+				: ''
 		setMsg(
 			res.ok
 				? { tone: 'ok', text: 'Vehicle updated.' }
-				: { tone: 'err', text: res.message },
+				: {
+						tone: 'err',
+						text: `${res.error.message}${extra}`,
+					},
 		)
 		if (res.ok) router.refresh()
 	}

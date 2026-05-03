@@ -23,7 +23,7 @@ export const metadata: Metadata = {
     template: '%s | Vestroo',
   },
   description:
-    'Chauffeured passenger transport in South Africa — premium shuttle, corporate, VIP, tours, and discreet enquiries.',
+    'Private driver passenger transport in South Africa — premium shuttle, corporate, VIP, tours, and discreet enquiries.',
 }
 
 export default function RootLayout({

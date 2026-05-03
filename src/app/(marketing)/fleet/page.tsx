@@ -18,7 +18,7 @@ export default function FleetPage() {
     <div className="min-h-screen bg-white">
       <MarketingPageHero
         title={fleetContent.page_title}
-        subtitle="Vehicle classes for chauffeured transport—not public transit categories."
+        subtitle="Vehicle classes for private driver transport—not public transit categories."
       />
       <section className="py-16 px-4">
         <div className="container mx-auto max-w-6xl">

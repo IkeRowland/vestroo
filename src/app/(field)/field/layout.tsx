@@ -2,7 +2,7 @@ import { headers } from 'next/headers'
 import Link from 'next/link'
 
 import { FieldSignOutButton } from '@/features/field/components/FieldSignOutButton'
-import { requireChauffeurPage } from '@/lib/field-auth'
+import { requireFieldDriverPage } from '@/lib/field-auth'
 
 export default async function FieldShellLayout({
 	children,
@@ -15,7 +15,7 @@ export default async function FieldShellLayout({
 		path === '/field/login' || path === '/field/unauthorized'
 
 	if (!isPublicField) {
-		await requireChauffeurPage()
+		await requireFieldDriverPage()
 	}
 
 	if (isPublicField) {

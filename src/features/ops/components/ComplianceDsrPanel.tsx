@@ -58,7 +58,14 @@ export function ComplianceDsrPanel() {
 				profileId: anonProfileId.trim(),
 				confirmPhrase: anonPhrase as 'ANONYMISE',
 			})
-			setAnonFeedback({ text: res.message, ok: res.ok })
+			setAnonFeedback({
+				text: res.ok
+					? 'Anonymised profile and linked booking contact fields.'
+					: res.error.correlationId
+						? `${res.error.message} (ref ${res.error.correlationId.slice(0, 8)}…)`
+						: res.error.message,
+				ok: res.ok,
+			})
 			setAnonDialogOpen(false)
 			if (res.ok) {
 				setAnonProfileId('')
@@ -68,14 +75,11 @@ export function ComplianceDsrPanel() {
 	}
 
 	return (
-		<section className="mt-8 rounded-lg border border-amber-200 bg-amber-50 px-4 py-4">
-			<h2 className="text-lg font-semibold text-amber-950">Data subject requests (admin only)</h2>
-			<p className="mt-1 text-xs text-amber-900/85">
-				Exports and anonymisation are logged to <code className="font-mono text-amber-800">ops_audit_log</code> (
-				<code className="font-mono text-amber-800">dsr_export</code>,{' '}
-				<code className="font-mono text-amber-800">dsr_anonymise</code>). Legal review and{' '}
-				<code className="font-mono text-amber-800">auth.users</code> follow-up are out of band — see{' '}
-				<code className="font-mono text-amber-800">docs/compliance-and-safety.md</code>.
+		<section className="mt-8 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-4">
+			<h2 className="text-lg font-semibold text-ops-foreground">Data subject requests (admin only)</h2>
+			<p className="mt-1 text-xs text-ops-muted">
+				Exports and anonymisation are recorded to the audit log. Legal review and account follow-up
+				happen separately.
 			</p>
 
 			<div className="mt-4 space-y-3">
@@ -92,8 +96,12 @@ export function ComplianceDsrPanel() {
 								...(profileId ? { profileId } : {}),
 								...(email ? { email } : {}),
 							})
-							if (!res.ok || !res.export) {
-								setExportErr(res.message)
+							if (!res.ok) {
+								setExportErr(res.error.message)
+								return
+							}
+							if (!res.export) {
+								setExportErr('Export unavailable')
 								return
 							}
 							setExportJson(JSON.stringify(res.export, null, 2))

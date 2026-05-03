@@ -1,0 +1,55 @@
+/**
+ * User-visible copy for **`/account/members`** — **Story 18.7** / **FE.18.6** (no “drivers” / rental terms).
+ */
+
+export const accountMembersCopy = {
+	pageTitle: 'Members',
+	pageDescription: (orgName: string) =>
+		`${orgName} — who can act on behalf of this organisation (admins only).`,
+	signedInAs: (email: string) => `Signed in as ${email}`,
+	backToAccount: 'Account home',
+	primaryInvite: 'Invite member',
+	loadingLabel: 'Loading members…',
+	loadErrorTitle: 'Could not load members',
+	loadErrorBody: 'Try again in a few moments. If the problem continues, contact support.',
+	searchLabel: 'Search',
+	searchPlaceholder: 'Search by name or email',
+	searchSubmit: 'Search',
+	searchClear: 'Clear search',
+	tableCaption: 'Organisation members',
+	tableColMember: 'Member',
+	tableColEmail: 'Email',
+	tableColRole: 'Role',
+	tableColLastActive: 'Last activity',
+	tableColActions: 'Actions',
+	tableActionsMenu: (memberEmail: string) => `Actions for ${memberEmail}`,
+	roleChangeAria: (email: string) => `Change role for ${email}`,
+	inviteDialogTitle: 'Invite member',
+	inviteDialogDescription:
+		'Creates a pending membership and emails a secure link to accept the invite (or logs a send failure without removing the invite).',
+	inviteEmailLabel: 'Email',
+	inviteEmailPlaceholder: 'name@company.com',
+	inviteRoleLabel: 'Role',
+	inviteSubmit: 'Invite member',
+	inviteSubmitPending: 'Saving…',
+	rowPending: 'Pending invite',
+	rowActive: 'Active',
+	menuResend: 'Resend invite',
+	menuChangeRole: 'Change role',
+	menuDeactivate: 'Deactivate',
+	roleDialogTitle: 'Change role',
+	roleDialogDescription: (email: string) => `Choose a new role for ${email}.`,
+	roleSubmit: 'Save role',
+	roleSubmitPending: 'Saving…',
+	deactivateDialogTitle: 'Deactivate member?',
+	deactivateDialogDescription: (email: string) =>
+		`Deactivate ${email} for this organisation? They will lose access to bookings and invoices for this account.`,
+	deactivateConfirm: 'Deactivate',
+	deactivateCancel: 'Cancel',
+	deactivatePending: 'Deactivating…',
+	emptyTeamTitle: 'No members yet',
+	emptyTeamDescription: 'Invite your team to book and track trips together.',
+	emptySearchTitle: 'No results',
+	emptySearchDescription:
+		'No members match your search. Invite your team to book and track trips together.',
+} as const

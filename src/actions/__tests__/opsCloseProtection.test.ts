@@ -74,7 +74,7 @@ describe('opsCloseProtection auth branches', () => {
 			bookingId: 'b1111111-1111-4111-8111-111111111111',
 		})
 		expect(res.ok).toBe(false)
-		if (!res.ok) expect(res.message).toBe('Forbidden')
+		if (!res.ok) expect(res.error.message).toBe('Forbidden')
 		expect(createUserServerClient).not.toHaveBeenCalled()
 	})
 

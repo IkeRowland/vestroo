@@ -1,0 +1,3 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Ops chart primitives (Story 17.5 / FE.17.7) > OpsAreaChart — empty + snapshot path stability > area-fill-path 1`] = `"M 4 72 L 100 8 L 196 40 L 196 72 L 4 72 Z"`;

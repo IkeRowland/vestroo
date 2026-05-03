@@ -18,7 +18,7 @@ export default async function FieldLoginPage({
 			<div className="w-full max-w-md rounded-xl border border-slate-800 bg-slate-900/80 p-6 shadow-xl">
 				<h1 className="text-xl font-semibold text-white">Field sign-in</h1>
 				<p className="mt-1 text-sm text-slate-400">
-					Chauffeur profiles only. Uses Supabase Auth with your project role.
+					Driver profiles only. Uses Supabase Auth with your project role.
 				</p>
 				<div className="mt-6">
 					<FieldLoginForm nextPath={nextPath} />

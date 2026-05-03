@@ -10,6 +10,11 @@ Branches, CI, migrations in PRs, and pointers to setup and code layout: see [CON
 
 Report security issues privately — **do not** open public issues for undisclosed vulnerabilities. See [SECURITY.md](SECURITY.md) for scope and how to contact maintainers.
 
+## Documentation
+
+- **Epic 10 public trip request:** integration boundary (client vs ops follow-up) — [docs/trip-request-integration-boundary.md](docs/trip-request-integration-boundary.md).
+- **Booking funnel design references** (screenshots / comparison checklist) — [docs/design/booking-funnel/README.md](docs/design/booking-funnel/README.md).
+
 ## Getting started
 
 **Full setup (Supabase migrations, CI, env semantics, stub booking):** see [docs/local-development.md](docs/local-development.md).
@@ -54,6 +59,7 @@ tests/
 - `npm run start` - Start production server
 - `npm run lint` - Run ESLint
 - `npm run db:push` - Apply pending Supabase migrations to the linked **hosted** project (requires [Supabase CLI](https://supabase.com/docs/guides/cli); run `supabase link` first)
+- `npm run smoke:rls` - Run **`supabase/smoke_rls.sql`** against **`DATABASE_URL`** (Epic 11 RLS regression gate; no Docker — see [docs/local-development.md](docs/local-development.md))
 - `npm test` - Run unit tests (Vitest)
 - `npm run test:e2e` - Run E2E tests (Playwright)
 

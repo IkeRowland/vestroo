@@ -38,6 +38,8 @@ You are an expert full-stack developer proficient in TypeScript, React, Next.js,
 
 - **Realtime**: Supabase Realtime subscriptions
 
+- **Hosted Supabase schema changes (migrations):** When applying DDL to the linked Supabase project (e.g. **vestroo**), **always use the Cursor Supabase MCP** server (`user-supabase`)—including when **implementing `docs/stories/*.story.md`** work that ships SQL migrations. Call **`list_migrations`** for the project, compare migration **names** to `supabase/migrations/*_<name>.sql`, and apply each pending file with **`apply_migration`** (pass the full SQL from the repo file as `query`, and the filename suffix as `name`). Prefer **`apply_migration`** over **`execute_sql`** for DDL so remote `schema_migrations` stays aligned with the repo. Use **`execute_sql` only** for rare idempotent cleanups (e.g. `DROP IF EXISTS` when a half-applied object blocks `apply_migration`); note that in PR/story notes. If the MCP server is unavailable, fall back to **`supabase db push`** / linked CLI and document why.
+
 ---
 
 ## Version Compatibility
@@ -505,6 +507,24 @@ export function sanitizeHtml(content: string): string {
 - Deep component nesting
 
 - Skipping input validation
+
+---
+
+## User stories (`docs/stories/*.story.md`)
+
+When a story is **fully implemented** and acceptance criteria are satisfied (or explicitly waived with PO/architect sign-off):
+
+1. Set the story **`## Status:`** line to **`Done`** — do not leave it at **Approved**, **Draft**, or **In Progress** unless the story is intentionally not finished.
+2. Mark **every** completed task and subtask checkbox as done: **`[x]`** (not left unchecked).
+3. Update **Story Progress Notes** (agent used, completion summary, build/test commands run, known gaps) so the file matches repository reality.
+
+Apply the same hygiene when closing a story after review: if work is merged, the story document should reflect **Done** + checked tasks in the same PR or follow-up commit.
+
+**Dev agent / implementation agents:** Treat the above as **mandatory close-out** for any story file you implement or verify as complete. Before finishing the task, update the corresponding **`docs/stories/<id>.story.md`**: **`Status: Done`**, all relevant **`[x]`** checkboxes, and progress notes. Do not report a story as finished in prose only while the markdown still shows **Approved** or open tasks.
+
+### Supabase migrations (story implementation)
+
+When **implementing** a user story that adds or changes **`supabase/migrations/*.sql`**, **always** apply those migrations to the linked hosted Supabase project using the **Cursor Supabase MCP** server (`user-supabase`) in the **same** implementation pass—**before** marking the story **Done** or handing off. Use **`list_migrations`** → diff by migration **name** against repo files → **`apply_migration`** per pending file (full SQL as `query`, snake_case `name`). Do **not** treat **`supabase db push`**, ad-hoc CLI applies, or **`execute_sql`** as the default for DDL when MCP is enabled; if MCP is unavailable or you must use **`execute_sql`** for a one-off cleanup, record that in **Story Progress Notes** or the PR. Re-run **`list_migrations`** after applies to confirm the remote is caught up.
 
 ---
 

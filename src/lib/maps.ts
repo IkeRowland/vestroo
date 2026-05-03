@@ -3,7 +3,8 @@
  *
  * **Provider:** Google Maps Platform for this codebase (no Mapbox hybrid in MVP).
  * - **Browser:** Places / Autocomplete via Maps JavaScript API using `NEXT_PUBLIC_GOOGLE_MAPS_KEY`
- *   only in client components (e.g. `AddressAutocomplete`). Restrict this key to **HTTP referrers**
+ *   only in client components (e.g. `AddressAutocomplete`). Public rider **`/track`** live map uses the
+ *   same browser key with the **Maps Embed API** (read-only view; no polyline/ETA in 15B.5). Restrict this key to **HTTP referrers**
  *   in Google Cloud Console; it must not enable unrestricted Distance Matrix server abuse.
  * - **Server:** Distance Matrix–class calls (`calculateRouteDistance`) use **`GOOGLE_MAPS_SERVER_KEY`**
  *   (server-only env — never `NEXT_PUBLIC_*`). Restrict that key by **server IP** (Vercel egress) or
@@ -228,4 +229,115 @@ export function roundCoordinatesForPrivacyTier(
 		lat: Math.round(lat * factorLat) / factorLat,
 		lng: Math.round(lng * factorLng) / factorLng,
 	}
+}
+
+// --- Client: Maps JavaScript API (Places) — single-flight loader ---
+
+let placesClientLoadPromise: Promise<void> | null = null
+
+async function waitForPlacesLibraryReady(timeoutMs: number): Promise<void> {
+	const deadline = Date.now() + timeoutMs
+	while (Date.now() < deadline) {
+		if (typeof window === 'undefined') return
+		if (window.google?.maps?.places) return
+		const maps = window.google?.maps
+		if (maps?.importLibrary) {
+			try {
+				await maps.importLibrary('places')
+				if (window.google?.maps?.places) return
+			} catch {
+				/* keep polling */
+			}
+		}
+		await new Promise((r) => setTimeout(r, 50))
+	}
+	if (!window.google?.maps?.places) {
+		throw new Error('Google Maps Places API not available after script load')
+	}
+}
+
+/**
+ * Loads the Maps JavaScript API with the Places library once (single-flight across the app).
+ *
+ * The script URL **must** use Google's `callback` parameter — do **not** add `loading=async` to the
+ * loader URL: it makes `onload` fire before the Places library finishes bootstrapping, which caused
+ * “Places API not available after script load” in dev.
+ */
+export function loadGoogleMapsPlacesClient(): Promise<void> {
+	if (typeof window === 'undefined') {
+		return Promise.resolve()
+	}
+	if (window.google?.maps?.places) {
+		return Promise.resolve()
+	}
+	if (placesClientLoadPromise) {
+		return placesClientLoadPromise
+	}
+
+	placesClientLoadPromise = (async (): Promise<void> => {
+		const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY
+		if (!apiKey || apiKey === 'your_google_maps_api_key_here') {
+			throw new Error(
+				'NEXT_PUBLIC_GOOGLE_MAPS_KEY is not set. Add it to .env and restart the dev server.',
+			)
+		}
+
+		const existingScript = document.querySelector<HTMLScriptElement>(
+			'script[src*="maps.googleapis.com/maps/api/js"]',
+		)
+		if (existingScript) {
+			await waitForPlacesLibraryReady(30_000)
+			return
+		}
+
+		await new Promise<void>((resolve, reject) => {
+			const cbName = `__vestrooGmapsPlacesCb_${Date.now()}_${Math.random().toString(36).slice(2)}`
+
+			const cleanupCallback = () => {
+				try {
+					delete (window as unknown as Record<string, unknown>)[cbName]
+				} catch {
+					/* ignore */
+				}
+			}
+
+			;(window as unknown as Record<string, () => void>)[cbName] = () => {
+				cleanupCallback()
+				void (async () => {
+					try {
+						if (window.google?.maps?.places) {
+							resolve()
+							return
+						}
+						const maps = window.google?.maps
+						if (maps?.importLibrary) {
+							await maps.importLibrary('places')
+						}
+						if (window.google?.maps?.places) {
+							resolve()
+						} else {
+							reject(new Error('Google Maps Places API not available after callback'))
+						}
+					} catch (e) {
+						reject(e instanceof Error ? e : new Error(String(e)))
+					}
+				})()
+			}
+
+			const script = document.createElement('script')
+			script.async = true
+			script.defer = true
+			script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&libraries=places&callback=${cbName}`
+			script.onerror = () => {
+				cleanupCallback()
+				reject(new Error('Failed to load Google Maps API script'))
+			}
+			document.head.appendChild(script)
+		})
+	})().catch((err: unknown) => {
+		placesClientLoadPromise = null
+		throw err
+	})
+
+	return placesClientLoadPromise
 }

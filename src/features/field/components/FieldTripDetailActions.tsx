@@ -3,10 +3,10 @@
 import { useState, useTransition } from 'react'
 
 import {
-	confirmChauffeurAssignmentAction,
-	logChauffeurContactIntentAction,
-	updateChauffeurTripStatusAction,
-} from '@/actions/fieldChauffeur'
+	confirmDriverTripAssignmentAction,
+	logDriverTripContactIntentAction,
+	updateDriverTripStatusAction,
+} from '@/actions/fieldDriver'
 
 type Props = {
 	tripId: string
@@ -91,7 +91,7 @@ export function FieldTripDetailActions({
 						disabled={pending}
 						className={`min-h-11 min-w-11 rounded-md bg-amber-600 px-4 py-2.5 text-sm font-semibold text-slate-950 hover:bg-amber-500 active:bg-amber-400 disabled:opacity-60 ${fieldActionFocus}`}
 						onClick={() =>
-							runAction(() => confirmChauffeurAssignmentAction({ tripId }))
+							runAction(() => confirmDriverTripAssignmentAction({ tripId }))
 						}
 					>
 						Confirm assignment
@@ -104,7 +104,7 @@ export function FieldTripDetailActions({
 						className={`min-h-11 min-w-11 rounded-md bg-emerald-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-600 active:bg-emerald-500 disabled:opacity-60 ${fieldActionFocus}`}
 						onClick={() =>
 							runAction(() =>
-								updateChauffeurTripStatusAction({ tripId, nextStatus: 'completed' }),
+								updateDriverTripStatusAction({ tripId, nextStatus: 'completed' }),
 							)
 						}
 					>
@@ -125,7 +125,7 @@ export function FieldTripDetailActions({
 						className={`mt-3 min-h-11 w-full min-w-11 rounded-md border border-amber-600/60 px-4 py-2.5 text-sm font-semibold text-amber-400 hover:bg-amber-950/40 active:bg-amber-950/60 disabled:opacity-60 sm:w-auto ${fieldActionFocus}`}
 						onClick={() =>
 							runAction(async () => {
-								const r = await logChauffeurContactIntentAction({ tripId })
+								const r = await logDriverTripContactIntentAction({ tripId })
 								if (r.ok && typeof window !== 'undefined') {
 									window.location.href = telHref
 								}

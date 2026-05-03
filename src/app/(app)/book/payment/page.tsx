@@ -1,20 +1,17 @@
 'use client';
 
 import { Suspense, useEffect, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useBookingStore } from '@/features/booking/hooks/useBookingStore';
 import { BookingWizardStepper } from '@/features/booking/components/BookingWizardStepper';
 import { PaymentSummaryCard } from '@/components/booking/PaymentSummaryCard';
 import { Button } from '@/components/ui/button';
 import { StepTransition } from '@/components/booking/StepTransition';
-import { processPayment } from '@/actions/processPayment';
-import { initializePayFastModal } from '@/lib/payfast-client';
+import { createBooking } from '@/actions/createBooking';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
 function PaymentPageInner() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const payfastCancelled = searchParams.get('error') === 'cancelled';
   const {
     origin,
     destination,
@@ -23,6 +20,7 @@ function PaymentPageInner() {
     selectedVehicleId,
     quoteAmount,
     customer,
+    riderContact,
     flightNumber,
     estimatedDuration,
     distance,
@@ -32,6 +30,8 @@ function PaymentPageInner() {
     hourlyServiceAreaNotes,
     experiencePackageId,
     experienceAddonIds,
+    clientTypeResolution,
+    purchaseOrderRef,
     setBookingId,
     setPaymentStatus,
   } = useBookingStore();
@@ -39,7 +39,6 @@ function PaymentPageInner() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Route protection: redirect if customer details missing
   useEffect(() => {
     if (!customer) {
       router.push('/book/details');
@@ -64,7 +63,7 @@ function PaymentPageInner() {
     router.push('/book/details');
   };
 
-  const handlePayment = async () => {
+  const handleConfirm = async () => {
     if (!origin || !date || !quoteAmount || !customer || !selectedVehicleId) {
       setError('Missing required booking information. Please go back and complete all steps.');
       return;
@@ -90,7 +89,6 @@ function PaymentPageInner() {
     setPaymentStatus('processing');
 
     try {
-      // Prepare booking state for server action
       const bookingState = {
         bookingIntent,
         origin,
@@ -114,39 +112,34 @@ function PaymentPageInner() {
               }
             : undefined,
         customer,
+        rider:
+          riderContact && (riderContact.name.trim() || riderContact.email.trim() || riderContact.phone.trim())
+            ? {
+                name: riderContact.name.trim() || undefined,
+                email: riderContact.email.trim() || undefined,
+                phone: riderContact.phone.trim() || undefined,
+              }
+            : undefined,
+        clientTypeResolution: clientTypeResolution ?? undefined,
+        purchaseOrderRef: purchaseOrderRef.trim() || null,
       };
 
-      // Call server action to create booking and get PayFast data
-      const result = await processPayment(bookingState);
+      const result = await createBooking(bookingState);
 
-      if (
-        !result.success ||
-        !result.bookingId ||
-        !result.payfastData ||
-        !result.payfastProcessBaseUrl
-      ) {
-        setError(result.error || 'Failed to initialize payment. Please try again.');
+      if (!result.success || !result.bookingId) {
+        setError(result.error || 'Failed to create booking. Please try again.');
         setPaymentStatus('failed');
         setIsProcessing(false);
         return;
       }
 
-      // Store booking ID
       setBookingId(result.bookingId);
-
-      // Initialize PayFast payment (form submission redirects to PayFast)
-      // After payment, PayFast will redirect to return_url (confirmation page)
-      await initializePayFastModal(
-        result.payfastData,
-        result.payfastProcessBaseUrl
-      );
-      
-      // Note: Code after this point may not execute due to form submission navigation
-      // PayFast will redirect user to return_url after payment completion
-    } catch (error) {
-      console.error('Payment error:', error);
+      setPaymentStatus('pending');
+      router.push(`/confirmation?id=${result.bookingId}`);
+    } catch (err) {
+      console.error('Booking error:', err);
       const errorMessage =
-        error instanceof Error ? error.message : 'Payment processing failed. Please try again.';
+        err instanceof Error ? err.message : 'Booking submission failed. Please try again.';
       setError(errorMessage);
       setPaymentStatus('failed');
     } finally {
@@ -173,7 +166,6 @@ function PaymentPageInner() {
     }).format(date);
   };
 
-  // Get vehicle name from vehicle options stored in the booking store
   const selectedVehicle = vehicleOptions?.find((v) => v.id === selectedVehicleId);
   const vehicleName = selectedVehicle?.name || 'Vehicle';
   return (
@@ -185,24 +177,13 @@ function PaymentPageInner() {
           <div className="space-y-6">
             <div>
               <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-2">
-                Payment
+                Confirm booking
               </h1>
               <p className="text-slate-600">
-                Review your booking details and proceed to payment
+                Review your booking details. Payment instructions will be emailed to you after we
+                receive your booking.
               </p>
             </div>
-
-            {/* Error Message */}
-            {payfastCancelled && (
-              <Alert className="mb-6 border-amber-200 bg-amber-50 text-amber-950">
-                <AlertDescription>
-                  You left the PayFast checkout without paying. No charge was made. Tap{' '}
-                  <strong>Pay securely</strong> to try again, or use{' '}
-                  <strong>Manage booking</strong> with your reservation reference if you already
-                  completed payment on a previous attempt.
-                </AlertDescription>
-              </Alert>
-            )}
 
             {error && (
               <Alert variant="destructive" className="mb-6">
@@ -221,7 +202,7 @@ function PaymentPageInner() {
                     destination?.formattedAddress ??
                     (bookingIntent === 'experience_package'
                       ? 'Experience package'
-                      : 'As directed (hourly chauffeur hire)')
+                      : 'As directed (hourly driver hire)')
                   }
                   date={date}
                   time={formatTime(date)}
@@ -243,24 +224,11 @@ function PaymentPageInner() {
                     </div>
                     <div className="pt-4 border-t border-slate-200">
                       <p className="text-xs text-slate-600 mb-2">
-                        Secure payment powered by PayFast
+                        Payment instructions are emailed once your booking is recorded.
                       </p>
-                      <div className="flex items-center gap-2 text-xs text-slate-500">
-                        <svg
-                          className="w-4 h-4 text-green-600"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-                          />
-                        </svg>
-                        <span>256-bit SSL Encryption</span>
-                      </div>
+                      <p className="text-xs text-slate-500">
+                        You will not be charged on this page.
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -272,11 +240,11 @@ function PaymentPageInner() {
                 Back
               </Button>
               <Button
-                onClick={handlePayment}
+                onClick={handleConfirm}
                 disabled={isProcessing}
                 className="min-w-[160px] bg-[#25A89B] hover:bg-[#1f8f83]"
               >
-                {isProcessing ? 'Processing...' : 'Pay securely'}
+                {isProcessing ? 'Submitting...' : 'Confirm booking'}
               </Button>
             </div>
           </div>
@@ -299,4 +267,3 @@ export default function PaymentPage() {
     </Suspense>
   );
 }
-

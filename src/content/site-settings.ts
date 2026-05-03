@@ -8,7 +8,7 @@ export const siteSettings = {
     phone_numbers: [{ number: '+27 (0)11 123 4567' }],
     email: 'info@vestroo.com',
     client_login_text: 'Client Login',
-    client_login_url: '/book/search?tab=login',
+    client_login_url: '/account/login',
   },
   header: {
     logo_type: 'image' as 'text' | 'image',
@@ -24,7 +24,7 @@ export const siteSettings = {
       { label: 'SAFETY', url: '/safety' },
       { label: 'ABOUT', url: '/about' },
       { label: 'CONTACT', url: '/contact' },
-      { label: 'LOGIN', url: '/book/search?tab=login' },
+      { label: 'LOGIN', url: '/account/login' },
     ],
   },
   footer: {

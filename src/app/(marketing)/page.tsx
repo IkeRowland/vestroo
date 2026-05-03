@@ -9,6 +9,7 @@ import { homepageContent } from '@/content/homepage'
 import { ServicesOverview } from '@/components/marketing/ServicesOverview'
 import { TrustStrip } from '@/components/marketing/TrustStrip'
 import { buildMarketingMetadata } from '@/lib/marketing-metadata'
+import { getTripRequestPhoneCountryIso2FromHeaders } from '@/lib/trip-request-phone-country-hint.server'
 
 export function generateMetadata(): Metadata {
   return buildMarketingMetadata(
@@ -21,8 +22,9 @@ export function generateMetadata(): Metadata {
 /**
  * Homepage — static marketing content; layout matches Vestroo landing design.
  */
-export default function HomePage() {
+export default async function HomePage() {
   const homepage = homepageContent
+  const tripRequestPhoneCountryIso2Hint = await getTripRequestPhoneCountryIso2FromHeaders()
 
   return (
     <div className="min-h-screen">
@@ -36,7 +38,10 @@ export default function HomePage() {
                <div className="container mx-auto w-full">
                  <div className="grid lg:grid-cols-12 gap-8 lg:gap-12 items-center w-full">
                    <div className="order-2 lg:order-1 pointer-events-auto lg:col-span-5">
-                     <BookingSearchForm variant="marketing" />
+                     <BookingSearchForm
+                       variant="marketing"
+                       tripRequestPhoneCountryIso2Hint={tripRequestPhoneCountryIso2Hint}
+                     />
                    </div>
                    <div className="order-1 lg:order-2 lg:col-span-7" />
                  </div>
@@ -48,11 +53,14 @@ export default function HomePage() {
              <div className="container mx-auto px-4">
                <div className="grid lg:grid-cols-12 gap-8 lg:gap-12 items-start">
                  <div className="order-2 lg:order-1 lg:col-span-5">
-                   <BookingSearchForm variant="marketing" />
+                   <BookingSearchForm
+                     variant="marketing"
+                     tripRequestPhoneCountryIso2Hint={tripRequestPhoneCountryIso2Hint}
+                   />
                  </div>
                  <div className="order-1 lg:order-2 lg:col-span-7">
                   <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 mb-6 leading-tight">
-                    Chauffeured transport across South Africa
+                    Private driver transport across South Africa
                   </h1>
                   <p className="text-xl md:text-2xl text-gray-700 mb-8">
                     Premium shuttle, corporate, VIP, tours, and discreet enquiries

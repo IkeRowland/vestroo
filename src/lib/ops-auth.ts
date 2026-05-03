@@ -10,6 +10,10 @@ export type StaffSession = {
 	role: ProfileRole
 	/** Present when Supabase Auth exposes an email for the user (top bar). */
 	email?: string
+	/** `profiles.full_name` when non-empty (FE.17.2 profile chip). */
+	displayName?: string
+	/** `profiles.avatar_url` — optional headshot for profile chip. */
+	avatarUrl?: string | null
 }
 
 export async function getStaffSession(): Promise<StaffSession | null> {
@@ -22,7 +26,7 @@ export async function getStaffSession(): Promise<StaffSession | null> {
 
 	const { data: profile, error: profileErr } = await supabase
 		.from('profiles')
-		.select('role')
+		.select('role, full_name, avatar_url')
 		.eq('id', user.id)
 		.maybeSingle()
 
@@ -30,7 +34,14 @@ export async function getStaffSession(): Promise<StaffSession | null> {
 	const role = profile.role as ProfileRole
 	if (!STAFF_ROLES.has(role)) return null
 
-	return { userId: user.id, role, email: user.email ?? undefined }
+	const fullName = (profile.full_name as string | null | undefined)?.trim()
+	return {
+		userId: user.id,
+		role,
+		email: user.email ?? undefined,
+		displayName: fullName || undefined,
+		avatarUrl: (profile.avatar_url as string | null | undefined) ?? null,
+	}
 }
 
 /**
@@ -48,7 +59,7 @@ export async function requireOpsStaffPage(): Promise<StaffSession> {
 
 	const { data: profile, error: profileErr } = await supabase
 		.from('profiles')
-		.select('role')
+		.select('role, full_name, avatar_url')
 		.eq('id', user.id)
 		.maybeSingle()
 
@@ -61,7 +72,30 @@ export async function requireOpsStaffPage(): Promise<StaffSession> {
 		redirect('/ops/unauthorized')
 	}
 
-	return { userId: user.id, role, email: user.email ?? undefined }
+	const fullName = (profile.full_name as string | null | undefined)?.trim()
+	return {
+		userId: user.id,
+		role,
+		email: user.email ?? undefined,
+		displayName: fullName || undefined,
+		avatarUrl: (profile.avatar_url as string | null | undefined) ?? null,
+	}
+}
+
+export type AdminSession = {
+	userId: string
+	role: 'admin'
+}
+
+/**
+ * Server Components / layouts: same gate as {@link requireOpsStaffPage}, but **admin** only.
+ */
+export async function requireOpsAdminPage(): Promise<AdminSession> {
+	const staff = await requireOpsStaffPage()
+	if (staff.role !== 'admin') {
+		redirect('/ops/unauthorized')
+	}
+	return { userId: staff.userId, role: 'admin' }
 }
 
 export type OpsActionGate =
@@ -83,7 +117,7 @@ export async function getOpsStaffForAction(): Promise<OpsActionGate> {
 
 	const { data: profile, error: profileErr } = await supabase
 		.from('profiles')
-		.select('role')
+		.select('role, full_name, avatar_url')
 		.eq('id', user.id)
 		.maybeSingle()
 
@@ -96,15 +130,17 @@ export async function getOpsStaffForAction(): Promise<OpsActionGate> {
 		return { ok: false, message: 'Forbidden' }
 	}
 
+	const fullName = (profile.full_name as string | null | undefined)?.trim()
 	return {
 		ok: true,
-		session: { userId: user.id, role, email: user.email ?? undefined },
+		session: {
+			userId: user.id,
+			role,
+			email: user.email ?? undefined,
+			displayName: fullName || undefined,
+			avatarUrl: (profile.avatar_url as string | null | undefined) ?? null,
+		},
 	}
-}
-
-export type AdminSession = {
-	userId: string
-	role: 'admin'
 }
 
 export type OpsAdminActionGate =

@@ -1,88 +1,134 @@
+import { redirect } from 'next/navigation'
+
+import { OpsCalendarShell } from '@/features/ops/components/OpsCalendarShell'
+import { OpsDataFreshnessBar } from '@/features/ops/components/OpsDataFreshnessBar'
+import { OpsFetchErrorIsland } from '@/features/ops/components/OpsFetchErrorIsland'
+import { OpsPageHeader } from '@/features/ops/components/ops-primitives'
+import { opsCalendarCopy } from '@/features/ops/copy/ops-calendar-copy'
+import type { OpsCalendarTripSourceRow } from '@/features/ops/lib/map-ops-calendar-trips'
+import { mapTripsToCalendarWeekData } from '@/features/ops/lib/map-ops-calendar-trips'
+import {
+	addDaysLocal,
+	buildOpsCalendarHref,
+	formatYmdLocal,
+	getRawCalendarWeekParam,
+	getRawOpsCalendarEventId,
+	OPS_CALENDAR_PATH,
+	parseOpsCalendarPageView,
+	parseOpsCalendarSelectedEventId,
+	parseWeekQueryYmd,
+	parseYmdToLocalDate,
+	startOfWeekMondayLocal,
+} from '@/lib/ops-calendar-url'
+import { TRIPS_CALENDAR_SELECT_COLUMNS } from '@/lib/supabase-select-fragments'
 import { createUserServerClient } from '@/lib/supabase/server'
 
-function dayKey(iso: string): string {
-	const d = new Date(iso)
-	return d.toISOString().slice(0, 10)
+export const dynamic = 'force-dynamic'
+
+type PageProps = {
+	searchParams: Promise<Record<string, string | string[] | undefined>>
 }
 
-export default async function OpsCalendarPage() {
+export default async function OpsCalendarPage({ searchParams }: PageProps) {
+	const raw = await searchParams
+	const fetchedAtIso = new Date().toISOString()
+	const view = parseOpsCalendarPageView(raw)
+	const weekRaw = getRawCalendarWeekParam(raw)
+
+	if (weekRaw && parseWeekQueryYmd(weekRaw) === null) {
+		redirect(OPS_CALENDAR_PATH)
+	}
+
+	let weekStartYmd = formatYmdLocal(startOfWeekMondayLocal(new Date()))
+	if (weekRaw) {
+		const v = parseWeekQueryYmd(weekRaw)!
+		weekStartYmd = formatYmdLocal(startOfWeekMondayLocal(parseYmdToLocalDate(v)))
+		if (weekStartYmd !== weekRaw) {
+			redirect(
+				buildOpsCalendarHref({
+					weekStartYmd,
+					eventId: getRawOpsCalendarEventId(raw),
+					view,
+				}),
+			)
+		}
+	}
+
+	const weekStart = parseYmdToLocalDate(weekStartYmd)
+	const weekEndExclusive = addDaysLocal(weekStart, 7)
+	const startIso = new Date(
+		weekStart.getFullYear(),
+		weekStart.getMonth(),
+		weekStart.getDate(),
+		0,
+		0,
+		0,
+		0,
+	).toISOString()
+	const endIso = new Date(
+		weekEndExclusive.getFullYear(),
+		weekEndExclusive.getMonth(),
+		weekEndExclusive.getDate(),
+		0,
+		0,
+		0,
+		0,
+	).toISOString()
+
 	const supabase = await createUserServerClient()
 	const { data: trips, error } = await supabase
 		.from('trips')
-		.select('id, status, time_start_estimate, time_end_estimate, vehicle_id')
+		.select(TRIPS_CALENDAR_SELECT_COLUMNS)
+		.gte('time_start_estimate', startIso)
+		.lt('time_start_estimate', endIso)
 		.order('time_start_estimate', { ascending: true })
-		.limit(120)
+		.limit(200)
 
 	if (error) {
 		return (
-			<div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">
-				Could not load trips: {error.message}
+			<div className="min-w-0 max-w-full">
+				<OpsPageHeader title={opsCalendarCopy.pageTitle} description={opsCalendarCopy.pageDescription} />
+				<div className="mt-4">
+					<OpsFetchErrorIsland title="Calendar could not be loaded" message={error.message} />
+				</div>
 			</div>
 		)
 	}
 
-	const rows = trips ?? []
-	const byDay = new Map<string, typeof rows>()
-	for (const t of rows) {
-		const k = dayKey(t.time_start_estimate as string)
-		if (!byDay.has(k)) byDay.set(k, [])
-		byDay.get(k)!.push(t)
+	const rows = (trips ?? []) as unknown as OpsCalendarTripSourceRow[]
+	const knownIds = new Set(rows.map((r) => r.id as string))
+	const rawId = getRawOpsCalendarEventId(raw)
+	if (rawId && !knownIds.has(rawId)) {
+		redirect(buildOpsCalendarHref({ weekStartYmd, eventId: null, view }))
 	}
-	const days = [...byDay.keys()].sort()
+	const selectedEventId = parseOpsCalendarSelectedEventId(raw, knownIds)
+
+	const driverProfileIds = [...new Set(rows.map((t) => String(t.chauffeur_id ?? '')).filter(Boolean))]
+	const driverNameByProfileId: Record<string, string> = {}
+	if (driverProfileIds.length > 0) {
+		const { data: profiles } = await supabase
+			.from('profiles')
+			.select('id, full_name')
+			.in('id', driverProfileIds)
+		for (const p of profiles ?? []) {
+			driverNameByProfileId[p.id as string] = (p.full_name as string) ?? ''
+		}
+	}
+
+	const { events, railByTripId } = mapTripsToCalendarWeekData(rows, driverNameByProfileId)
 
 	return (
 		<div className="min-w-0 max-w-full">
-			<h1 className="text-ops-page-title text-ops-foreground">Calendar</h1>
-			<p className="mt-1 max-w-3xl text-sm text-ops-muted">
-				Day agenda built from{' '}
-				<code className="rounded bg-muted px-1 font-mono text-sm text-ops-foreground">
-					trips.time_start_estimate
-				</code>{' '}
-				(UTC date key). Scroll horizontally on narrow viewports.
-			</p>
-			<div
-				className="mt-6 flex min-w-0 gap-4 overflow-x-auto pb-4 [-webkit-overflow-scrolling:touch]"
-				role="region"
-				aria-label="Calendar day columns"
-			>
-				{days.length === 0 ? (
-					<p className="text-sm text-ops-muted">No trips scheduled.</p>
-				) : (
-					days.map((day) => (
-						<section
-							key={day}
-							className="min-w-[18rem] flex-shrink-0 rounded-lg border border-ops-border bg-ops-surface shadow-sm"
-						>
-							<h2 className="border-b border-ops-border px-3 py-2 text-sm font-semibold text-ops-foreground">
-								{day}
-							</h2>
-							<ul className="space-y-2 p-2">
-								{(byDay.get(day) ?? []).map((t) => (
-									<li
-										key={t.id}
-										className="rounded-md border border-ops-border bg-muted/50 p-2 text-xs text-ops-foreground"
-									>
-										<div className="font-mono text-ops-muted">{t.id.slice(0, 8)}…</div>
-										<div className="mt-1 capitalize text-ops-muted">
-											{String(t.status ?? '').replace(/_/g, ' ')}
-										</div>
-										<div className="mt-1 text-ops-muted">
-											{new Date(t.time_start_estimate as string).toLocaleTimeString([], {
-												hour: '2-digit',
-												minute: '2-digit',
-											})}{' '}
-											–{' '}
-											{new Date(t.time_end_estimate as string).toLocaleTimeString([], {
-												hour: '2-digit',
-												minute: '2-digit',
-											})}
-										</div>
-									</li>
-								))}
-							</ul>
-						</section>
-					))
-				)}
+			<OpsPageHeader title={opsCalendarCopy.pageTitle} description={opsCalendarCopy.pageDescription} />
+			<OpsDataFreshnessBar className="mt-4" fetchedAtIso={fetchedAtIso} />
+			<div className="mt-6">
+				<OpsCalendarShell
+					weekStartYmd={weekStartYmd}
+					view={view}
+					selectedEventId={selectedEventId}
+					events={events}
+					railByTripId={railByTripId}
+				/>
 			</div>
 		</div>
 	)

@@ -1,5 +1,11 @@
 -- VST-6: Booking intent (P2P, hourly, corporate/package stubs), PayFast audit column,
 -- and optional link to a service pattern for contracted journeys.
+--
+-- HISTORICAL ANNOTATION — Epic 16 / Theme N (US-N2 / Q31): the PayFast checkout-provider
+-- integration referenced below was physically removed in
+-- `20260426234500_ops16_drop_payfast_trigger.sql`. The `payment_timestamp` and `trans_id`
+-- columns are retained as audit / capability surfaces; future EFT settlement (US-N3
+-- `markBookingPaymentReceived`) writes the same audit columns.
 
 alter table public.bookings
   add column if not exists booking_intent text not null default 'point_to_point',

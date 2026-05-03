@@ -1,5 +1,10 @@
 import type { BookingState } from '@/features/booking/hooks/useBookingStore';
 
+/**
+ * Wizard-step guards for the booking funnel. The `'payment'` guard type maps to the
+ * **details** prerequisite (contact fields); settlement is **EFT + ops manual mark**
+ * (Epic 16 Theme N), not a hosted checkout step in this module.
+ */
 export type GuardType = 'quote' | 'details' | 'payment' | 'confirmation';
 
 export interface GuardResult {

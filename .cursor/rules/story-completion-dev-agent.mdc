@@ -1,0 +1,27 @@
+---
+description: Dev/implementation agents must update story markdown when closing a user story (Status Done + task checkboxes), and apply Supabase migrations via MCP when implementing stories.
+alwaysApply: true
+---
+
+# Story completion (dev agent & all implementers)
+
+When you **implement**, **verify**, or **hand off** work tracked in **`docs/stories/*.story.md`** and that work is **complete**:
+
+1. Set **`## Status:`** to **`Done`** (not **Approved**, **Draft**, or **In Progress** unless the story is still active).
+2. Mark **every** finished task/subtask with **`[x]`**.
+3. Fill **Story Progress Notes** (what shipped, commands run, agent model if useful).
+
+Apply in the **same PR or follow-up** as the code changes—do not leave the story file out of date.
+
+This applies to **Cursor dev subagent**, **Composer**, and any automated implementation pass that touches story-scoped work.
+
+## Supabase migrations (dev agent & implementers)
+
+When **implementing** a story (or any scoped work) that adds or changes **`supabase/migrations/*.sql`**, **always** apply those migrations to the **hosted** Supabase project using the **Supabase MCP** (`user-supabase`) as part of the same pass—**before** setting the story to **Done** or declaring the work complete. Do not rely on the human to apply SQL later unless MCP is genuinely unavailable.
+
+1. **`list_migrations`** (correct `project_id`) → compare migration **names** to local `supabase/migrations/*_<name>.sql` → **`apply_migration`** for **each** pending file (SQL body from the repo file; `name` = snake_case suffix after the timestamp).
+2. After applies, **`list_migrations`** again (or note the success responses) and mention in **Story Progress Notes** which migrations were applied (names only is enough).
+3. Do **not** treat **`supabase db push`**, **`supabase migration up`**, or ad-hoc SQL as the **default** when the Supabase MCP is enabled in the workspace.
+4. If **`execute_sql`** is used for a rare idempotent cleanup before **`apply_migration`**, record it in **Progress Notes** or the PR description.
+
+If the MCP server is disabled or errors persist, fall back to the linked CLI and document why in **Progress Notes**—do not silently skip hosted apply when the story shipped a new migration file.

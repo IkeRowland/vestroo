@@ -3,7 +3,9 @@
 import { revalidatePath } from 'next/cache'
 import type { z } from 'zod'
 
+import { buildOpsActionFailure } from '@/features/ops/ops-action-errors'
 import { appendOpsAuditLog } from '@/lib/ops-audit'
+import { logOpsAction, newOpsCorrelationId } from '@/lib/ops-action-log'
 import {
 	createChauffeurComplianceDocumentSchema,
 	createComplianceIncidentSchema,
@@ -34,14 +36,30 @@ function dateStr(d: Date): string {
 export async function listComplianceIncidentsAction(
 	raw: z.infer<typeof listComplianceIncidentsSchema>,
 ) {
+	const correlationId = newOpsCorrelationId()
 	const parsed = listComplianceIncidentsSchema.safeParse(raw)
 	if (!parsed.success) {
-		return { ok: false as const, message: 'Invalid payload', rows: [] as const }
+		logOpsAction({
+			action: 'listComplianceIncidentsAction',
+			outcome: 'validation_error',
+			level: 'warn',
+			correlationId,
+			code: 'VALIDATION',
+		})
+		return { ...buildOpsActionFailure('VALIDATION', 'Invalid payload', correlationId), rows: [] as const }
 	}
 
 	const gate = await getOpsStaffForAction()
 	if (!gate.ok) {
-		return { ok: false as const, message: gate.message, rows: [] as const }
+		logOpsAction({
+			action: 'listComplianceIncidentsAction',
+			outcome: 'forbidden',
+			level: 'warn',
+			correlationId,
+			code: 'FORBIDDEN',
+			hint: gate.message,
+		})
+		return { ...buildOpsActionFailure('FORBIDDEN', gate.message, correlationId), rows: [] as const }
 	}
 
 	const supabase = await createUserServerClient()
@@ -54,23 +72,54 @@ export async function listComplianceIncidentsAction(
 		.limit(parsed.data.limit)
 
 	if (error) {
-		return { ok: false as const, message: error.message, rows: [] as const }
+		logOpsAction({
+			action: 'listComplianceIncidentsAction',
+			outcome: 'failure',
+			level: 'error',
+			correlationId,
+			code: 'DATABASE',
+			hint: error.message,
+		})
+		return { ...buildOpsActionFailure('DATABASE', error.message, correlationId), rows: [] as const }
 	}
 
+	logOpsAction({
+		action: 'listComplianceIncidentsAction',
+		outcome: 'success',
+		level: 'info',
+		correlationId,
+		meta: { row_count: (data ?? []).length },
+	})
 	return { ok: true as const, rows: data ?? [] }
 }
 
 export async function createComplianceIncidentAction(
 	raw: z.infer<typeof createComplianceIncidentSchema>,
 ) {
+	const correlationId = newOpsCorrelationId()
 	const parsed = createComplianceIncidentSchema.safeParse(raw)
 	if (!parsed.success) {
-		return { ok: false as const, message: 'Invalid payload' }
+		logOpsAction({
+			action: 'createComplianceIncidentAction',
+			outcome: 'validation_error',
+			level: 'warn',
+			correlationId,
+			code: 'VALIDATION',
+		})
+		return buildOpsActionFailure('VALIDATION', 'Invalid payload', correlationId)
 	}
 
 	const gate = await getOpsStaffForAction()
 	if (!gate.ok) {
-		return { ok: false as const, message: gate.message }
+		logOpsAction({
+			action: 'createComplianceIncidentAction',
+			outcome: 'forbidden',
+			level: 'warn',
+			correlationId,
+			code: 'FORBIDDEN',
+			hint: gate.message,
+		})
+		return buildOpsActionFailure('FORBIDDEN', gate.message, correlationId)
 	}
 
 	const staff = gate.session
@@ -93,7 +142,16 @@ export async function createComplianceIncidentAction(
 		.single()
 
 	if (insErr || !row) {
-		return { ok: false as const, message: insErr?.message ?? 'Insert failed' }
+		logOpsAction({
+			action: 'createComplianceIncidentAction',
+			outcome: 'failure',
+			level: 'error',
+			correlationId,
+			code: 'DATABASE',
+			hint: insErr?.message,
+			meta: { summary_len: summary.length },
+		})
+		return buildOpsActionFailure('DATABASE', insErr?.message ?? 'Insert failed', correlationId)
 	}
 
 	const incidentId = row.id as string
@@ -110,31 +168,53 @@ export async function createComplianceIncidentAction(
 		},
 	})
 
-	revalidatePath('/ops/compliance')
+	revalidatePath('/ops')
 
+	logOpsAction({
+		action: 'createComplianceIncidentAction',
+		outcome: 'success',
+		level: 'info',
+		correlationId,
+		entityId: incidentId,
+		meta: { summary_len: summary.length },
+	})
 	return { ok: true as const, incidentId }
 }
 
 export async function listExpiringComplianceDocumentsAction(
 	raw: z.infer<typeof listExpiringComplianceDocumentsSchema>,
 ) {
+	const correlationId = newOpsCorrelationId()
 	const parsed = listExpiringComplianceDocumentsSchema.safeParse(raw)
 	if (!parsed.success) {
+		logOpsAction({
+			action: 'listExpiringComplianceDocumentsAction',
+			outcome: 'validation_error',
+			level: 'warn',
+			correlationId,
+			code: 'VALIDATION',
+		})
 		return {
-			ok: false as const,
-			message: 'Invalid payload',
+			...buildOpsActionFailure('VALIDATION', 'Invalid payload', correlationId),
 			vehicleRows: [] as const,
-			chauffeurRows: [] as const,
+			driverComplianceDocRows: [] as const,
 		}
 	}
 
 	const gate = await getOpsStaffForAction()
 	if (!gate.ok) {
+		logOpsAction({
+			action: 'listExpiringComplianceDocumentsAction',
+			outcome: 'forbidden',
+			level: 'warn',
+			correlationId,
+			code: 'FORBIDDEN',
+			hint: gate.message,
+		})
 		return {
-			ok: false as const,
-			message: gate.message,
+			...buildOpsActionFailure('FORBIDDEN', gate.message, correlationId),
 			vehicleRows: [] as const,
-			chauffeurRows: [] as const,
+			driverComplianceDocRows: [] as const,
 		}
 	}
 
@@ -169,18 +249,35 @@ export async function listExpiringComplianceDocumentsAction(
 	])
 
 	if (vErr || cErr) {
+		logOpsAction({
+			action: 'listExpiringComplianceDocumentsAction',
+			outcome: 'failure',
+			level: 'error',
+			correlationId,
+			code: 'DATABASE',
+			hint: vErr?.message ?? cErr?.message,
+		})
 		return {
-			ok: false as const,
-			message: vErr?.message ?? cErr?.message ?? 'Query failed',
+			...buildOpsActionFailure('DATABASE', vErr?.message ?? cErr?.message ?? 'Query failed', correlationId),
 			vehicleRows: [] as const,
-			chauffeurRows: [] as const,
+			driverComplianceDocRows: [] as const,
 		}
 	}
 
+	logOpsAction({
+		action: 'listExpiringComplianceDocumentsAction',
+		outcome: 'success',
+		level: 'info',
+		correlationId,
+		meta: {
+			vehicle_row_count: (vData ?? []).length,
+			driver_compliance_doc_row_count: (cData ?? []).length,
+		},
+	})
 	return {
 		ok: true as const,
 		vehicleRows: vData ?? [],
-		chauffeurRows: cData ?? [],
+		driverComplianceDocRows: cData ?? [],
 		daysAhead: parsed.data.daysAhead,
 		horizonDate: horizonStr,
 	}
@@ -189,14 +286,30 @@ export async function listExpiringComplianceDocumentsAction(
 export async function createVehicleComplianceDocumentAction(
 	raw: z.infer<typeof createVehicleComplianceDocumentSchema>,
 ) {
+	const correlationId = newOpsCorrelationId()
 	const parsed = createVehicleComplianceDocumentSchema.safeParse(raw)
 	if (!parsed.success) {
-		return { ok: false as const, message: 'Invalid payload' }
+		logOpsAction({
+			action: 'createVehicleComplianceDocumentAction',
+			outcome: 'validation_error',
+			level: 'warn',
+			correlationId,
+			code: 'VALIDATION',
+		})
+		return buildOpsActionFailure('VALIDATION', 'Invalid payload', correlationId)
 	}
 
 	const gate = await getOpsStaffForAction()
 	if (!gate.ok) {
-		return { ok: false as const, message: gate.message }
+		logOpsAction({
+			action: 'createVehicleComplianceDocumentAction',
+			outcome: 'forbidden',
+			level: 'warn',
+			correlationId,
+			code: 'FORBIDDEN',
+			hint: gate.message,
+		})
+		return buildOpsActionFailure('FORBIDDEN', gate.message, correlationId)
 	}
 
 	const staff = gate.session
@@ -217,7 +330,15 @@ export async function createVehicleComplianceDocumentAction(
 		.single()
 
 	if (error || !row) {
-		return { ok: false as const, message: error?.message ?? 'Insert failed' }
+		logOpsAction({
+			action: 'createVehicleComplianceDocumentAction',
+			outcome: 'failure',
+			level: 'error',
+			correlationId,
+			code: 'DATABASE',
+			hint: error?.message,
+		})
+		return buildOpsActionFailure('DATABASE', error?.message ?? 'Insert failed', correlationId)
 	}
 
 	const id = row.id as string
@@ -230,21 +351,45 @@ export async function createVehicleComplianceDocumentAction(
 		payload: { vehicle_id: d.vehicleId, document_type: d.documentType },
 	})
 
-	revalidatePath('/ops/compliance')
+	revalidatePath('/ops')
+	logOpsAction({
+		action: 'createVehicleComplianceDocumentAction',
+		outcome: 'success',
+		level: 'info',
+		correlationId,
+		entityId: id,
+		meta: { vehicle_id: d.vehicleId },
+	})
 	return { ok: true as const, documentId: id }
 }
 
 export async function createChauffeurComplianceDocumentAction(
 	raw: z.infer<typeof createChauffeurComplianceDocumentSchema>,
 ) {
+	const correlationId = newOpsCorrelationId()
 	const parsed = createChauffeurComplianceDocumentSchema.safeParse(raw)
 	if (!parsed.success) {
-		return { ok: false as const, message: 'Invalid payload' }
+		logOpsAction({
+			action: 'createChauffeurComplianceDocumentAction',
+			outcome: 'validation_error',
+			level: 'warn',
+			correlationId,
+			code: 'VALIDATION',
+		})
+		return buildOpsActionFailure('VALIDATION', 'Invalid payload', correlationId)
 	}
 
 	const gate = await getOpsStaffForAction()
 	if (!gate.ok) {
-		return { ok: false as const, message: gate.message }
+		logOpsAction({
+			action: 'createChauffeurComplianceDocumentAction',
+			outcome: 'forbidden',
+			level: 'warn',
+			correlationId,
+			code: 'FORBIDDEN',
+			hint: gate.message,
+		})
+		return buildOpsActionFailure('FORBIDDEN', gate.message, correlationId)
 	}
 
 	const staff = gate.session
@@ -265,7 +410,15 @@ export async function createChauffeurComplianceDocumentAction(
 		.single()
 
 	if (error || !row) {
-		return { ok: false as const, message: error?.message ?? 'Insert failed' }
+		logOpsAction({
+			action: 'createChauffeurComplianceDocumentAction',
+			outcome: 'failure',
+			level: 'error',
+			correlationId,
+			code: 'DATABASE',
+			hint: error?.message,
+		})
+		return buildOpsActionFailure('DATABASE', error?.message ?? 'Insert failed', correlationId)
 	}
 
 	const id = row.id as string
@@ -278,19 +431,43 @@ export async function createChauffeurComplianceDocumentAction(
 		payload: { chauffeur_id: d.chauffeurId, document_type: d.documentType },
 	})
 
-	revalidatePath('/ops/compliance')
+	revalidatePath('/ops')
+	logOpsAction({
+		action: 'createChauffeurComplianceDocumentAction',
+		outcome: 'success',
+		level: 'info',
+		correlationId,
+		entityId: id,
+		meta: { chauffeur_id: d.chauffeurId },
+	})
 	return { ok: true as const, documentId: id }
 }
 
 export async function exportDataSubjectAction(raw: z.infer<typeof dsrExportRequestSchema>) {
+	const correlationId = newOpsCorrelationId()
 	const parsed = dsrExportRequestSchema.safeParse(raw)
 	if (!parsed.success) {
-		return { ok: false as const, message: 'Invalid payload', export: null }
+		logOpsAction({
+			action: 'exportDataSubjectAction',
+			outcome: 'validation_error',
+			level: 'warn',
+			correlationId,
+			code: 'VALIDATION',
+		})
+		return { ...buildOpsActionFailure('VALIDATION', 'Invalid payload', correlationId), export: null }
 	}
 
 	const adminGate = await getOpsAdminForAction()
 	if (!adminGate.ok) {
-		return { ok: false as const, message: adminGate.message, export: null }
+		logOpsAction({
+			action: 'exportDataSubjectAction',
+			outcome: 'forbidden',
+			level: 'warn',
+			correlationId,
+			code: 'FORBIDDEN',
+			hint: adminGate.message,
+		})
+		return { ...buildOpsActionFailure('FORBIDDEN', adminGate.message, correlationId), export: null }
 	}
 
 	const admin = adminGate.session
@@ -309,14 +486,33 @@ export async function exportDataSubjectAction(raw: z.infer<typeof dsrExportReque
 	const { data: profile, error: pErr } = await profileQuery.maybeSingle()
 
 	if (pErr || !profile) {
-		return { ok: false as const, message: 'Profile not found', export: null }
+		logOpsAction({
+			action: 'exportDataSubjectAction',
+			outcome: 'not_found',
+			level: 'warn',
+			correlationId,
+			code: 'NOT_FOUND',
+			hint: pErr?.message,
+			...(parsed.data.profileId ? { entityId: parsed.data.profileId } : {}),
+		})
+		return { ...buildOpsActionFailure('NOT_FOUND', 'Profile not found', correlationId), export: null }
 	}
 
 	const role = profile.role as ProfileRole
 	if (role !== 'customer') {
+		logOpsAction({
+			action: 'exportDataSubjectAction',
+			outcome: 'failure',
+			level: 'warn',
+			correlationId,
+			code: 'ROLE_LIMIT',
+		})
 		return {
-			ok: false as const,
-			message: 'DSR export (MVP) is limited to profiles with role customer',
+			...buildOpsActionFailure(
+				'ROLE_LIMIT',
+				'DSR export (MVP) is limited to profiles with role customer',
+				correlationId,
+			),
 			export: null,
 		}
 	}
@@ -347,7 +543,23 @@ export async function exportDataSubjectAction(raw: z.infer<typeof dsrExportReque
 	}
 
 	if (b1Err || b2Err) {
-		return { ok: false as const, message: b1Err?.message ?? b2Err?.message ?? 'Read failed', export: null }
+		logOpsAction({
+			action: 'exportDataSubjectAction',
+			outcome: 'failure',
+			level: 'error',
+			correlationId,
+			code: 'DATABASE',
+			entityId: profileId,
+			hint: b1Err?.message ?? b2Err?.message,
+		})
+		return {
+			...buildOpsActionFailure(
+				'DATABASE',
+				b1Err?.message ?? b2Err?.message ?? 'Read failed',
+				correlationId,
+			),
+			export: null,
+		}
 	}
 
 	const bookingMap = new Map<string, Record<string, unknown>>()
@@ -369,7 +581,16 @@ export async function exportDataSubjectAction(raw: z.infer<typeof dsrExportReque
 		.eq('customer_id', profileId)
 
 	if (tErr) {
-		return { ok: false as const, message: tErr.message, export: null }
+		logOpsAction({
+			action: 'exportDataSubjectAction',
+			outcome: 'failure',
+			level: 'error',
+			correlationId,
+			code: 'DATABASE',
+			entityId: profileId,
+			hint: tErr.message,
+		})
+		return { ...buildOpsActionFailure('DATABASE', tErr.message, correlationId), export: null }
 	}
 
 	let engagements: Record<string, unknown>[] = []
@@ -380,7 +601,16 @@ export async function exportDataSubjectAction(raw: z.infer<typeof dsrExportReque
 			.in('booking_id', bookingIds)
 
 		if (eErr) {
-			return { ok: false as const, message: eErr.message, export: null }
+			logOpsAction({
+				action: 'exportDataSubjectAction',
+				outcome: 'failure',
+				level: 'error',
+				correlationId,
+				code: 'DATABASE',
+				entityId: profileId,
+				hint: eErr.message,
+			})
+			return { ...buildOpsActionFailure('DATABASE', eErr.message, correlationId), export: null }
 		}
 		engagements = (eng ?? []) as Record<string, unknown>[]
 	}
@@ -423,18 +653,46 @@ export async function exportDataSubjectAction(raw: z.infer<typeof dsrExportReque
 		},
 	})
 
-	return { ok: true as const, message: 'OK', export: payload }
+	logOpsAction({
+		action: 'exportDataSubjectAction',
+		outcome: 'success',
+		level: 'info',
+		correlationId,
+		entityId: profileId,
+		meta: {
+			booking_count: bookings.length,
+			trip_count: (trips ?? []).length,
+			engagement_count: engagements.length,
+		},
+	})
+	return { ok: true as const, export: payload }
 }
 
 export async function anonymiseDataSubjectAction(raw: z.infer<typeof dsrAnonymiseRequestSchema>) {
+	const correlationId = newOpsCorrelationId()
 	const parsed = dsrAnonymiseRequestSchema.safeParse(raw)
 	if (!parsed.success) {
-		return { ok: false as const, message: 'Invalid payload' }
+		logOpsAction({
+			action: 'anonymiseDataSubjectAction',
+			outcome: 'validation_error',
+			level: 'warn',
+			correlationId,
+			code: 'VALIDATION',
+		})
+		return buildOpsActionFailure('VALIDATION', 'Invalid payload', correlationId)
 	}
 
 	const adminGate = await getOpsAdminForAction()
 	if (!adminGate.ok) {
-		return { ok: false as const, message: adminGate.message }
+		logOpsAction({
+			action: 'anonymiseDataSubjectAction',
+			outcome: 'forbidden',
+			level: 'warn',
+			correlationId,
+			code: 'FORBIDDEN',
+			hint: adminGate.message,
+		})
+		return buildOpsActionFailure('FORBIDDEN', adminGate.message, correlationId)
 	}
 
 	const admin = adminGate.session
@@ -448,15 +706,43 @@ export async function anonymiseDataSubjectAction(raw: z.infer<typeof dsrAnonymis
 		.maybeSingle()
 
 	if (pErr || !profile) {
-		return { ok: false as const, message: 'Profile not found' }
+		logOpsAction({
+			action: 'anonymiseDataSubjectAction',
+			outcome: 'not_found',
+			level: 'warn',
+			correlationId,
+			code: 'NOT_FOUND',
+			entityId: profileId,
+		})
+		return buildOpsActionFailure('NOT_FOUND', 'Profile not found', correlationId)
 	}
 
 	if ((profile.role as ProfileRole) !== 'customer') {
-		return { ok: false as const, message: 'DSR anonymise (MVP) is limited to customer profiles' }
+		logOpsAction({
+			action: 'anonymiseDataSubjectAction',
+			outcome: 'failure',
+			level: 'warn',
+			correlationId,
+			code: 'ROLE_LIMIT',
+			entityId: profileId,
+		})
+		return buildOpsActionFailure(
+			'ROLE_LIMIT',
+			'DSR anonymise (MVP) is limited to customer profiles',
+			correlationId,
+		)
 	}
 
 	if (profile.data_subject_anonymised_at) {
-		return { ok: false as const, message: 'Profile already anonymised' }
+		logOpsAction({
+			action: 'anonymiseDataSubjectAction',
+			outcome: 'failure',
+			level: 'warn',
+			correlationId,
+			code: 'ALREADY_ANONYMISED',
+			entityId: profileId,
+		})
+		return buildOpsActionFailure('ALREADY_ANONYMISED', 'Profile already anonymised', correlationId)
 	}
 
 	const priorEmail = (profile.email as string).trim().toLowerCase()
@@ -501,7 +787,16 @@ export async function anonymiseDataSubjectAction(raw: z.infer<typeof dsrAnonymis
 		.eq('id', profileId)
 
 	if (profErr) {
-		return { ok: false as const, message: profErr.message }
+		logOpsAction({
+			action: 'anonymiseDataSubjectAction',
+			outcome: 'failure',
+			level: 'error',
+			correlationId,
+			code: 'DATABASE',
+			entityId: profileId,
+			hint: profErr.message,
+		})
+		return buildOpsActionFailure('DATABASE', profErr.message, correlationId)
 	}
 
 	if (bookingIds.length > 0) {
@@ -515,7 +810,16 @@ export async function anonymiseDataSubjectAction(raw: z.infer<typeof dsrAnonymis
 			.in('id', bookingIds)
 
 		if (bookErr) {
-			return { ok: false as const, message: bookErr.message }
+			logOpsAction({
+				action: 'anonymiseDataSubjectAction',
+				outcome: 'failure',
+				level: 'error',
+				correlationId,
+				code: 'DATABASE',
+				entityId: profileId,
+				hint: bookErr.message,
+			})
+			return buildOpsActionFailure('DATABASE', bookErr.message, correlationId)
 		}
 
 		const { error: engErr } = await supabase
@@ -524,14 +828,32 @@ export async function anonymiseDataSubjectAction(raw: z.infer<typeof dsrAnonymis
 			.in('booking_id', bookingIds)
 
 		if (engErr) {
-			return { ok: false as const, message: engErr.message }
+			logOpsAction({
+				action: 'anonymiseDataSubjectAction',
+				outcome: 'failure',
+				level: 'error',
+				correlationId,
+				code: 'DATABASE',
+				entityId: profileId,
+				hint: engErr.message,
+			})
+			return buildOpsActionFailure('DATABASE', engErr.message, correlationId)
 		}
 	}
 
 	const { error: tripErr } = await supabase.from('trips').update({ customer_id: null }).eq('customer_id', profileId)
 
 	if (tripErr) {
-		return { ok: false as const, message: tripErr.message }
+		logOpsAction({
+			action: 'anonymiseDataSubjectAction',
+			outcome: 'failure',
+			level: 'error',
+			correlationId,
+			code: 'DATABASE',
+			entityId: profileId,
+			hint: tripErr.message,
+		})
+		return buildOpsActionFailure('DATABASE', tripErr.message, correlationId)
 	}
 
 	await appendOpsAuditLog(supabase, {
@@ -546,7 +868,15 @@ export async function anonymiseDataSubjectAction(raw: z.infer<typeof dsrAnonymis
 		},
 	})
 
-	revalidatePath('/ops/compliance')
+	revalidatePath('/ops')
 
-	return { ok: true as const, message: 'Anonymised profile and linked booking contact fields' }
+	logOpsAction({
+		action: 'anonymiseDataSubjectAction',
+		outcome: 'success',
+		level: 'info',
+		correlationId,
+		entityId: profileId,
+		meta: { bookings_redacted: bookingIds.length },
+	})
+	return { ok: true as const }
 }

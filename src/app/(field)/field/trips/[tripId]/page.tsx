@@ -1,37 +1,43 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
+import { FieldLiveTrackingOnIndicator } from '@/features/field/components/FieldLiveTrackingOnIndicator'
 import { FieldLocationPublisher } from '@/features/field/components/FieldLocationPublisher'
 import { FieldTripDetailActions } from '@/features/field/components/FieldTripDetailActions'
+import { buildFieldLiveTrackingIndicatorModel } from '@/features/field/lib/field-live-tracking-indicator'
+import { loadCustomerAccountLiveRiderTrackingFlag } from '@/features/field/lib/load-customer-account-live-rider-tracking.server'
+import { isRiderLiveLocationEnvEnabled } from '@/features/rider-tracking/lib/rider-live-location-env'
 import {
 	buildTelHref,
 	maskCustomerPhoneForDisplay,
 	tripStatusAllowsCustomerContact,
 } from '@/lib/field-customer-contact'
-import { requireChauffeurPage } from '@/lib/field-auth'
+import { requireFieldDriverPage } from '@/lib/field-auth'
 import { resolveFieldMapsTarget } from '@/lib/field-navigation-target'
 import { buildAppleMapsUrl, buildGoogleMapsUrl } from '@/lib/maps'
+import {
+	FIELD_TRIP_DETAIL_SELECT_COLUMNS,
+	TRIP_DRIVER_PROFILE_FK_COLUMN,
+} from '@/lib/supabase-select-fragments'
 import { createUserServerClient } from '@/lib/supabase/server'
 
 type PageParams = Promise<{ tripId: string }>
 
 export default async function FieldTripDetailPage({ params }: { params: PageParams }) {
 	const { tripId } = await params
-	const session = await requireChauffeurPage()
+	const session = await requireFieldDriverPage()
 	const supabase = await createUserServerClient()
 
 	const { data: trip, error: tErr } = await supabase
 		.from('trips')
-		.select(
-			'id, status, chauffeur_id, time_start_estimate, time_end_estimate, service_run_id, service_type, vehicle_id',
-		)
+		.select(FIELD_TRIP_DETAIL_SELECT_COLUMNS)
 		.eq('id', tripId)
 		.maybeSingle()
 
 	if (tErr || !trip) {
 		notFound()
 	}
-	if ((trip.chauffeur_id as string) !== session.userId) {
+	if ((trip[TRIP_DRIVER_PROFILE_FK_COLUMN] as string) !== session.userId) {
 		notFound()
 	}
 
@@ -50,18 +56,30 @@ export default async function FieldTripDetailPage({ params }: { params: PagePara
 		origin_address: string | null
 		customer_phone: string | null
 		payment_reference: string | null
+		customer_account_id: string | null
 	} | null = null
 
 	if (link?.booking_id) {
 		const { data: b } = await supabase
 			.from('bookings')
 			.select(
-				'destination_latitude, destination_longitude, destination_address, origin_latitude, origin_longitude, origin_address, customer_phone, payment_reference',
+				'destination_latitude, destination_longitude, destination_address, origin_latitude, origin_longitude, origin_address, customer_phone, payment_reference, customer_account_id',
 			)
 			.eq('id', link.booking_id as string)
 			.maybeSingle()
 		booking = b ?? null
 	}
+
+	const customerAccountId = booking?.customer_account_id ?? null
+	let accountLiveRiderTracking = false
+	if (customerAccountId) {
+		accountLiveRiderTracking = await loadCustomerAccountLiveRiderTrackingFlag(customerAccountId)
+	}
+	const liveTrackingIndicator = buildFieldLiveTrackingIndicatorModel({
+		customerAccountId,
+		accountLiveRiderTracking,
+		envEnabled: isRiderLiveLocationEnvEnabled(),
+	})
 
 	const mapsTarget = await resolveFieldMapsTarget(supabase, {
 		serviceRunId: (trip.service_run_id as string | null) ?? null,
@@ -112,6 +130,11 @@ export default async function FieldTripDetailPage({ params }: { params: PagePara
 					</p>
 				) : null}
 			</div>
+
+			<FieldLiveTrackingOnIndicator
+				show={liveTrackingIndicator.show}
+				showEnvDisabledSubcopy={liveTrackingIndicator.showEnvDisabledSubcopy}
+			/>
 
 			<FieldLocationPublisher tripId={tripId} enabled={publishLive} />
 

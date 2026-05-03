@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Input } from './input';
 import { Label } from './label';
-import type { PlaceResult } from '@/lib/maps';
+import { loadGoogleMapsPlacesClient, type PlaceResult } from '@/lib/maps';
 
 interface AddressAutocompleteProps {
   label: string;
@@ -18,6 +18,8 @@ interface AddressAutocompleteProps {
   buttonStyle?: boolean;
   inputId?: string;
   icon?: 'pickup' | 'dropoff';
+  onInputFocus?: () => void;
+  onInputBlur?: () => void;
 }
 
 /**
@@ -37,10 +39,13 @@ export function AddressAutocomplete({
   buttonStyle = false,
   inputId,
   icon = 'pickup',
+  onInputFocus,
+  onInputBlur,
 }: AddressAutocompleteProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [mapsLoadError, setMapsLoadError] = useState<string | null>(null);
   // Store callbacks in refs to avoid recreating autocomplete on every render
   const onSelectRef = useRef(onSelect);
   const onChangeRef = useRef(onChange);
@@ -51,105 +56,36 @@ export function AddressAutocomplete({
     onChangeRef.current = onChange;
   }, [onSelect, onChange]);
 
-  // Load Google Maps script
+  // Load Google Maps + Places via shared single-flight loader (`callback` URL param; no `loading=async`).
   useEffect(() => {
-    if (typeof window === 'undefined') {
-      return;
-    }
-
-    // Check if Google Maps is already loaded
-    if (window.google?.maps?.places) {
-      setIsLoaded(true);
-      return;
-    }
-
-    // Check if script is already being loaded
-    const existingScript = document.querySelector(
-      `script[src*="maps.googleapis.com/maps/api/js"]`
-    );
-    if (existingScript) {
-      // Script exists, wait for it to load
-      if (window.google?.maps?.places) {
-        setIsLoaded(true);
-      } else {
-        // Wait for the existing script to load
-        const checkInterval = setInterval(() => {
-          if (window.google?.maps?.places) {
-            setIsLoaded(true);
-            clearInterval(checkInterval);
-          }
-        }, 100);
-
-        // Cleanup interval after 10 seconds
-        setTimeout(() => {
-          clearInterval(checkInterval);
-          if (!window.google?.maps?.places) {
-            console.error('Google Maps API failed to load within timeout');
-          }
-        }, 10000);
-
-        return () => clearInterval(checkInterval);
-      }
-      return;
-    }
-
-    // Get API key from environment (Next.js embeds NEXT_PUBLIC_ vars at build time)
-    const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY;
-    if (!apiKey || apiKey === 'your_google_maps_api_key_here') {
-      console.error('NEXT_PUBLIC_GOOGLE_MAPS_KEY is not set. Please add it to your .env file and restart the dev server.');
-      return;
-    }
-
-    // Create and load script
-    const script = document.createElement('script');
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&loading=async`;
-    script.async = true;
-    script.defer = true;
-    
-    script.onload = () => {
-      // Wait for Google Maps API to be fully initialized
-      // The script may load but the API might not be immediately available
-      const checkPlaces = setInterval(() => {
-        if (window.google?.maps?.places) {
+    let cancelled = false;
+    loadGoogleMapsPlacesClient()
+      .then(() => {
+        if (!cancelled) {
+          setMapsLoadError(null);
           setIsLoaded(true);
-          clearInterval(checkPlaces);
         }
-      }, 50);
-
-      // Timeout after 5 seconds
-      setTimeout(() => {
-        clearInterval(checkPlaces);
-        if (window.google?.maps?.places) {
-          setIsLoaded(true);
-        } else {
-          console.error('Google Maps Places API not available after script load');
+      })
+      .catch((err: unknown) => {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.warn('[AddressAutocomplete]', msg);
+        if (!cancelled) {
+          setMapsLoadError(msg);
+          setIsLoaded(false);
         }
-      }, 5000);
-    };
-    
-    script.onerror = () => {
-      console.error('Failed to load Google Maps API. Check your API key and network connection.');
-    };
-    
-    document.head.appendChild(script);
-
-    // Cleanup function - don't remove script as it might be needed by other components
+      });
     return () => {
-      // Just clear the loaded state if component unmounts
-      setIsLoaded(false);
+      cancelled = true;
     };
   }, []);
 
-  // Initialize autocomplete when script is loaded
-  useEffect(() => {
+  // Bind after paint so the input ref is attached; Google allows at most one `types` value — omit for all kinds.
+  useLayoutEffect(() => {
     if (!isLoaded || !inputRef.current || disabled) {
       return;
     }
 
-    // Double-check that Places API is available (defensive check)
     if (!window.google?.maps?.places) {
-      // If isLoaded is true but API isn't available, reset and wait
-      setIsLoaded(false);
       return;
     }
 
@@ -161,7 +97,6 @@ export function AddressAutocomplete({
 
     try {
       const autocomplete = new google.maps.places.Autocomplete(inputRef.current, {
-        types: ['establishment', 'geocode'],
         fields: ['place_id', 'formatted_address', 'name', 'geometry', 'types'],
       });
 
@@ -184,7 +119,6 @@ export function AddressAutocomplete({
       autocompleteRef.current = autocomplete;
     } catch (error) {
       console.error('Error creating autocomplete:', error);
-      setIsLoaded(false);
     }
 
     return () => {
@@ -206,6 +140,8 @@ export function AddressAutocomplete({
           type="text"
           value={value}
           onChange={(e) => onChange(e.target.value)}
+          onFocus={onInputFocus}
+          onBlur={onInputBlur}
           placeholder={placeholder}
           required={required}
           disabled={disabled}
@@ -213,7 +149,7 @@ export function AddressAutocomplete({
           aria-required={required}
           aria-invalid={!!error}
           aria-describedby={error ? `error-${finalInputId}` : undefined}
-          className={`${error ? 'border-red-500' : 'border-gray-200'} h-12 text-xs font-medium bg-gray-100 hover:bg-gray-200 focus:bg-white focus:border-[#25A89B] focus:ring-1 focus:ring-[#25A89B] text-gray-600 placeholder:text-gray-500 transition-all rounded-lg pl-10 cursor-text`}
+          className={`${error ? 'border-destructive' : 'border-gray-200'} h-12 text-xs font-medium bg-gray-100 hover:bg-gray-200 focus:bg-white focus:border-primary focus:ring-1 focus:ring-primary text-gray-600 placeholder:text-gray-500 transition-all rounded-lg pl-10 cursor-text`}
         />
         <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none z-10">
           <div className="h-6 w-6 rounded-full bg-white flex items-center justify-center shadow-sm">
@@ -228,6 +164,11 @@ export function AddressAutocomplete({
             )}
           </div>
         </div>
+        {mapsLoadError && (
+          <p className="text-xs text-amber-700 mt-1" role="status">
+            Address suggestions unavailable — you can still type an address.
+          </p>
+        )}
         {error && (
           <p id={`error-${finalInputId}`} className="text-xs text-red-500 mt-1" role="alert">
             {error}
@@ -250,6 +191,8 @@ export function AddressAutocomplete({
         type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        onFocus={onInputFocus}
+        onBlur={onInputBlur}
         placeholder={placeholder}
         required={required}
         disabled={disabled || !isLoaded}
@@ -257,8 +200,15 @@ export function AddressAutocomplete({
         aria-required={required}
         aria-invalid={!!error}
         aria-describedby={error ? `error-${finalInputId}` : undefined}
-        className={`${error ? 'border-red-500' : 'border-gray-200'} ${iconPadding ? 'pl-9' : 'pl-3'} h-12 text-xs font-bold focus:border-[#25A89B] focus:ring-[#25A89B] text-gray-900 bg-white placeholder:text-gray-400 transition-all shadow-sm rounded-lg`}
+        className={`${error ? 'border-destructive' : 'border-gray-200'} ${iconPadding ? 'pl-9' : 'pl-3'} h-12 text-xs font-bold focus:border-primary focus:ring-primary text-gray-900 bg-white placeholder:text-gray-400 transition-all shadow-sm rounded-lg`}
       />
+      {mapsLoadError && (
+        <p className="text-sm text-amber-700" role="status">
+          Address suggestions unavailable — you can still type an address. Ensure{' '}
+          <code className="rounded bg-slate-100 px-1 text-xs">NEXT_PUBLIC_GOOGLE_MAPS_KEY</code> and the
+          Maps Places API are enabled.
+        </p>
+      )}
       {error && (
         <p id={`error-${finalInputId}`} className="text-sm text-red-500" role="alert">
           {error}

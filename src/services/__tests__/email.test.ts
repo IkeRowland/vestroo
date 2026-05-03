@@ -1,162 +1,155 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 
-// Use global object to avoid hoisting issues
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-(global as any).__resendMockSend = vi.fn();
+const loadCommsEmailMatrixGateMock = vi.hoisted(() => vi.fn())
+const sendCommsMatrixEmailDispatchesMock = vi.hoisted(() => vi.fn())
+const auditCommsMatrixPreSendBlockedMock = vi.hoisted(() => vi.fn())
 
-// Mock Resend module before importing email service
-vi.mock('resend', () => {
-  return {
-    Resend: class {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      constructor(apiKey: string) {
-        // Constructor accepts API key but doesn't need to do anything
-      }
-      get emails() {
-        return {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          send: (global as any).__resendMockSend,
-        };
-      }
-    },
-  };
-});
+vi.mock('@/lib/comms', () => ({
+	loadCommsEmailMatrixGate: (...a: unknown[]) => loadCommsEmailMatrixGateMock(...a),
+	sendCommsMatrixEmailDispatches: (...a: unknown[]) => sendCommsMatrixEmailDispatchesMock(...a),
+	auditCommsMatrixPreSendBlocked: (...a: unknown[]) => auditCommsMatrixPreSendBlockedMock(...a),
+	getOpsAutomationAuditActorId: () => null,
+	OPS_AUDIT_ACTION_COMMS_NO_RULE_MATCHED: 'comms_no_rule_matched',
+	OPS_AUDIT_ACTION_COMMS_NO_ACTIVE_TEMPLATE: 'comms_no_active_template',
+}))
 
-// Import after mock
-import { sendBookingConfirmation, BookingEmailData } from '../email';
+vi.mock('@/lib/supabase/server', () => ({
+	createServerClient: vi.fn().mockResolvedValue({}),
+}))
+
+import { sendBookingConfirmation, type BookingEmailData } from '../email'
+
+const matrixSnapshot = {
+	rules: [
+		{
+			id: 'd1111111-1111-4111-8111-111111111111',
+			event_key: 'payment_received',
+			channel: 'email' as const,
+			recipient_role: 'customer',
+			recipient_filter: {},
+			active: true,
+			created_at: '',
+			updated_at: '',
+		},
+	],
+	template: {
+		id: 't1111111-1111-4111-8111-111111111111',
+		event_key: 'payment_received',
+		channel: 'email' as const,
+		subject: null,
+		body_html: null,
+		body_text: null,
+		sms_body: null,
+		version: 1,
+		active: true,
+		created_at: '',
+		updated_at: '',
+	},
+}
 
 describe('Email Service', () => {
-  const mockBookingData: BookingEmailData = {
-    bookingId: 'test-booking-123',
-    customerName: 'John Doe',
-    customerEmail: 'john.doe@example.com',
-    origin: 'OR Tambo Airport',
-    destination: 'Sandton City',
-    pickupDateTime: new Date('2024-12-25T10:00:00Z'),
-    passengerCount: 2,
-    flightNumber: 'SA123',
-    totalAmount: 450.0,
-    paymentReference: 'PF-123456',
-    transactionId: 'TXN-789',
-  };
+	const mockBookingData: BookingEmailData = {
+		bookingId: 'test-booking-123',
+		customerName: 'John Doe',
+		customerEmail: 'john.doe@example.com',
+		origin: 'OR Tambo Airport',
+		destination: 'Sandton City',
+		pickupDateTime: new Date('2024-12-25T10:00:00Z'),
+		passengerCount: 2,
+		flightNumber: 'SA123',
+		totalAmount: 450.0,
+		paymentReference: 'PF-123456',
+		transactionId: 'TXN-789',
+	}
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const getMockSend = () => (global as any).__resendMockSend;
+	beforeEach(() => {
+		process.env.RESEND_API_KEY = 'test-api-key'
+		process.env.RESEND_FROM_EMAIL = 'noreply@vestroo.com'
+		loadCommsEmailMatrixGateMock.mockReset()
+		sendCommsMatrixEmailDispatchesMock.mockReset()
+		auditCommsMatrixPreSendBlockedMock.mockReset()
+		loadCommsEmailMatrixGateMock.mockResolvedValue({ ok: true, snapshot: matrixSnapshot })
+		sendCommsMatrixEmailDispatchesMock.mockResolvedValue({
+			outcome: 'sent',
+			sendCount: 1,
+			lastMessageId: 'email-123',
+		})
+	})
 
-  beforeEach(() => {
-    // Set required environment variables
-    process.env.RESEND_API_KEY = 'test-api-key';
-    process.env.RESEND_FROM_EMAIL = 'noreply@vestroo.com';
-    const mockSend = getMockSend();
-    if (mockSend) {
-      mockSend.mockClear();
-      mockSend.mockReset();
-    }
-  });
+	afterEach(() => {
+		vi.restoreAllMocks()
+	})
 
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
+	describe('sendBookingConfirmation', () => {
+		it('should send email successfully via comms matrix', async () => {
+			const result = await sendBookingConfirmation(mockBookingData)
 
-  describe('sendBookingConfirmation', () => {
-    it('should send email successfully', async () => {
-      const mockSend = getMockSend();
-      mockSend.mockResolvedValueOnce({
-        data: { id: 'email-123' },
-        error: null,
-      });
+			expect(result.success).toBe(true)
+			expect(result.messageId).toBe('email-123')
+			expect(sendCommsMatrixEmailDispatchesMock).toHaveBeenCalledTimes(1)
+		})
 
-      const result = await sendBookingConfirmation(mockBookingData);
+		it('should succeed with no outbound when comms matrix has no active rules', async () => {
+			loadCommsEmailMatrixGateMock.mockResolvedValue({ ok: false, kind: 'no_rules' })
 
-      expect(result.success).toBe(true);
-      expect(result.messageId).toBe('email-123');
-      expect(mockSend).toHaveBeenCalledTimes(1);
-    });
+			const result = await sendBookingConfirmation(mockBookingData)
 
-    it('should return error if RESEND_API_KEY is not configured', async () => {
-      delete process.env.RESEND_API_KEY;
+			expect(result.success).toBe(true)
+			expect(sendCommsMatrixEmailDispatchesMock).not.toHaveBeenCalled()
+			expect(auditCommsMatrixPreSendBlockedMock).toHaveBeenCalled()
+		})
 
-      const result = await sendBookingConfirmation(mockBookingData);
+		it('should return error for invalid email address', async () => {
+			const invalidData = {
+				...mockBookingData,
+				customerEmail: 'invalid-email',
+			}
 
-      expect(result.success).toBe(false);
-      expect(result.error).toContain('RESEND_API_KEY not configured');
-    });
+			const result = await sendBookingConfirmation(invalidData)
 
-    it('should return error for invalid email address', async () => {
-      const invalidData = {
-        ...mockBookingData,
-        customerEmail: 'invalid-email',
-      };
+			expect(result.success).toBe(false)
+			expect(result.error).toContain('Invalid customer email')
+		})
 
-      const result = await sendBookingConfirmation(invalidData);
+		it('should retry on network-like errors from matrix dispatch', async () => {
+			const networkErr = 'Network timeout'
+			sendCommsMatrixEmailDispatchesMock
+				.mockResolvedValueOnce({ outcome: 'failed', message: networkErr })
+				.mockResolvedValueOnce({ outcome: 'failed', message: networkErr })
+				.mockResolvedValueOnce({
+					outcome: 'sent',
+					sendCount: 1,
+					lastMessageId: 'email-123',
+				})
 
-      expect(result.success).toBe(false);
-      expect(result.error).toContain('Invalid customer email');
-    });
+			const result = await sendBookingConfirmation(mockBookingData)
 
-    it('should retry on network errors', async () => {
-      const mockSend = getMockSend();
-      const networkError = new Error('Network timeout');
-      mockSend
-        .mockRejectedValueOnce(networkError)
-        .mockRejectedValueOnce(networkError)
-        .mockResolvedValueOnce({
-          data: { id: 'email-123' },
-          error: null,
-        });
+			expect(result.success).toBe(true)
+			expect(sendCommsMatrixEmailDispatchesMock).toHaveBeenCalledTimes(3)
+		})
 
-      const result = await sendBookingConfirmation(mockBookingData);
+		it('should not retry on non-retryable errors', async () => {
+			sendCommsMatrixEmailDispatchesMock.mockResolvedValue({
+				outcome: 'failed',
+				message: 'Invalid API key',
+			})
 
-      expect(result.success).toBe(true);
-      expect(mockSend).toHaveBeenCalledTimes(3); // Initial + 2 retries
-    });
+			const result = await sendBookingConfirmation(mockBookingData)
 
-    it('should not retry on non-retryable errors', async () => {
-      const mockSend = getMockSend();
-      const nonRetryableError = new Error('Invalid API key');
-      mockSend.mockRejectedValue(nonRetryableError);
+			expect(result.success).toBe(false)
+			expect(sendCommsMatrixEmailDispatchesMock).toHaveBeenCalledTimes(1)
+		})
 
-      const result = await sendBookingConfirmation(mockBookingData);
+		it('should handle missing flight number', async () => {
+			const dataWithoutFlight = {
+				...mockBookingData,
+				flightNumber: null,
+			}
 
-      expect(result.success).toBe(false);
-      expect(mockSend).toHaveBeenCalledTimes(1); // No retries
-    });
+			const result = await sendBookingConfirmation(dataWithoutFlight)
 
-    it('should handle Resend API errors', async () => {
-      const mockSend = getMockSend();
-      // Mock API error response - use a non-retryable error message to avoid retries
-      mockSend.mockResolvedValueOnce({
-        data: null,
-        error: {
-          message: 'Invalid API key',
-        },
-      });
-
-      const result = await sendBookingConfirmation(mockBookingData);
-
-      expect(result.success).toBe(false);
-      expect(result.error).toContain('Invalid API key');
-      expect(mockSend).toHaveBeenCalledTimes(1); // No retries for non-retryable errors
-    });
-
-    it('should handle missing flight number', async () => {
-      const mockSend = getMockSend();
-      // Clear any previous mocks
-      mockSend.mockClear();
-      const dataWithoutFlight = {
-        ...mockBookingData,
-        flightNumber: null,
-      };
-
-      mockSend.mockResolvedValueOnce({
-        data: { id: 'email-123' },
-        error: null,
-      });
-
-      const result = await sendBookingConfirmation(dataWithoutFlight);
-
-      expect(result.success).toBe(true);
-      expect(mockSend).toHaveBeenCalledTimes(1);
-    });
-  });
-});
+			expect(result.success).toBe(true)
+			expect(sendCommsMatrixEmailDispatchesMock).toHaveBeenCalledTimes(1)
+		})
+	})
+})

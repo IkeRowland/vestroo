@@ -1,0 +1,117 @@
+/**
+ * URL contract for **`/ops/calendar`** (Story 17.14 / FE.17.9, FE.17.12 rollout item 7).
+ * **`week`:** ISO **`YYYY-MM-DD`** for **any** day in the week — normalized server-side to **Monday** (local) week start.
+ * **`id`:** optional selected trip / event UUID (**`trips.id`**).
+ * **`view`:** **`list`** shows agenda list; absent / other → **week** grid.
+ */
+export const OPS_CALENDAR_PATH = '/ops/calendar' as const
+
+export type OpsCalendarPageView = 'week' | 'list'
+
+export function firstSearchParam(
+	raw: Record<string, string | string[] | undefined>,
+	key: string,
+): string | undefined {
+	const v = raw[key]
+	const s = Array.isArray(v) ? v[0] : v
+	const t = (s ?? '').trim()
+	return t.length > 0 ? t : undefined
+}
+
+/** Parse **`YYYY-MM-DD`** as **local** midnight (caller must validate format first). */
+export function parseYmdToLocalDate(ymd: string): Date {
+	const [ys, ms, ds] = ymd.split('-').map(Number)
+	return new Date(ys, ms - 1, ds)
+}
+
+/** Local civil date → `YYYY-MM-DD` (no UTC shift). */
+export function formatYmdLocal(d: Date): string {
+	const y = d.getFullYear()
+	const m = String(d.getMonth() + 1).padStart(2, '0')
+	const day = String(d.getDate()).padStart(2, '0')
+	return `${y}-${m}-${day}`
+}
+
+/**
+ * Monday 00:00 local for the ISO week containing **`from`** (FE.17.9: week starts Monday).
+ */
+export function startOfWeekMondayLocal(from: Date): Date {
+	const d = new Date(from.getFullYear(), from.getMonth(), from.getDate())
+	const offset = (d.getDay() + 6) % 7
+	d.setDate(d.getDate() - offset)
+	d.setHours(0, 0, 0, 0)
+	return d
+}
+
+/** Add whole days in local civil calendar. */
+export function addDaysLocal(d: Date, days: number): Date {
+	const x = new Date(d.getFullYear(), d.getMonth(), d.getDate() + days)
+	x.setHours(0, 0, 0, 0)
+	return x
+}
+
+/**
+ * Parse **`week`** query (`YYYY-MM-DD`). Returns **`null`** if missing.
+ * Invalid calendar strings return **`null`** (caller may redirect).
+ */
+export function parseWeekQueryYmd(raw: string | undefined): string | null {
+	if (!raw) return null
+	if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) return null
+	const [ys, ms, ds] = raw.split('-').map(Number)
+	const d = new Date(ys, ms - 1, ds)
+	if (d.getFullYear() !== ys || d.getMonth() !== ms - 1 || d.getDate() !== ds) return null
+	return formatYmdLocal(d)
+}
+
+/** Week start Monday **`YYYY-MM-DD`** from URL (or **`null`**). */
+export function getWeekStartYmdFromSearchParams(
+	raw: Record<string, string | string[] | undefined>,
+): string | null {
+	const w = firstSearchParam(raw, 'week')
+	return parseWeekQueryYmd(w)
+}
+
+export function getRawCalendarWeekParam(
+	raw: Record<string, string | string[] | undefined>,
+): string | undefined {
+	return firstSearchParam(raw, 'week')
+}
+
+export function getRawOpsCalendarEventId(
+	raw: Record<string, string | string[] | undefined>,
+): string | null {
+	const id = firstSearchParam(raw, 'id')
+	return id ?? null
+}
+
+export function parseOpsCalendarPageView(
+	raw: Record<string, string | string[] | undefined>,
+): OpsCalendarPageView {
+	return firstSearchParam(raw, 'view') === 'list' ? 'list' : 'week'
+}
+
+export function parseOpsCalendarSelectedEventId(
+	raw: Record<string, string | string[] | undefined>,
+	knownTripIds: ReadonlySet<string>,
+): string | null {
+	const rawId = getRawOpsCalendarEventId(raw)
+	if (!rawId) return null
+	return knownTripIds.has(rawId) ? rawId : null
+}
+
+export function buildOpsCalendarHref(state: {
+	weekStartYmd: string
+	eventId: string | null
+	view: OpsCalendarPageView
+}): string {
+	const params = new URLSearchParams()
+	params.set('week', state.weekStartYmd)
+	if (state.view === 'list') {
+		params.set('view', 'list')
+	}
+	if (state.eventId) {
+		params.set('id', state.eventId)
+	}
+	const q = params.toString()
+	return q ? `${OPS_CALENDAR_PATH}?${q}` : OPS_CALENDAR_PATH
+}

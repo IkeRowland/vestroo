@@ -22,12 +22,12 @@ export function tripRefLabel(tripId: string): string {
 export function buildAssignmentNotifications(params: {
 	tripId: string
 	customerId: string | null
-	chauffeurId: string
+	driverProfileId: string
 }): OperationalNotificationRow[] {
 	const ref = tripRefLabel(params.tripId)
 	const rows: OperationalNotificationRow[] = [
 		{
-			recipient_id: params.chauffeurId,
+			recipient_id: params.driverProfileId,
 			title: 'New assignment',
 			body: `${ref} · assigned`,
 			kind: 'assignment',
@@ -49,16 +49,16 @@ export function buildAssignmentNotifications(params: {
 export function buildTripChangeNotifications(params: {
 	tripId: string
 	customerId: string | null
-	chauffeurId: string | null
+	driverProfileId: string | null
 	label: string
 	kind: NotificationKindDb
 	meta?: Record<string, string | number | boolean | null>
 }): OperationalNotificationRow[] {
 	const ref = tripRefLabel(params.tripId)
 	const rows: OperationalNotificationRow[] = []
-	if (params.chauffeurId) {
+	if (params.driverProfileId) {
 		rows.push({
-			recipient_id: params.chauffeurId,
+			recipient_id: params.driverProfileId,
 			title: 'Trip update',
 			body: `${ref} · ${params.label}`,
 			kind: params.kind,

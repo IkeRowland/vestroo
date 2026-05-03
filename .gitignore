@@ -16,6 +16,7 @@
 # misc
 .DS_Store
 *.pem
+_chauffeur-audit-raw.tsv
 
 # debug
 npm-debug.log*
@@ -25,6 +26,7 @@ yarn-error.log*
 # local env files
 .env*.local
 .env
+.env.test
 
 # vercel
 .vercel
@@ -45,5 +47,4 @@ src/types/supabase.generated.ts
 
 # excluded from version control (local docs & agent tooling)
 /bmad-agent/
-/docs/
 

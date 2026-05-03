@@ -5,8 +5,9 @@ const uuidRe =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 /**
- * Public read of a single booking for the confirmation page after PayFast return.
- * UUID acts as an unguessable capability; no PII beyond what the traveller already paid for.
+ * Public read of a single booking for the confirmation page after the customer submits the
+ * booking flow (Epic 16 / Theme N — EFT instructions emailed; no provider redirect).
+ * UUID acts as an unguessable capability; no PII beyond what the traveller already provided.
  */
 export async function GET(request: NextRequest) {
   const id = request.nextUrl.searchParams.get('id');

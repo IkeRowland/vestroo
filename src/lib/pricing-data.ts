@@ -114,17 +114,38 @@ export async function fetchVehicleTypeById(id: string): Promise<VehicleTypeRow |
 
   try {
     const supabase = await createServerClient()
-    const { data, error } = await supabase
+    const { data: cat, error: catErr } = await supabase
       .from('vehicle_categories')
       .select('id,name,number_of_seat')
       .eq('id', id)
       .maybeSingle()
 
-    if (error || !data) {
+    if (!catErr && cat) {
+      return mapVehicleCategoryRow(cat as Record<string, unknown>)
+    }
+
+    /** Trip-request Slide 2 stores `public.vehicles.id`; resolve pricing tier via category. */
+    const { data: veh, error: vehErr } = await supabase
+      .from('vehicles')
+      .select('category_id')
+      .eq('id', id)
+      .maybeSingle()
+
+    if (vehErr || !veh?.category_id) {
       return fallback
     }
 
-    return mapVehicleCategoryRow(data as Record<string, unknown>)
+    const { data: cat2, error: cat2Err } = await supabase
+      .from('vehicle_categories')
+      .select('id,name,number_of_seat')
+      .eq('id', veh.category_id as string)
+      .maybeSingle()
+
+    if (cat2Err || !cat2) {
+      return fallback
+    }
+
+    return mapVehicleCategoryRow(cat2 as Record<string, unknown>)
   } catch {
     return fallback
   }

@@ -3,15 +3,24 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 
+import { OpsErrorState } from '@/features/ops/components/OpsErrorState'
 import { createClientClient } from '@/lib/supabase/client'
 import {
 	removeRealtimeChannel,
+	subscribeServiceRuns,
 	subscribeTripsBoard,
 	subscribeVehicleTrackings,
 } from '@/lib/supabase/realtime'
+import { Alert } from '@/components/ui/alert'
+import { Button } from '@/components/ui/button'
 
 /** Coalesce rapid Realtime bursts before `router.refresh()` (see `docs/realtime-and-notifications.md`). */
 const OPS_BOARD_REALTIME_DEBOUNCE_MS = 2_000
+
+/** If no debounced refresh runs for this long, board data may be stale vs other tabs (AC6). */
+const OPS_BOARD_STALE_SILENCE_MS = 10 * 60 * 1_000
+
+type ChKey = 'trips' | 'vehicle_trackings' | 'service_runs'
 
 type EtaRow = {
 	vehicle_id: string
@@ -30,14 +39,34 @@ function formatEta(iso: string | null): string {
 	return d.toLocaleString()
 }
 
+function formatClock(ts: number): string {
+	const d = new Date(ts)
+	if (Number.isNaN(d.getTime())) return '—'
+	return d.toLocaleString()
+}
+
 /**
- * Ops staff JWT only: subscribes to `trips` and `vehicle_trackings` changes and refreshes the RSC tree.
- * Shows a short ETA strip from `vehicle_trackings.estimated_arrival` (staff precision).
+ * Ops staff JWT only: subscribes to `trips`, `vehicle_trackings`, and `service_runs` changes and refreshes the RSC tree.
+ * Surfaces subscription faults with `OpsErrorState` (refresh + hub link). Documents reconnect: Supabase client retries
+ * the WebSocket; this UI clears after a successful `SUBSCRIBED` once channels are healthy again.
  */
 export function OpsBoardRealtimeBridge() {
 	const router = useRouter()
 	const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+	const tearingDownRef = useRef(false)
+	const channelStatusRef = useRef<Partial<Record<ChKey, string>>>({})
 	const [etas, setEtas] = useState<EtaRow[]>([])
+	const [subscriptionFault, setSubscriptionFault] = useState<{
+		message: string
+		correlationId: string
+	} | null>(null)
+	const [lastLiveRefreshAt, setLastLiveRefreshAt] = useState<number>(() => Date.now())
+	const [staleHint, setStaleHint] = useState(false)
+
+	const bumpLive = useCallback(() => {
+		setLastLiveRefreshAt(Date.now())
+		setStaleHint(false)
+	}, [])
 
 	const loadEtas = useCallback(async () => {
 		const supabase = createClientClient()
@@ -54,11 +83,41 @@ export function OpsBoardRealtimeBridge() {
 				updated_at: String(r.updated_at),
 			})),
 		)
-	}, [])
+		bumpLive()
+	}, [bumpLive])
 
 	useEffect(() => {
 		void loadEtas()
 	}, [loadEtas])
+
+	const reconcileChannelHealth = useCallback(() => {
+		const s = channelStatusRef.current
+		const keys: ChKey[] = ['trips', 'vehicle_trackings', 'service_runs']
+		const bad = keys.some((k) => s[k] === 'CHANNEL_ERROR' || s[k] === 'TIMED_OUT')
+		const allOk = keys.every((k) => s[k] === 'SUBSCRIBED')
+		if (bad && !tearingDownRef.current) {
+			const correlationId = crypto.randomUUID()
+			setSubscriptionFault({
+				message: 'Realtime connection issue. Your board may be out of date until you refresh.',
+				correlationId,
+			})
+			return
+		}
+		if (allOk) {
+			setSubscriptionFault(null)
+		}
+	}, [])
+
+	const onChannelStatus = useCallback(
+		(name: ChKey) => (status: string) => {
+			if (tearingDownRef.current) {
+				return
+			}
+			channelStatusRef.current[name] = status
+			reconcileChannelHealth()
+		},
+		[reconcileChannelHealth],
+	)
 
 	useEffect(() => {
 		const supabase = createClientClient()
@@ -73,24 +132,80 @@ export function OpsBoardRealtimeBridge() {
 			}, OPS_BOARD_REALTIME_DEBOUNCE_MS)
 		}
 
-		const chTrips = subscribeTripsBoard(supabase, { onPayload: scheduleRefresh })
-		const chTrack = subscribeVehicleTrackings(supabase, { onPayload: scheduleRefresh })
+		tearingDownRef.current = false
+		channelStatusRef.current = {}
+
+		const chTrips = subscribeTripsBoard(supabase, {
+			onPayload: scheduleRefresh,
+			onSubscribeStatus: (st) => onChannelStatus('trips')(st),
+		})
+		const chTrack = subscribeVehicleTrackings(supabase, {
+			onPayload: scheduleRefresh,
+			onSubscribeStatus: (st) => onChannelStatus('vehicle_trackings')(st),
+		})
+		const chRuns = subscribeServiceRuns(supabase, {
+			onPayload: scheduleRefresh,
+			onSubscribeStatus: (st) => onChannelStatus('service_runs')(st),
+		})
 
 		return () => {
+			tearingDownRef.current = true
 			if (debounceRef.current) {
 				clearTimeout(debounceRef.current)
 			}
 			removeRealtimeChannel(supabase, chTrips)
 			removeRealtimeChannel(supabase, chTrack)
+			removeRealtimeChannel(supabase, chRuns)
 		}
-	}, [router, loadEtas])
+	}, [router, loadEtas, onChannelStatus])
+
+	useEffect(() => {
+		const id = window.setInterval(() => {
+			if (subscriptionFault) {
+				return
+			}
+			const delta = Date.now() - lastLiveRefreshAt
+			setStaleHint(delta > OPS_BOARD_STALE_SILENCE_MS)
+		}, 30_000)
+		return () => window.clearInterval(id)
+	}, [lastLiveRefreshAt, subscriptionFault])
 
 	return (
 		<div className="mt-2 space-y-2">
-			<p className="text-xs text-ops-muted">
-				Live updates: Realtime → debounced refresh ({OPS_BOARD_REALTIME_DEBOUNCE_MS / 1000}s). Polling
-				fallback: see <span className="font-mono text-ops-muted">docs/ops-console.md</span>.
-			</p>
+			{subscriptionFault ? (
+				<OpsErrorState
+					variant="subscription"
+					title="Live updates interrupted"
+					message={subscriptionFault.message}
+					sanitizeMessage={false}
+					correlationId={subscriptionFault.correlationId}
+					onRefresh={() => router.refresh()}
+					refreshLabel="Refresh page"
+					secondaryAction={{ label: 'Open trips', href: '/ops/trips' }}
+				/>
+			) : null}
+			{staleHint && !subscriptionFault ? (
+				<Alert
+					variant="default"
+					className="border-amber-800/50 bg-amber-950/35 text-amber-50"
+					role="status"
+				>
+					<p className="text-sm font-medium text-amber-100">Board may be stale</p>
+					<p className="mt-1 text-xs text-amber-100/85">
+						No trip or tracking updates have triggered a refresh for about{' '}
+						{OPS_BOARD_STALE_SILENCE_MS / 60_000} minutes. Last live refresh: {formatClock(lastLiveRefreshAt)}.
+					</p>
+					<Button
+						type="button"
+						variant="outline"
+						size="sm"
+						className="mt-2 border-amber-800/70 bg-transparent text-amber-50 hover:bg-amber-950/60"
+						onClick={() => router.refresh()}
+					>
+						Refresh now
+					</Button>
+				</Alert>
+			) : null}
 			{etas.length > 0 ? (
 				<div className="rounded-md border border-ops-border bg-muted/60 p-3">
 					<p className="text-xs font-medium uppercase tracking-wide text-ops-muted">

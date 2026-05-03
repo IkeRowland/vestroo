@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import type { z } from 'zod'
 
+import { buildOpsActionFailure } from '@/features/ops/ops-action-errors'
 import { appendOpsAuditLog } from '@/lib/ops-audit'
 import {
 	closeProtectionBookingIdSchema,
@@ -12,6 +13,7 @@ import {
 	updateCloseProtectionEngagementSchema,
 } from '@/lib/ops-close-protection-schemas'
 import { getOpsStaffForAction } from '@/lib/ops-auth'
+import { logOpsAction, newOpsCorrelationId } from '@/lib/ops-action-log'
 import { createUserServerClient } from '@/lib/supabase/server'
 import type { CloseProtectionEngagementStatusDb, ProfileRole } from '@/types/database.types'
 
@@ -43,14 +45,30 @@ function staffActorRole(role: ProfileRole): 'admin' | 'dispatcher' {
 export async function createCloseProtectionEngagementAction(
 	raw: z.infer<typeof createCloseProtectionEngagementSchema>,
 ) {
+	const correlationId = newOpsCorrelationId()
 	const parsed = createCloseProtectionEngagementSchema.safeParse(raw)
 	if (!parsed.success) {
-		return { ok: false as const, message: 'Invalid payload' }
+		logOpsAction({
+			action: 'createCloseProtectionEngagementAction',
+			outcome: 'validation_error',
+			level: 'warn',
+			correlationId,
+			code: 'VALIDATION',
+		})
+		return buildOpsActionFailure('VALIDATION', 'Invalid payload', correlationId)
 	}
 
 	const gate = await getOpsStaffForAction()
 	if (!gate.ok) {
-		return { ok: false as const, message: gate.message }
+		logOpsAction({
+			action: 'createCloseProtectionEngagementAction',
+			outcome: 'forbidden',
+			level: 'warn',
+			correlationId,
+			code: 'FORBIDDEN',
+			hint: gate.message,
+		})
+		return buildOpsActionFailure('FORBIDDEN', gate.message, correlationId)
 	}
 	const staff = gate.session
 	const supabase = await createUserServerClient()
@@ -62,7 +80,15 @@ export async function createCloseProtectionEngagementAction(
 		.maybeSingle()
 
 	if (bErr || !booking) {
-		return { ok: false as const, message: 'Booking not found' }
+		logOpsAction({
+			action: 'createCloseProtectionEngagementAction',
+			outcome: 'not_found',
+			level: 'warn',
+			correlationId,
+			code: 'NOT_FOUND',
+			bookingId: parsed.data.bookingId,
+		})
+		return buildOpsActionFailure('NOT_FOUND', 'Booking not found', correlationId)
 	}
 
 	const status: CloseProtectionEngagementStatusDb = parsed.data.status ?? 'draft'
@@ -81,7 +107,16 @@ export async function createCloseProtectionEngagementAction(
 		.single()
 
 	if (insErr || !row) {
-		return { ok: false as const, message: insErr?.message ?? 'Insert failed' }
+		logOpsAction({
+			action: 'createCloseProtectionEngagementAction',
+			outcome: 'failure',
+			level: 'error',
+			correlationId,
+			code: 'DATABASE',
+			bookingId: parsed.data.bookingId,
+			hint: insErr?.message,
+		})
+		return buildOpsActionFailure('DATABASE', insErr?.message ?? 'Insert failed', correlationId)
 	}
 
 	const engagementId = row.id as string
@@ -101,20 +136,44 @@ export async function createCloseProtectionEngagementAction(
 	revalidatePath('/ops/close-protection')
 	revalidatePath(`/ops/close-protection/${engagementId}`)
 
+	logOpsAction({
+		action: 'createCloseProtectionEngagementAction',
+		outcome: 'success',
+		level: 'info',
+		correlationId,
+		engagementId,
+		bookingId: parsed.data.bookingId,
+	})
 	return { ok: true as const, engagementId }
 }
 
 export async function updateCloseProtectionEngagementAction(
 	raw: z.infer<typeof updateCloseProtectionEngagementSchema>,
 ) {
+	const correlationId = newOpsCorrelationId()
 	const parsed = updateCloseProtectionEngagementSchema.safeParse(raw)
 	if (!parsed.success) {
-		return { ok: false as const, message: 'Invalid payload' }
+		logOpsAction({
+			action: 'updateCloseProtectionEngagementAction',
+			outcome: 'validation_error',
+			level: 'warn',
+			correlationId,
+			code: 'VALIDATION',
+		})
+		return buildOpsActionFailure('VALIDATION', 'Invalid payload', correlationId)
 	}
 
 	const gate = await getOpsStaffForAction()
 	if (!gate.ok) {
-		return { ok: false as const, message: gate.message }
+		logOpsAction({
+			action: 'updateCloseProtectionEngagementAction',
+			outcome: 'forbidden',
+			level: 'warn',
+			correlationId,
+			code: 'FORBIDDEN',
+			hint: gate.message,
+		})
+		return buildOpsActionFailure('FORBIDDEN', gate.message, correlationId)
 	}
 	const staff = gate.session
 	const supabase = await createUserServerClient()
@@ -127,7 +186,15 @@ export async function updateCloseProtectionEngagementAction(
 		.maybeSingle()
 
 	if (exErr || !existing) {
-		return { ok: false as const, message: 'Engagement not found' }
+		logOpsAction({
+			action: 'updateCloseProtectionEngagementAction',
+			outcome: 'not_found',
+			level: 'warn',
+			correlationId,
+			code: 'NOT_FOUND',
+			engagementId,
+		})
+		return buildOpsActionFailure('NOT_FOUND', 'Engagement not found', correlationId)
 	}
 
 	const bookingId = existing.booking_id as string
@@ -135,7 +202,17 @@ export async function updateCloseProtectionEngagementAction(
 	if (tripId !== undefined && tripId !== null) {
 		const linkOk = await assertTripLinkedToBooking(supabase, bookingId, tripId)
 		if (!linkOk.ok) {
-			return { ok: false as const, message: linkOk.message }
+			logOpsAction({
+				action: 'updateCloseProtectionEngagementAction',
+				outcome: 'failure',
+				level: 'warn',
+				correlationId,
+				code: 'INVALID_TRIP_LINK',
+				engagementId,
+				tripId,
+				hint: linkOk.message,
+			})
+			return buildOpsActionFailure('INVALID_TRIP_LINK', linkOk.message, correlationId)
 		}
 	}
 
@@ -145,7 +222,15 @@ export async function updateCloseProtectionEngagementAction(
 	if (tripId !== undefined) patch.trip_id = tripId
 
 	if (Object.keys(patch).length === 0) {
-		return { ok: false as const, message: 'No changes' }
+		logOpsAction({
+			action: 'updateCloseProtectionEngagementAction',
+			outcome: 'validation_error',
+			level: 'warn',
+			correlationId,
+			code: 'NO_CHANGES',
+			engagementId,
+		})
+		return buildOpsActionFailure('NO_CHANGES', 'No changes', correlationId)
 	}
 
 	const { error: upErr } = await supabase
@@ -154,7 +239,16 @@ export async function updateCloseProtectionEngagementAction(
 		.eq('id', engagementId)
 
 	if (upErr) {
-		return { ok: false as const, message: upErr.message }
+		logOpsAction({
+			action: 'updateCloseProtectionEngagementAction',
+			outcome: 'failure',
+			level: 'error',
+			correlationId,
+			code: 'DATABASE',
+			engagementId,
+			hint: upErr.message,
+		})
+		return buildOpsActionFailure('DATABASE', upErr.message, correlationId)
 	}
 
 	const fieldsChanged: string[] = []
@@ -181,20 +275,45 @@ export async function updateCloseProtectionEngagementAction(
 	revalidatePath('/ops/close-protection')
 	revalidatePath(`/ops/close-protection/${engagementId}`)
 
+	logOpsAction({
+		action: 'updateCloseProtectionEngagementAction',
+		outcome: 'success',
+		level: 'info',
+		correlationId,
+		engagementId,
+		bookingId,
+		meta: { fields_changed: fieldsChanged.join(',') },
+	})
 	return { ok: true as const }
 }
 
 export async function listCloseProtectionEngagementsAction(
 	raw: z.infer<typeof listCloseProtectionEngagementsSchema>,
 ) {
+	const correlationId = newOpsCorrelationId()
 	const parsed = listCloseProtectionEngagementsSchema.safeParse(raw)
 	if (!parsed.success) {
-		return { ok: false as const, message: 'Invalid payload', rows: [] as const }
+		logOpsAction({
+			action: 'listCloseProtectionEngagementsAction',
+			outcome: 'validation_error',
+			level: 'warn',
+			correlationId,
+			code: 'VALIDATION',
+		})
+		return { ...buildOpsActionFailure('VALIDATION', 'Invalid payload', correlationId), rows: [] as const }
 	}
 
 	const gate = await getOpsStaffForAction()
 	if (!gate.ok) {
-		return { ok: false as const, message: gate.message, rows: [] as const }
+		logOpsAction({
+			action: 'listCloseProtectionEngagementsAction',
+			outcome: 'forbidden',
+			level: 'warn',
+			correlationId,
+			code: 'FORBIDDEN',
+			hint: gate.message,
+		})
+		return { ...buildOpsActionFailure('FORBIDDEN', gate.message, correlationId), rows: [] as const }
 	}
 
 	const supabase = await createUserServerClient()
@@ -216,23 +335,54 @@ export async function listCloseProtectionEngagementsAction(
 	const { data, error } = await q
 
 	if (error) {
-		return { ok: false as const, message: error.message, rows: [] as const }
+		logOpsAction({
+			action: 'listCloseProtectionEngagementsAction',
+			outcome: 'failure',
+			level: 'error',
+			correlationId,
+			code: 'DATABASE',
+			hint: error.message,
+		})
+		return { ...buildOpsActionFailure('DATABASE', error.message, correlationId), rows: [] as const }
 	}
 
+	logOpsAction({
+		action: 'listCloseProtectionEngagementsAction',
+		outcome: 'success',
+		level: 'info',
+		correlationId,
+		meta: { row_count: (data ?? []).length },
+	})
 	return { ok: true as const, rows: data ?? [] }
 }
 
 export async function getCloseProtectionEngagementByIdAction(
 	raw: z.infer<typeof closeProtectionEngagementIdSchema>,
 ) {
+	const correlationId = newOpsCorrelationId()
 	const parsed = closeProtectionEngagementIdSchema.safeParse(raw)
 	if (!parsed.success) {
-		return { ok: false as const, message: 'Invalid payload', row: null }
+		logOpsAction({
+			action: 'getCloseProtectionEngagementByIdAction',
+			outcome: 'validation_error',
+			level: 'warn',
+			correlationId,
+			code: 'VALIDATION',
+		})
+		return { ...buildOpsActionFailure('VALIDATION', 'Invalid payload', correlationId), row: null }
 	}
 
 	const gate = await getOpsStaffForAction()
 	if (!gate.ok) {
-		return { ok: false as const, message: gate.message, row: null }
+		logOpsAction({
+			action: 'getCloseProtectionEngagementByIdAction',
+			outcome: 'forbidden',
+			level: 'warn',
+			correlationId,
+			code: 'FORBIDDEN',
+			hint: gate.message,
+		})
+		return { ...buildOpsActionFailure('FORBIDDEN', gate.message, correlationId), row: null }
 	}
 
 	const supabase = await createUserServerClient()
@@ -245,26 +395,64 @@ export async function getCloseProtectionEngagementByIdAction(
 		.maybeSingle()
 
 	if (error) {
-		return { ok: false as const, message: error.message, row: null }
+		logOpsAction({
+			action: 'getCloseProtectionEngagementByIdAction',
+			outcome: 'failure',
+			level: 'error',
+			correlationId,
+			code: 'DATABASE',
+			hint: error.message,
+		})
+		return { ...buildOpsActionFailure('DATABASE', error.message, correlationId), row: null }
 	}
 	if (!data) {
-		return { ok: false as const, message: 'Engagement not found', row: null }
+		logOpsAction({
+			action: 'getCloseProtectionEngagementByIdAction',
+			outcome: 'not_found',
+			level: 'warn',
+			correlationId,
+			code: 'NOT_FOUND',
+		})
+		return { ...buildOpsActionFailure('NOT_FOUND', 'Engagement not found', correlationId), row: null }
 	}
 
+	logOpsAction({
+		action: 'getCloseProtectionEngagementByIdAction',
+		outcome: 'success',
+		level: 'info',
+		correlationId,
+		engagementId: parsed.data.engagementId,
+	})
 	return { ok: true as const, row: data }
 }
 
 export async function getCloseProtectionEngagementsByBookingIdAction(
 	raw: z.infer<typeof closeProtectionBookingIdSchema>,
 ) {
+	const correlationId = newOpsCorrelationId()
 	const parsed = closeProtectionBookingIdSchema.safeParse(raw)
 	if (!parsed.success) {
-		return { ok: false as const, message: 'Invalid payload', rows: [] as const }
+		logOpsAction({
+			action: 'getCloseProtectionEngagementsByBookingIdAction',
+			outcome: 'validation_error',
+			level: 'warn',
+			correlationId,
+			code: 'VALIDATION',
+		})
+		return { ...buildOpsActionFailure('VALIDATION', 'Invalid payload', correlationId), rows: [] as const }
 	}
 
 	const gate = await getOpsStaffForAction()
 	if (!gate.ok) {
-		return { ok: false as const, message: gate.message, rows: [] as const }
+		logOpsAction({
+			action: 'getCloseProtectionEngagementsByBookingIdAction',
+			outcome: 'forbidden',
+			level: 'warn',
+			correlationId,
+			code: 'FORBIDDEN',
+			hint: gate.message,
+		})
+		return { ...buildOpsActionFailure('FORBIDDEN', gate.message, correlationId), rows: [] as const }
 	}
 
 	const supabase = await createUserServerClient()
@@ -277,8 +465,24 @@ export async function getCloseProtectionEngagementsByBookingIdAction(
 		.order('updated_at', { ascending: false })
 
 	if (error) {
-		return { ok: false as const, message: error.message, rows: [] as const }
+		logOpsAction({
+			action: 'getCloseProtectionEngagementsByBookingIdAction',
+			outcome: 'failure',
+			level: 'error',
+			correlationId,
+			code: 'DATABASE',
+			hint: error.message,
+		})
+		return { ...buildOpsActionFailure('DATABASE', error.message, correlationId), rows: [] as const }
 	}
 
+	logOpsAction({
+		action: 'getCloseProtectionEngagementsByBookingIdAction',
+		outcome: 'success',
+		level: 'info',
+		correlationId,
+		bookingId: parsed.data.bookingId,
+		meta: { row_count: (data ?? []).length },
+	})
 	return { ok: true as const, rows: data ?? [] }
 }

@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic'
 export async function generateMetadata() {
   return buildMarketingMetadata(
     'Curated tours & experience packages',
-    'Book private chauffeured experiences in South Africa — clear pricing, structured itineraries, and premium vehicles.',
+    'Book private driver-led experiences in South Africa — clear pricing, structured itineraries, and premium vehicles.',
     '/tours'
   )
 }

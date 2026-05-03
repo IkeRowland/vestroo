@@ -4,7 +4,8 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 
 /**
- * Changes to paid trips are handled by dispatch — avoids conflicting with PayFast state.
+ * Changes to paid trips are handled by dispatch — avoids conflicting with the recorded
+ * payment state for the booking.
  */
 export default function BookModifyPage() {
   return (
@@ -13,7 +14,7 @@ export default function BookModifyPage() {
         <h1 className="text-2xl font-bold text-slate-900">Change your booking</h1>
         <p className="text-slate-600 text-sm">
           Updates to pickup time, route, or vehicle are coordinated with our team so your{' '}
-          <strong>trip</strong> stays aligned with chauffeur and <strong>run</strong> planning.
+          <strong>trip</strong> stays aligned with driver and <strong>run</strong> planning.
         </p>
         <Button asChild className="bg-[#25A89B] hover:bg-[#1f8f83]">
           <Link href="/contact">Contact us</Link>

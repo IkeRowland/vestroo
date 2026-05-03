@@ -50,6 +50,24 @@ const eslintConfig = [
     files: shellA11yFiles,
     rules: jsxA11yRulesAsWarn(jsxA11yBase.rules),
   },
+  /* Epic 16 / US-L2 — forbid raw `'chauffeur'` string literal in TSX (display reinvention); use `getRoleDisplayLabel` / `PROFILE_ROLE_OPS_DRIVER_DB` in `.ts`. */
+  {
+    files: ["**/*.tsx"],
+    ignores: [
+      "src/legacy/**",
+      "src/features/capstone-reference/**",
+    ],
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector: 'Literal[value="chauffeur"]',
+          message:
+            'Avoid raw chauffeur string literal in TSX: use getRoleDisplayLabel from @/features/ops/role-display for UI, or PROFILE_ROLE_OPS_DRIVER_DB from @/types/database.types for queries (Q34).',
+        },
+      ],
+    },
+  },
 ];
 
 export default eslintConfig;

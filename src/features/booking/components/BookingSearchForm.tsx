@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { AddressAutocomplete } from '@/components/ui/AddressAutocomplete';
@@ -14,11 +14,28 @@ import { useBookingStore } from '../hooks/useBookingStore';
 import { z } from 'zod';
 import type { PlaceResult } from '@/lib/maps';
 import { isAirport } from '@/lib/maps';
-import { calculateQuote, type SearchParams } from '@/actions/calculateQuote';
+import type { SearchParams } from '@/actions/calculateQuote';
 import { calculateHourlyQuote } from '@/actions/calculateHourlyQuote';
 import { searchBooking, type BookingSearchResult } from '@/actions/searchBooking';
 import { Select } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
+import {
+  rideDetailsFromMarketingP2P,
+  saveTripRequestPrefill,
+} from '@/features/booking/components/trip-request/trip-request-prefill';
+import {
+  combineRideDateAndTime,
+  defaultRideDetailsFormValues,
+  PICKUP_SCHEDULE_LEAD_MESSAGE,
+  rideDateTimeIsInPast,
+  type RideDetailsFormValues,
+} from '@/features/booking/components/trip-request/ride-details-validate';
+import { TripRequestBookingShell } from '@/features/booking/components/TripRequestBookingShell';
+import { clearBookAgainPortalHandoffCookieAction } from '@/actions/bookAgainPortalHandoff';
+import type { WebClientTypeResolution } from '@/actions/booking-schemas';
+
+/** TEMP: Restore Tour bookings (hourly hire) tab + `/tours` promo line — set `true` when re-enabled. */
+const SHOW_TOUR_BOOKINGS_IN_BOOKING_SEARCH_FORM = false;
 
 /**
  * Validation schema for booking search form
@@ -47,11 +64,45 @@ const searchFormSchema = z.object({
 
 export type SearchFormData = z.infer<typeof searchFormSchema>;
 
+/** Query-string hints for `/book/search` (Story 15.8 + Q17-style trip fields). */
+export type BookSearchUrlPrefill = {
+  originHint?: string;
+  destinationHint?: string;
+  passengers?: number;
+  intent?: string | null;
+  serviceTypeHint?: string | null;
+  omitTripDate?: boolean;
+};
+
+/** Server-verified portal handoff — must match `loadBookAgainPortalBootstrap` shape. */
+export type PortalRebookBootstrap = {
+  customerAccountId: string;
+  accountDisplayName: string;
+  defaultPoRequired: boolean;
+  defaultBillingEntityRef: string | null;
+  memberEmail: string;
+  memberName: string;
+};
+
 export type BookingSearchFormProps = {
   /** Used e.g. for nav "LOGIN" → `/book/search?tab=login` */
   initialTab?: 'create-booking' | 'modify-booking';
+  /** Story **18.5** `?modify=&lt;ref&gt;` from account — pre-fills the reservation lookup. */
+  modifyPrefillRef?: string | null;
   /** Homepage hero card: rust header, “Get a quote”, reference-style tabs */
   variant?: 'default' | 'marketing';
+  /** Account portal: tokens/chrome aligned with `/account/*` shell */
+  shellTheme?: 'default' | 'marketing' | 'accountPortal';
+  bookSearchPrefill?: BookSearchUrlPrefill | null;
+  portalRebookBootstrap?: PortalRebookBootstrap | null;
+  /** FE.19.2 — server-derived default phone country (ISO2) for embedded trip-request shell. */
+  tripRequestPhoneCountryIso2Hint?: string | null;
+  /** Quote / modify / cancel routes live under public `/book/*` today. */
+  bookingFunnelBasePath?: string;
+  /** “Go to booking search” in embedded trip-request dead-ends — portal embed uses `/account/bookings`. */
+  tripRequestBookingSearchHref?: string;
+  /** Account `/account/bookings` embed: create flow only (no modify tab / no tab chrome). */
+  accountBookingsEmbed?: boolean;
 };
 
 /**
@@ -61,6 +112,14 @@ export type BookingSearchFormProps = {
 export function BookingSearchForm({
   initialTab = 'create-booking',
   variant = 'default',
+  shellTheme = 'default',
+  bookSearchPrefill = null,
+  modifyPrefillRef = null,
+  portalRebookBootstrap = null,
+  tripRequestPhoneCountryIso2Hint = null,
+  bookingFunnelBasePath = '/book',
+  tripRequestBookingSearchHref = '/book/search',
+  accountBookingsEmbed = false,
 }: BookingSearchFormProps) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<
@@ -68,8 +127,12 @@ export function BookingSearchForm({
   >(initialTab);
 
   useEffect(() => {
+    if (accountBookingsEmbed) {
+      setActiveTab('create-booking');
+      return;
+    }
     setActiveTab(initialTab);
-  }, [initialTab]);
+  }, [initialTab, accountBookingsEmbed]);
 
   const {
     origin,
@@ -80,41 +143,85 @@ export function BookingSearchForm({
     setTripDetails,
     setQuoteDetails,
     setBookingProduct,
+    setClientTypeResolution,
+    setAccountInvoicingContext,
+    setPurchaseOrderRef,
+    setCustomerDetails,
+    setPreferredVehicleTypeHint,
   } = useBookingStore();
+
+  const urlPrefillAppliedRef = useRef(false);
+  const portalBootstrapAppliedRef = useRef(false);
 
   const [bookingFlowMode, setBookingFlowMode] = useState<'p2p' | 'hourly'>('p2p');
   const [hourlyDurationStr, setHourlyDurationStr] = useState('3');
+  const [tripRequestFunnelOpen, setTripRequestFunnelOpen] = useState(false);
+  const [tripRequestShellKey, setTripRequestShellKey] = useState(0);
+  const [tripRequestEmbeddedPrefill, setTripRequestEmbeddedPrefill] =
+    useState<RideDetailsFormValues | null>(null);
 
   const [originAddress, setOriginAddress] = useState(origin?.formattedAddress || '');
   const [destinationAddress, setDestinationAddress] = useState(
     destination?.formattedAddress || ''
   );
-  // Initialize date and time from store, preserving time component
-  const getInitialDateAndTime = () => {
+  const omitTripDatePrefill = Boolean(bookSearchPrefill?.omitTripDate);
+
+  /**
+   * When the store date/time would be in the past, use the same Johannesburg-aware defaults as
+   * `defaultRideDetailsFormValues()` (Story **19.2** / FE.19.2) so the trip-request shell stays aligned.
+   */
+  const buildFutureFallbackDateAndTime = (): { date: Date; time: string } => {
+    const v = defaultRideDetailsFormValues({ now: Date.now() });
+    const inst = combineRideDateAndTime(v.rideDate, v.rideTime);
+    if (!inst) {
+      const d = new Date();
+      d.setDate(d.getDate() + 1);
+      d.setHours(12, 0, 0, 0);
+      return { date: d, time: '12:00' };
+    }
+    const [yy, mm, dd] = v.rideDate.split('-').map((x) => Number.parseInt(x, 10));
+    return { date: new Date(yy, mm - 1, dd), time: v.rideTime };
+  };
+
+  // Initialize date and time from store, preserving time component (Story 15.8: rebook leaves date empty)
+  const getInitialDateAndTime = (): { date: Date | null; time: string } => {
+    if (omitTripDatePrefill) {
+      return { date: null, time: '' };
+    }
     if (date) {
-      // Extract time from existing date
       const hours = date.getHours();
       const minutes = date.getMinutes();
-      // If time is midnight (00:00), use default 08:00
-      if (hours === 0 && minutes === 0) {
-        const newDate = new Date(date);
-        newDate.setHours(8, 0, 0, 0);
-        return { date: newDate, time: '08:00' };
+      const candidate =
+        hours === 0 && minutes === 0
+          ? (() => {
+              const d = new Date(date);
+              d.setHours(8, 0, 0, 0);
+              return d;
+            })()
+          : date;
+      if (rideDateTimeIsInPast(candidate)) {
+        return buildFutureFallbackDateAndTime();
       }
-      const timeStr = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
-      return { date: date, time: timeStr };
+      const ch = candidate.getHours();
+      const cm = candidate.getMinutes();
+      const timeStr = `${String(ch).padStart(2, '0')}:${String(cm).padStart(2, '0')}`;
+      return { date: candidate, time: timeStr };
     }
-    const defaultDate = new Date();
-    defaultDate.setHours(8, 0, 0, 0); // Set to 08:00 by default
-    return { date: defaultDate, time: '08:00' };
+    const v = defaultRideDetailsFormValues({ now: Date.now() });
+    const [yy, mm, dd] = v.rideDate.split('-').map((x) => Number.parseInt(x, 10));
+    const defaultDate = new Date(yy, mm - 1, dd);
+    if (rideDateTimeIsInPast(combineRideDateAndTime(v.rideDate, v.rideTime) ?? defaultDate)) {
+      return buildFutureFallbackDateAndTime();
+    }
+    return { date: defaultDate, time: v.rideTime };
   };
 
   const initialDateTime = getInitialDateAndTime();
-  const [selectedDate, setSelectedDate] = useState(initialDateTime.date);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(initialDateTime.date);
   const [selectedTime, setSelectedTime] = useState(initialDateTime.time);
   const [returnDate, setReturnDate] = useState<Date | null>(null);
   const [returnTime, setReturnTime] = useState('');
-  const [passengerCount, setPassengerCount] = useState(passengers || 2);
+  const [passengerCount, setPassengerCount] = useState(passengers && passengers > 0 ? passengers : 1);
   const [flightNum, setFlightNum] = useState(flightNumber || '');
   const [returnTrip, setReturnTrip] = useState(false);
   const [specialInstructions, setSpecialInstructions] = useState('');
@@ -123,24 +230,97 @@ export function BookingSearchForm({
   const [showFlightNumber, setShowFlightNumber] = useState(false);
   
   // Modify booking form state
-  const [reservationNumber, setReservationNumber] = useState('');
+  const [reservationNumber, setReservationNumber] = useState(
+    () =>
+      accountBookingsEmbed
+        ? ''
+        : modifyPrefillRef && modifyPrefillRef.trim() !== ''
+          ? modifyPrefillRef.trim()
+          : '',
+  );
   const [countryCode, setCountryCode] = useState('+27'); // Default to South Africa
   const [phoneNumber, setPhoneNumber] = useState('');
   const [foundBooking, setFoundBooking] = useState<BookingSearchResult | null>(null);
   const [isSearchingBooking, setIsSearchingBooking] = useState(false);
 
-  // Sync date and time from store when it changes, but only if time is not midnight
   useEffect(() => {
-    if (date) {
-      const hours = date.getHours();
-      const minutes = date.getMinutes();
-      // Only update if the date actually has a time set (not midnight)
-      // This prevents overwriting user input with stale midnight dates
-      if (hours !== 0 || minutes !== 0) {
-        setSelectedDate(date);
-        setSelectedTime(`${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`);
-      }
+    if (accountBookingsEmbed) return;
+    if (modifyPrefillRef && modifyPrefillRef.trim() !== '') {
+      setReservationNumber(modifyPrefillRef.trim());
     }
+  }, [modifyPrefillRef, accountBookingsEmbed]);
+
+  useEffect(() => {
+    if (!portalRebookBootstrap || portalBootstrapAppliedRef.current) return;
+    portalBootstrapAppliedRef.current = true;
+    const b = portalRebookBootstrap;
+    const resolution: WebClientTypeResolution = {
+      clientType: 'account_client',
+      customerAccountId: b.customerAccountId,
+      clientTypeSource: 'portal_active_account_session',
+    };
+    setClientTypeResolution(resolution);
+    setAccountInvoicingContext({
+      accountDisplayName: b.accountDisplayName,
+      defaultPoRequired: b.defaultPoRequired,
+    });
+    const poInitial = b.defaultPoRequired ? (b.defaultBillingEntityRef?.trim() ?? '') : '';
+    setPurchaseOrderRef(poInitial);
+    const displayName = b.memberName.trim() || b.memberEmail;
+    setCustomerDetails({
+      name: displayName,
+      email: b.memberEmail,
+      phone: '',
+    });
+    void clearBookAgainPortalHandoffCookieAction();
+  }, [
+    portalRebookBootstrap,
+    setAccountInvoicingContext,
+    setClientTypeResolution,
+    setCustomerDetails,
+    setPurchaseOrderRef,
+  ]);
+
+  useEffect(() => {
+    if (!bookSearchPrefill || urlPrefillAppliedRef.current) return;
+    urlPrefillAppliedRef.current = true;
+    const p = bookSearchPrefill;
+    if (p.originHint) setOriginAddress(p.originHint);
+    if (p.destinationHint) setDestinationAddress(p.destinationHint);
+    if (typeof p.passengers === 'number' && p.passengers > 0) {
+      setPassengerCount(p.passengers);
+      setTripDetails({ passengers: p.passengers });
+    }
+    if (p.serviceTypeHint?.trim()) {
+      setPreferredVehicleTypeHint(p.serviceTypeHint.trim());
+    } else {
+      setPreferredVehicleTypeHint(null);
+    }
+    if (SHOW_TOUR_BOOKINGS_IN_BOOKING_SEARCH_FORM && p.intent === 'hourly_hire') {
+      setBookingFlowMode('hourly');
+      setTripDetails({ destination: null });
+    } else {
+      setBookingFlowMode('p2p');
+    }
+    if (p.omitTripDate) {
+      setTripDetails({ date: null });
+      setSelectedDate(null);
+      setSelectedTime('');
+    }
+  }, [bookSearchPrefill, setPreferredVehicleTypeHint, setTripDetails]);
+
+  // Sync date and time from store when it changes. Skip midnight-only values
+  // (would overwrite user input with a stale date) and skip values already in
+  // the past (would make the user submit a past pickup and hit the trip-request
+  // "Date and time must be in the future" guard before they can correct it).
+  useEffect(() => {
+    if (!date) return;
+    const hours = date.getHours();
+    const minutes = date.getMinutes();
+    if (hours === 0 && minutes === 0) return;
+    if (rideDateTimeIsInPast(date)) return;
+    setSelectedDate(date);
+    setSelectedTime(`${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`);
   }, [date]);
 
   // Check if origin is an airport
@@ -153,28 +333,28 @@ export function BookingSearchForm({
     }
   }, [origin]);
 
-  // Sync address strings with store and clear errors when locations are set
+  // Sync local inputs when the *stored* place changes (selection / swap / hydration).
+  // Depends only on `origin` / `destination` — not on the local address strings — so editing
+  // the input after a selection does not get overwritten by this effect.
   useEffect(() => {
-    if (origin && origin.formattedAddress !== originAddress) {
-      setOriginAddress(origin.formattedAddress);
-      setErrors((prev) => {
-        const newErrors = { ...prev };
-        delete newErrors.origin;
-        return newErrors;
-      });
-    }
-  }, [origin, originAddress]);
+    if (!origin) return;
+    setOriginAddress(origin.formattedAddress);
+    setErrors((prev) => {
+      const newErrors = { ...prev };
+      delete newErrors.origin;
+      return newErrors;
+    });
+  }, [origin]);
 
   useEffect(() => {
-    if (destination && destination.formattedAddress !== destinationAddress) {
-      setDestinationAddress(destination.formattedAddress);
-      setErrors((prev) => {
-        const newErrors = { ...prev };
-        delete newErrors.destination;
-        return newErrors;
-      });
-    }
-  }, [destination, destinationAddress]);
+    if (!destination) return;
+    setDestinationAddress(destination.formattedAddress);
+    setErrors((prev) => {
+      const newErrors = { ...prev };
+      delete newErrors.destination;
+      return newErrors;
+    });
+  }, [destination]);
 
   const handleOriginSelect = (place: PlaceResult) => {
     // Validate that place has required data
@@ -232,6 +412,23 @@ export function BookingSearchForm({
     });
   };
 
+  /** Keep local text editable; if user changes text vs stored place, drop the place so we do not quote stale coords. */
+  const handleOriginAddressChange = (value: string) => {
+    setOriginAddress(value);
+    const latest = useBookingStore.getState().origin;
+    if (latest && value.trim() !== latest.formattedAddress.trim()) {
+      setTripDetails({ origin: null });
+    }
+  };
+
+  const handleDestinationAddressChange = (value: string) => {
+    setDestinationAddress(value);
+    const latest = useBookingStore.getState().destination;
+    if (latest && value.trim() !== latest.formattedAddress.trim()) {
+      setTripDetails({ destination: null });
+    }
+  };
+
   const swapAddresses = () => {
     const tempOrigin = origin;
     const tempOriginAddress = originAddress;
@@ -247,29 +444,33 @@ export function BookingSearchForm({
 
   const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const dateValue = e.target.value;
-    if (dateValue) {
-      const [year, month, day] = dateValue.split('-').map(Number);
-      // Preserve the time from selectedTime when changing date
-      const [hours, minutes] = selectedTime.split(':').map(Number);
-      const newDate = new Date(year, month - 1, day, hours, minutes, 0, 0);
-      setSelectedDate(newDate);
-      setTripDetails({ date: newDate });
+    if (!dateValue) {
+      setSelectedDate(null);
+      setTripDetails({ date: null });
       setErrors((prev) => ({ ...prev, date: '' }));
+      return;
     }
+    const [year, month, day] = dateValue.split('-').map(Number);
+    const [hours, minutes] = (selectedTime || '08:00').split(':').map(Number);
+    const newDate = new Date(year, month - 1, day, hours, minutes || 0, 0, 0);
+    setSelectedDate(newDate);
+    setTripDetails({ date: newDate });
+    setErrors((prev) => ({ ...prev, date: '' }));
   };
 
   const handleTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const timeValue = e.target.value;
     setSelectedTime(timeValue);
-    if (timeValue) {
-      // Use the current selectedDate state, or fallback to the store date
-      const currentDate = selectedDate || date || new Date();
-      const [hours, minutes] = timeValue.split(':').map(Number);
-      const dateWithTime = new Date(currentDate);
-      dateWithTime.setHours(hours, minutes, 0, 0);
-      setSelectedDate(dateWithTime); // Update local state
-      setTripDetails({ date: dateWithTime }); // Update store
+    if (!timeValue) {
+      setTripDetails({ date: null });
+      return;
     }
+    const currentDate = selectedDate ?? date ?? new Date();
+    const [hours, minutes] = timeValue.split(':').map(Number);
+    const dateWithTime = new Date(currentDate);
+    dateWithTime.setHours(hours, minutes, 0, 0);
+    setSelectedDate(dateWithTime);
+    setTripDetails({ date: dateWithTime });
   };
 
   const handleReturnDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -330,12 +531,20 @@ export function BookingSearchForm({
           setIsLoading(false);
           return;
         }
-        if (!selectedDate || !selectedTime) {
+        if (!selectedDate || !selectedTime?.trim()) {
           setErrors((prev) => ({
             ...prev,
             ...(selectedDate ? {} : { date: 'Please select a date' }),
-            ...(selectedTime ? {} : { time: 'Please select a time' }),
+            ...(selectedTime?.trim() ? {} : { time: 'Please select a time' }),
           }));
+          setIsLoading(false);
+          return;
+        }
+        const [hourlyH, hourlyM] = selectedTime.split(':').map(Number);
+        const dateWithTime = new Date(selectedDate);
+        dateWithTime.setHours(hourlyH, hourlyM, 0, 0);
+        if (rideDateTimeIsInPast(dateWithTime)) {
+          setErrors((prev) => ({ ...prev, time: PICKUP_SCHEDULE_LEAD_MESSAGE }));
           setIsLoading(false);
           return;
         }
@@ -348,9 +557,6 @@ export function BookingSearchForm({
           setIsLoading(false);
           return;
         }
-        const [hours, minutes] = selectedTime.split(':').map(Number);
-        const dateWithTime = new Date(selectedDate);
-        dateWithTime.setHours(hours, minutes, 0, 0);
         setTripDetails({ date: dateWithTime, destination: null });
         try {
           const result = await calculateHourlyQuote({
@@ -376,7 +582,7 @@ export function BookingSearchForm({
             distance: null,
             vehicleOptions: result.data.vehicleOptions,
           });
-          router.push('/book/quote');
+          router.push(`${bookingFunnelBasePath}/quote`);
         } catch {
           setErrors({ submit: 'An error occurred. Please try again.' });
         } finally {
@@ -444,10 +650,26 @@ export function BookingSearchForm({
       return;
     }
 
-    if (!selectedTime) {
+    if (!selectedTime?.trim()) {
       setErrors((prev) => ({ ...prev, time: 'Please select a time' }));
       setIsLoading(false);
       return;
+    }
+
+    // Guard against past pickup time. The Zod schema only checks that the date
+    // is today or later — without this, a user opening the homepage at 19:00
+    // with the default 08:00 time would submit a past timestamp and immediately
+    // hit the trip-request shell's "Date and time must be in the future"
+    // dead-end UI. Surface the issue inline so they can fix it in this form.
+    {
+      const [pickH, pickM] = selectedTime.split(':').map(Number);
+      const pickupAt = new Date(selectedDate);
+      pickupAt.setHours(pickH, pickM, 0, 0);
+      if (rideDateTimeIsInPast(pickupAt)) {
+        setErrors((prev) => ({ ...prev, time: PICKUP_SCHEDULE_LEAD_MESSAGE }));
+        setIsLoading(false);
+        return;
+      }
     }
 
     // Validate return trip fields if enabled
@@ -468,7 +690,7 @@ export function BookingSearchForm({
     try {
       // Ensure we have the latest date and time before submitting
       const [hours, minutes] = selectedTime.split(':').map(Number);
-      const dateWithTime = new Date(selectedDate);
+      const dateWithTime = new Date(selectedDate as Date);
       dateWithTime.setHours(hours, minutes, 0, 0);
       
       // Update store with the final date/time before submitting
@@ -491,25 +713,24 @@ export function BookingSearchForm({
         hourlyBillableHours: null,
       });
 
-      // Calculate quote
-      const result = await calculateQuote(formData);
-
-      if (!result.success) {
-        setErrors({ submit: result.error });
-        setIsLoading(false);
-        return;
-      }
-
-      // Store quote details including vehicle options in the store
-      setQuoteDetails({
-        quoteAmount: result.data.price,
-        estimatedDuration: result.data.estimatedDuration,
-        distance: result.data.distance,
-        vehicleOptions: result.data.vehicleOptions,
+      /** Epic 10 public funnel: point-to-point → trip request (no instant pricing / quote page). */
+      const ridePrefill = rideDetailsFromMarketingP2P({
+        origin: originToValidate,
+        destination: destinationToValidate,
+        pickupInput: originAddress,
+        destinationInput: destinationAddress,
+        dateWithTime,
+        passengers: passengerCount,
+        specialInstructions,
+        flightNumber: flightNum,
+        showFlightNumber,
       });
-
-      // Navigate to quote page
-      router.push('/book/quote');
+      saveTripRequestPrefill(ridePrefill);
+      setTripRequestEmbeddedPrefill(ridePrefill);
+      setTripRequestShellKey((k) => k + 1);
+      setTripRequestFunnelOpen(true);
+      setIsLoading(false);
+      return;
     } catch (error) {
       if (error instanceof z.ZodError) {
         const fieldErrors: Record<string, string> = {};
@@ -564,7 +785,7 @@ export function BookingSearchForm({
   const handleModifyBooking = () => {
     if (foundBooking) {
       // Navigate to modify page with booking ID
-      router.push(`/book/modify?id=${foundBooking.id}`);
+      router.push(`${bookingFunnelBasePath}/modify?id=${foundBooking.id}`);
     }
   };
 
@@ -572,27 +793,34 @@ export function BookingSearchForm({
   const handleCancelBooking = () => {
     if (foundBooking) {
       // Navigate to cancel page with booking ID
-      router.push(`/book/cancel?id=${foundBooking.id}`);
+      router.push(`${bookingFunnelBasePath}/cancel?id=${foundBooking.id}`);
     }
   };
 
   // Reset modify booking form when switching tabs
   useEffect(() => {
-    if (activeTab === 'create-booking') {
+    if (accountBookingsEmbed || activeTab === 'create-booking') {
       setFoundBooking(null);
       setReservationNumber('');
       setPhoneNumber('');
       setErrors({});
     }
-  }, [activeTab]);
+    if (!accountBookingsEmbed && activeTab === 'modify-booking') {
+      setTripRequestFunnelOpen(false);
+      setTripRequestEmbeddedPrefill(null);
+    }
+  }, [activeTab, accountBookingsEmbed]);
 
   return (
     <div
       className={cn(
-        'w-full min-w-[320px] mx-auto bg-white shadow-lg border border-gray-200',
+        'w-full min-w-[320px] mx-auto border',
+        shellTheme === 'accountPortal'
+          ? 'rounded-account-card border-account-border bg-account-surface shadow-account-1'
+          : 'rounded-lg bg-white shadow-lg border-gray-200',
         variant === 'marketing'
           ? 'flex flex-col rounded-lg overflow-hidden min-h-[520px] sm:min-h-[600px] md:min-h-[760px] lg:min-h-[820px]'
-          : 'rounded-lg'
+          : shellTheme !== 'accountPortal' && 'rounded-lg'
       )}
     >
       {variant === 'marketing' && (
@@ -600,8 +828,15 @@ export function BookingSearchForm({
           All-Inclusive Booking
         </div>
       )}
-      {/* Tabs */}
-      <div className="flex flex-wrap items-center justify-between px-4 pt-3 pb-2.5 bg-gray-100 border-b border-gray-200 gap-2">
+      {!accountBookingsEmbed ? (
+      <div
+        className={cn(
+          'flex flex-wrap items-center justify-between px-4 pt-3 pb-2.5 border-b gap-2',
+          shellTheme === 'accountPortal'
+            ? 'bg-account-surface-hover border-account-border'
+            : 'bg-gray-100 border-gray-200'
+        )}
+      >
         <TabsList className="flex gap-0">
           <TabsTrigger
             value="create-booking"
@@ -609,7 +844,7 @@ export function BookingSearchForm({
             onClick={() => setActiveTab('create-booking')}
             className="rounded-t-lg"
           >
-            {variant === 'marketing' ? 'One-way booking' : 'Create New Booking'}
+            {variant === 'marketing' ? 'Shuttle and Tours' : 'Create New Booking'}
           </TabsTrigger>
           <TabsTrigger
             value="modify-booking"
@@ -621,14 +856,16 @@ export function BookingSearchForm({
           </TabsTrigger>
         </TabsList>
       </div>
+      ) : null}
 
       <div
         className={cn(
-          'px-4 py-4 space-y-4 bg-white',
+          'px-4 py-4 space-y-4',
+          shellTheme === 'accountPortal' ? 'bg-account-surface' : 'bg-white',
           variant === 'marketing' && 'flex min-h-0 flex-1 flex-col'
         )}
       >
-      {activeTab === 'modify-booking' ? (
+      {!accountBookingsEmbed && activeTab === 'modify-booking' ? (
         // Modify Booking Form
         <div className="space-y-6 w-full">
           {!foundBooking ? (
@@ -764,47 +1001,76 @@ export function BookingSearchForm({
             </div>
           )}
         </div>
+      ) : tripRequestFunnelOpen && bookingFlowMode === 'p2p' ? (
+        <div
+          className={cn(
+            'w-full',
+            variant === 'marketing' && 'flex min-h-0 flex-1 flex-col overflow-hidden py-1'
+          )}
+        >
+          <TripRequestBookingShell
+            key={tripRequestShellKey}
+            embedded
+            embeddedRidePrefill={tripRequestEmbeddedPrefill}
+            phoneCountryIso2Hint={tripRequestPhoneCountryIso2Hint}
+            bookingSearchHref={tripRequestBookingSearchHref}
+            onExit={() => {
+              setTripRequestFunnelOpen(false);
+              setTripRequestEmbeddedPrefill(null);
+            }}
+          />
+        </div>
       ) : (
         // Create New Booking Form
       <form onSubmit={handleSubmit} className="space-y-6 w-full">
-        <div className="flex rounded-lg border border-gray-200 p-1 bg-gray-50 gap-1">
-          <button
-            type="button"
-            onClick={() => setBookingFlowMode('p2p')}
-            className={cn(
-              'flex-1 rounded-md py-2 px-2 text-xs font-semibold transition-colors',
-              bookingFlowMode === 'p2p'
-                ? 'bg-white text-gray-900 shadow-sm'
-                : 'text-gray-600 hover:text-gray-900'
-            )}
-          >
-            Point-to-point trip
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setBookingFlowMode('hourly');
-              setTripDetails({ destination: null });
-            }}
-            className={cn(
-              'flex-1 rounded-md py-2 px-2 text-xs font-semibold transition-colors',
-              bookingFlowMode === 'hourly'
-                ? 'bg-white text-gray-900 shadow-sm'
-                : 'text-gray-600 hover:text-gray-900'
-            )}
-          >
-            Hourly chauffeur hire
-          </button>
-        </div>
-        <p className="text-center text-xs text-gray-600">
-          <Link
-            href="/tours"
-            className="font-semibold text-vest-rust hover:underline underline-offset-2"
-          >
-            Tours &amp; experiences
-          </Link>{' '}
-          — curated packages with online quote &amp; checkout
-        </p>
+        {SHOW_TOUR_BOOKINGS_IN_BOOKING_SEARCH_FORM ? (
+          <>
+            <div className="flex rounded-lg border border-gray-200 p-1 bg-gray-50 gap-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setBookingFlowMode('p2p');
+                  setTripRequestFunnelOpen(false);
+                  setTripRequestEmbeddedPrefill(null);
+                }}
+                className={cn(
+                  'flex-1 rounded-md py-2 px-2 text-xs font-semibold transition-colors',
+                  bookingFlowMode === 'p2p'
+                    ? 'bg-white text-gray-900 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
+                )}
+              >
+                Shuttle Bookings
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setBookingFlowMode('hourly');
+                  setTripDetails({ destination: null });
+                  setTripRequestFunnelOpen(false);
+                  setTripRequestEmbeddedPrefill(null);
+                }}
+                className={cn(
+                  'flex-1 rounded-md py-2 px-2 text-xs font-semibold transition-colors',
+                  bookingFlowMode === 'hourly'
+                    ? 'bg-white text-gray-900 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
+                )}
+              >
+                Tour Bookings
+              </button>
+            </div>
+            <p className="text-center text-xs text-gray-600">
+              <Link
+                href="/tours"
+                className="font-semibold text-vest-rust hover:underline underline-offset-2"
+              >
+                Tours &amp; experiences
+              </Link>{' '}
+              — curated packages with online quote &amp; checkout
+            </p>
+          </>
+        ) : null}
 
         {/* Ride Details */}
         <div className="space-y-3 w-full">
@@ -815,7 +1081,7 @@ export function BookingSearchForm({
               <AddressAutocomplete
                 label=""
                 value={originAddress}
-                onChange={setOriginAddress}
+                onChange={handleOriginAddressChange}
                 onSelect={handleOriginSelect}
                 placeholder={
                   bookingFlowMode === 'hourly'
@@ -861,7 +1127,7 @@ export function BookingSearchForm({
                 <AddressAutocomplete
                   label=""
                   value={destinationAddress}
-                  onChange={setDestinationAddress}
+                  onChange={handleDestinationAddressChange}
                   onSelect={handleDestinationSelect}
                   placeholder="Drop-off service point / address"
                   required
@@ -903,7 +1169,7 @@ export function BookingSearchForm({
                 <Input
                   id="date"
                   type="date"
-                  value={formatDateForInput(selectedDate)}
+                  value={selectedDate ? formatDateForInput(selectedDate) : ''}
                   onChange={handleDateChange}
                   required
                   className="h-12 text-xs font-bold w-full"
@@ -1102,10 +1368,12 @@ export function BookingSearchForm({
           disabled={isLoading}
         >
           {isLoading
-            ? 'Calculating Quote...'
-            : variant === 'marketing'
-              ? 'Get a quote'
-              : 'Get Instant Quote'}
+            ? bookingFlowMode === 'hourly'
+              ? 'Calculating Quote...'
+              : 'Loading…'
+            : bookingFlowMode === 'hourly'
+              ? 'Get hourly quote'
+              : 'Request a trip'}
         </Button>
       </form>
       )}

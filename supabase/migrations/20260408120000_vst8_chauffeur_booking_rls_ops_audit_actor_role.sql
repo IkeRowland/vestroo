@@ -52,6 +52,7 @@ create policy ops_audit_log_staff_insert on public.ops_audit_log
     and actor_role in ('dispatcher', 'admin')
   );
 
+-- rls-lint-ok: Epic 16 Q35 terminal policy; profiles EXISTS for chauffeur role gate reviewed
 create policy ops_audit_log_chauffeur_insert on public.ops_audit_log
   for insert to authenticated
   with check (

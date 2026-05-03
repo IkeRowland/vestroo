@@ -46,3 +46,26 @@ export function findVehicleWindowConflicts<T extends TripLike>(
 		return rangesOverlap(candidate, tripTimeWindow(row))
 	})
 }
+
+export type ChauffeurTripLike = {
+	id: string
+	chauffeur_id: string
+	time_start_estimate: string
+	time_end_estimate: string
+	status: string | null
+}
+
+export function findChauffeurWindowConflicts<T extends ChauffeurTripLike>(
+	trips: T[],
+	chauffeurId: string,
+	candidate: TimeWindow,
+	excludeTripId?: string,
+): T[] {
+	return trips.filter((row) => {
+		if (row.chauffeur_id !== chauffeurId) return false
+		if (excludeTripId && row.id === excludeTripId) return false
+		const st = (row.status ?? '').toLowerCase()
+		if (TERMINAL_TRIP_STATUSES.has(st)) return false
+		return rangesOverlap(candidate, tripTimeWindow(row))
+	})
+}

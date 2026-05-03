@@ -178,3 +178,6 @@ export async function publishChauffeurLocationAction(raw: z.infer<typeof publish
 
 	return { ok: true as const }
 }
+
+/** Epic 16 / US-L3 — grep-friendly alias for field location publishes. */
+export const publishDriverFieldLocationAction = publishChauffeurLocationAction

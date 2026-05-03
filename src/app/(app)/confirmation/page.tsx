@@ -133,7 +133,7 @@ function ConfirmationPageContent() {
     remote?.totalAmount ?? store.quoteAmount ?? 0;
   const vehicleId = remote?.vehicleId || store.selectedVehicleId || '';
   const vehicleName = vehicleId
-    ? `Chauffeured vehicle (option ${vehicleId})`
+    ? `Private driver vehicle (option ${vehicleId})`
     : 'Vehicle';
   const vehicleCapacity = 4;
 
@@ -201,7 +201,7 @@ function ConfirmationPageContent() {
                     <p className="text-green-700">
                       {paymentStatus === 'paid'
                         ? 'Thank you. A confirmation email is sent when payment completes.'
-                        : 'If you just paid, confirmation may take a moment while we verify with PayFast.'}
+                        : 'We have recorded your booking. Payment instructions will be emailed shortly so you can settle by EFT.'}
                     </p>
                     <div className="mt-4">
                       <p className="text-sm text-green-600">Reservation reference</p>
@@ -266,7 +266,8 @@ function ConfirmationPageContent() {
                     )}
                     {paymentStatus === 'pending' && (
                       <p className="text-xs text-slate-500 mt-1">
-                        You will receive email confirmation once PayFast reports success.
+                        Payment instructions are sent by email; confirmation follows once we
+                        record your EFT payment.
                       </p>
                     )}
                   </div>

@@ -9,6 +9,19 @@ export const experiencePackageBookingMetadataSchema = z.object({
   selected_addon_ids: z.array(z.string().min(1)).default([]),
 })
 
+/** Persisted under bookings.booking_metadata for booking_intent = corporate_pattern (SH.9.5). */
+export const corporatePatternBookingMetadataSchema = z.object({
+  service_run_id: z.string().uuid(),
+  from_point_id: z.string().uuid(),
+  to_point_id: z.string().uuid(),
+  seats: z.number().int().min(1),
+  idempotency_key: z.string().min(1).optional(),
+})
+
+export type CorporatePatternBookingMetadata = z.infer<
+  typeof corporatePatternBookingMetadataSchema
+>
+
 export type ExperiencePackageBookingMetadata = z.infer<
   typeof experiencePackageBookingMetadataSchema
 >
@@ -34,14 +47,87 @@ const customerSchema = z.object({
   phone: z.string().min(1),
 })
 
+/** South African mobile/landline as used on the web wizard booker phone (optional rider aligns here). */
+const ZA_BOOKING_PHONE_RE = /^(\+27|0)[0-9]{9}$/
+
+/**
+ * Epic 15 / 15B.1 — optional rider on the same payload as `customer` (point-to-point / wizard).
+ * All fields optional; empty strings normalise to null at insert. Phone uses the same ZA rule as `ContactDetailsForm`.
+ */
+export const webBookingRiderSchema = z
+  .object({
+    name: z.string().trim().max(200).optional(),
+    email: z.string().trim().optional(),
+    phone: z.string().trim().optional(),
+  })
+  .superRefine((r, ctx) => {
+    const name = r.name?.trim() ?? ''
+    const email = r.email?.trim() ?? ''
+    const phone = r.phone?.trim() ?? ''
+    if (!name && !email && !phone) return
+    if (email && !z.string().email().safeParse(email).success) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Invalid email address',
+        path: ['email'],
+      })
+    }
+    if (phone && !ZA_BOOKING_PHONE_RE.test(phone)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Invalid South African phone number',
+        path: ['phone'],
+      })
+    }
+  })
+  .optional()
+
+export type WebBookingRiderPayload = z.infer<typeof webBookingRiderSchema>
+
+/** Maps validated optional `rider` object to `bookings.rider_*` columns (null when absent or all blank). */
+export function webBookingRiderToDbColumns(
+  rider: WebBookingRiderPayload,
+): { rider_name: string | null; rider_phone: string | null; rider_email: string | null } {
+  if (!rider) {
+    return { rider_name: null, rider_phone: null, rider_email: null }
+  }
+  const name = rider.name?.trim() || null
+  const email = rider.email?.trim() || null
+  const phone = rider.phone?.trim() || null
+  if (!name && !email && !phone) {
+    return { rider_name: null, rider_phone: null, rider_email: null }
+  }
+  return { rider_name: name, rider_email: email, rider_phone: phone }
+}
+
 /** VST-13 corporate invoicing hooks — references only; columns on `public.bookings`. */
 export const corporateInvoicingFieldsSchema = z.object({
   invoiceRequested: z.boolean().optional(),
+  /**
+   * Maps to `bookings.purchase_order_ref`. Epic 12 Q4: when the enriched booking is `account_client`
+   * and live `customer_accounts.default_po_required` is true, `assertPurchaseOrderForAccountBookingInsert`
+   * rejects blank values — the public contact / trip-request forms also require the field client-side.
+   */
   purchaseOrderRef: z.string().max(120).nullable().optional(),
   billingEntityRef: z.string().max(120).nullable().optional(),
 })
 
 export type CorporateInvoicingFields = z.infer<typeof corporateInvoicingFieldsSchema>
+
+/** Story 12.5 — Q6 client typing from public booking flows (`ops_manual` is staff-only, not accepted here). */
+export const webClientTypeResolutionSchema = z.object({
+	clientType: z.enum(['walk_in', 'account_client']),
+	customerAccountId: z.string().uuid().nullable(),
+	clientTypeSource: z.enum([
+		'user_confirmed_domain_match',
+		'user_declined_domain_match',
+		'no_match',
+		/** Verified via portal “Book this again” cookie + membership (Story 15.8); not from URL account id. */
+		'portal_active_account_session',
+	]),
+})
+
+export type WebClientTypeResolution = z.infer<typeof webClientTypeResolutionSchema>
 
 /**
  * Persisted booking payload from the web wizard (create / pay).
@@ -64,6 +150,8 @@ export const webBookingPayloadSchema = z
     servicePatternId: z.string().uuid().nullable().optional(),
     bookingMetadata: z.record(z.unknown()).optional(),
     customer: customerSchema,
+    rider: webBookingRiderSchema,
+    clientTypeResolution: webClientTypeResolutionSchema.optional(),
   })
   .merge(corporateInvoicingFieldsSchema)
   .superRefine((data, ctx) => {
@@ -107,9 +195,31 @@ export const webBookingPayloadSchema = z
       return
     }
 
-    const needsDestination =
-      data.bookingIntent === 'point_to_point' ||
-      data.bookingIntent === 'corporate_pattern'
+    if (data.bookingIntent === 'corporate_pattern') {
+      const metaResult = corporatePatternBookingMetadataSchema.safeParse(
+        data.bookingMetadata
+      )
+      if (!metaResult.success) {
+        for (const err of metaResult.error.errors) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: err.message,
+            path: ['bookingMetadata', ...err.path],
+          })
+        }
+        return
+      }
+      if (metaResult.data.seats !== data.passengers) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Seat count must match passenger count',
+          path: ['passengers'],
+        })
+      }
+      return
+    }
+
+    const needsDestination = data.bookingIntent === 'point_to_point'
     if (needsDestination && !data.destination) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -123,6 +233,16 @@ export const webBookingPayloadSchema = z
           code: z.ZodIssueCode.custom,
           message: 'Duration is required for hourly hire',
           path: ['hourlyDurationHours'],
+        })
+      }
+    }
+
+    if (data.clientTypeResolution?.clientType === 'account_client') {
+      if (data.clientTypeResolution.customerAccountId == null) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Select an organisation for this booking',
+          path: ['clientTypeResolution', 'customerAccountId'],
         })
       }
     }

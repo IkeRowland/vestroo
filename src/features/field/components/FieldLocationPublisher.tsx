@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react'
 
-import { publishChauffeurLocationAction } from '@/actions/fieldLocation'
+import { publishDriverFieldLocationAction } from '@/actions/fieldLocation'
 
 /** Client debounce: one publish every N ms (see `docs/realtime-and-notifications.md`). */
 export const FIELD_LOCATION_PUBLISH_INTERVAL_MS = 8_000
@@ -43,7 +43,7 @@ export function FieldLocationPublisher({ tripId, enabled }: Props) {
 			if (!p) {
 				return
 			}
-			void publishChauffeurLocationAction({
+			void publishDriverFieldLocationAction({
 				tripId,
 				latitude: p.lat,
 				longitude: p.lng,

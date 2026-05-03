@@ -1,0 +1,273 @@
+openapi: 3.0.3
+info:
+  title: Vestroo external Route Handlers (Next.js App Router)
+  version: '1.0.0'
+  description: |
+    **Time-box:** Phase B (**Story 6.6** / **BE.6.6**), 2026-04-09 — spec authoring only; **Phase C** (CI / `redocly` / parser validation) is **out of scope** for 6.6 (**NFR.4.1**).
+
+    **Included paths:** Only these **`src/app/api/**/route.ts`** handlers are documented as **public or partner** HTTP surfaces:
+    - `GET /api/health`
+    - `GET /api/booking-confirmation`
+    - `POST /api/payfast/webhook`
+
+    **Excluded:** **Server Actions** (`src/actions/**`), **Payload** / **internal** admin APIs, **Supabase PostgREST**, any **`route.ts`** added later that is **not** classified as external contract, and **reference Nest** Swagger **module-by-module** parity. For **why** first-party UI prefers Server Actions vs plain REST, see **[Capstone Nest REST → Vestroo mapping](../capstone-nest-rest-to-vestroo-mapping.md)** (**BE.6.3**).
+
+    ---
+
+    **NFR.3.1 — Security disclaimer (read this first):** This document describes **HTTP request/response shape** and **field names** only. It does **not** define or guarantee **authorization**, **Row Level Security (RLS)**, **server-only secrets**, or **enforcement** behaviour. Callers MUST treat **RLS**, **server implementation**, and **operational hardening** as authoritative — **not** this OpenAPI file.
+
+    **PayFast ITN** verification and idempotency: **[integrations and payments](../integrations-and-payments.md)** — the **`signature`** field in the **form body** plus server **`PAYFAST_PASSPHRASE`** (no `Authorization` header); there is **no** registered OpenAPI **`securitySchemes`** entry that models this accurately, so the **`POST /api/payfast/webhook`** operation uses **`security: []`** and relies on the operation text and **`PayFastItnForm`**.
+
+    **Route Handler** vs Server Action patterns: **[front-end API interaction](../front-end-api-interaction.md)**.
+
+servers:
+  - url: https://TBD-production-host.example
+    description: Production base URL **TBD** — replace with deployed app origin (e.g. `NEXT_PUBLIC_APP_URL`).
+
+paths:
+  /api/health:
+    get:
+      operationId: getHealth
+      summary: Database connectivity probe
+      description: |
+        Ops-style liveness/readiness probe. **No authentication** in the current implementation (`src/app/api/health/route.ts`).
+      tags:
+        - Health
+      security: []
+      responses:
+        '200':
+          description: Database check succeeded (`status` is `healthy`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthPayload'
+        '503':
+          description: Database check failed or returned an error (`status` is `unhealthy`).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthPayload'
+
+  /api/booking-confirmation:
+    get:
+      operationId: getBookingConfirmation
+      summary: Read booking summary by capability URL (query `id`)
+      description: |
+        Returns a **confirmation-shaped** JSON view for one booking. The **`id`** query parameter MUST be a **UUID v1–v5** string. Possession of the UUID acts as an **unguessable capability** (not a general-purpose public CRUD API). Invalid UUID → **400**; no row → **404**.
+
+        **NFR.3.1:** RLS and server behaviour are defined in code and **`docs/data-models.md`** — not implied by this contract.
+      tags:
+        - Booking
+      security:
+        - BookingConfirmationCapability: []
+      parameters:
+        - name: id
+          in: query
+          required: true
+          description: Booking primary key (UUID). Unguessable capability token for read access to this response shape.
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Booking found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookingConfirmationResponse'
+        '400':
+          description: Missing or invalid `id` (fails server UUID validation).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '404':
+          description: No booking for the given `id`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '500':
+          description: Unexpected server error.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+
+  /api/payfast/webhook:
+    post:
+      operationId: postPayfastWebhook
+      summary: PayFast ITN (Instant Transaction Notification) webhook
+      description: |
+        Accepts PayFast **ITN** callbacks as **`multipart/form-data`** or **`application/x-www-form-urlencoded`** (parsed via `request.formData()` in `src/app/api/payfast/webhook/route.ts`).
+
+        **Verification:** The handler requires form field **`signature`**, verified with **`verifyPayFastWebhookSignature`** and server env **`PAYFAST_PASSPHRASE`** (**[integrations and payments](../integrations-and-payments.md)**). Missing passphrase on server → **500**. Missing/invalid signature → **400**.
+
+        **Processing (summary):** Uses **`m_payment_id`** (booking id), **`payment_status`**, **`pf_payment_id`**; idempotent **`COMPLETE`** handling; **`FAILED`** / **`CANCELLED`** paths do not downgrade already-**paid** rows.
+
+        **NFR.3.1:** Signature and business rules are enforced in **server code** — this spec does not replace secret review or RLS posture.
+      tags:
+        - PayFast
+      # No OpenAPI-standard security scheme matches form-body `signature` + server passphrase;
+      # verification is documented on the operation and in `PayFastItnForm` (see integrations doc).
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PayFastItnForm'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PayFastItnForm'
+      responses:
+        '200':
+          description: Accepted (including benign idempotent / ignored states). Response body is JSON with varying `message`/`status` fields per branch.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PayFastWebhookSuccess'
+        '400':
+          description: Invalid payload or signature.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '404':
+          description: Booking not found for `m_payment_id`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '500':
+          description: Server configuration error (e.g. missing passphrase) or update failure.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+
+components:
+  securitySchemes:
+    BookingConfirmationCapability:
+      type: apiKey
+      in: query
+      name: id
+      description: |
+        **Capability-style access:** the **`id`** query parameter MUST be an unguessable booking UUID. This is **not** a browsable listing or CRUD API — only this narrow read shape is exposed.
+
+  schemas:
+    HealthPayload:
+      type: object
+      required:
+        - status
+        - message
+        - timestamp
+      properties:
+        status:
+          type: string
+          enum:
+            - healthy
+            - unhealthy
+        message:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+
+    BookingConfirmationResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        reservationReference:
+          type: string
+          nullable: true
+        paymentStatus:
+          type: string
+          nullable: true
+        gatewayTransactionId:
+          type: string
+          nullable: true
+        originLabel:
+          type: string
+          nullable: true
+        destinationLabel:
+          type: string
+          nullable: true
+        pickupDateTime:
+          type: string
+          nullable: true
+        passengerCount:
+          type: integer
+          nullable: true
+        flightNumber:
+          type: string
+          nullable: true
+        totalAmount:
+          type: number
+          nullable: true
+        vehicleId:
+          type: string
+          format: uuid
+          nullable: true
+        customerName:
+          type: string
+          nullable: true
+        customerEmail:
+          type: string
+          nullable: true
+        customerPhone:
+          type: string
+          nullable: true
+        bookingIntent:
+          type: string
+          nullable: true
+        hourlyDurationHours:
+          type: number
+          nullable: true
+
+    ErrorBody:
+      type: object
+      properties:
+        error:
+          type: string
+
+    PayFastItnForm:
+      type: object
+      description: |
+        Subset of PayFast ITN fields required or commonly used by this handler; PayFast may send additional fields (**`additionalProperties`** allowed). **`signature`** is mandatory for verification; **`m_payment_id`** maps to the booking id (handler returns **400** if absent after parse).
+      required:
+        - signature
+        - m_payment_id
+      properties:
+        signature:
+          type: string
+        m_payment_id:
+          type: string
+          description: Booking id (UUID string) in Vestroo.
+        payment_status:
+          type: string
+          description: e.g. COMPLETE, FAILED, CANCELLED, or other PayFast statuses handled as pending updates.
+        pf_payment_id:
+          type: string
+          description: PayFast payment id (stored as `trans_id` when present).
+      additionalProperties: true
+
+    PayFastWebhookSuccess:
+      type: object
+      properties:
+        status:
+          type: string
+          example: ok
+        message:
+          type: string
+          description: Present on idempotent or ignored branches (e.g. already processed).
+
+tags:
+  - name: Health
+    description: Ops probes — unauthenticated in current implementation.
+  - name: Booking
+    description: Traveller-facing confirmation read via capability URL.
+  - name: PayFast
+    description: Payment gateway ITN webhook.

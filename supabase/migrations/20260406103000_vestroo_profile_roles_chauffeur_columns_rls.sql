@@ -112,6 +112,7 @@ create policy bookings_insert on public.bookings
 create policy bookings_update on public.bookings
   for update to authenticated using (customer_id = auth.uid() or public.is_staff(auth.uid()));
 
+-- rls-lint-ok: Epic 16 Q35 terminal policy; customer EXISTS on bookings reviewed (E1 chauffeur path uses helper; no 42P17 here)
 create policy booking_trips_select on public.booking_trips
   for select to authenticated using (
     public.is_staff(auth.uid())
@@ -119,6 +120,7 @@ create policy booking_trips_select on public.booking_trips
   );
 create policy booking_trips_write on public.booking_trips
   for all to authenticated using (public.is_staff(auth.uid())) with check (public.is_staff(auth.uid()));
+-- rls-lint-ok: Epic 16 Q35 terminal policy; INSERT WITH CHECK cross-reads bookings+trips reviewed
 create policy booking_trips_customer_insert on public.booking_trips
   for insert to authenticated with check (
     exists (select 1 from public.bookings b where b.id = booking_id and b.customer_id = auth.uid())
@@ -153,6 +155,7 @@ create policy ratings_insert_customer on public.ratings
 -- ---------------------------------------------------------------------------
 -- RLS: tracking & chauffeur rows (was 20260402133703)
 -- ---------------------------------------------------------------------------
+-- rls-lint-ok: Epic 16 Q35 terminal policy; chauffeur_assignment EXISTS reviewed (no mutual RLS loop with vehicle_trackings)
 create policy vehicle_trackings_read on public.vehicle_trackings
   for select to authenticated using (
     public.is_staff(auth.uid())
@@ -163,6 +166,7 @@ create policy vehicle_trackings_read on public.vehicle_trackings
   );
 create policy vehicle_trackings_write on public.vehicle_trackings
   for all to authenticated using (public.is_staff(auth.uid())) with check (public.is_staff(auth.uid()));
+-- rls-lint-ok: Epic 16 Q35 terminal policy; chauffeur_assignment EXISTS reviewed
 create policy vehicle_trackings_chauffeur_insert on public.vehicle_trackings
   for insert to authenticated with check (
     exists (
@@ -170,6 +174,7 @@ create policy vehicle_trackings_chauffeur_insert on public.vehicle_trackings
       where c.id = chauffeur_assignment_id and c.chauffeur_id = auth.uid()
     )
   );
+-- rls-lint-ok: Epic 16 Q35 terminal policy; chauffeur_assignment EXISTS in USING+WITH CHECK reviewed
 create policy vehicle_trackings_chauffeur_update on public.vehicle_trackings
   for update to authenticated using (
     exists (

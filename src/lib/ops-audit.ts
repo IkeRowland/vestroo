@@ -12,6 +12,10 @@ export type OpsAuditInsert = {
 	payload?: Record<string, unknown>
 }
 
+/**
+ * Comms-related **`action`** strings: matrix outcomes (**15C.2**) and ops registry edits (**15C.3**) in
+ * `@/lib/comms/audit-actions`.
+ */
 export async function appendOpsAuditLog(
 	supabase: SupabaseClient,
 	row: OpsAuditInsert,

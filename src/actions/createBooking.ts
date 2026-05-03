@@ -5,16 +5,23 @@ import { createServerClient } from '@/lib/supabase/server';
 import {
   webBookingPayloadSchema,
   experiencePackageBookingMetadataSchema,
+  webBookingRiderToDbColumns,
   type WebBookingPayload,
   type ExperiencePackageBookingMetadata,
 } from '@/actions/booking-schemas';
+import { enrichWebBookingWithClientType } from '@/actions/booking-client-type-enrich';
+import { assertPurchaseOrderForAccountBookingInsert } from '@/lib/account-po-policy';
 import { reconcileBookingQuote } from '@/lib/booking-quote-reconcile';
 import type { QuoteLocation } from '@/lib/booking-quote-types';
-import { notifyBookingCreatedSmsStub } from '@/services/sms-stub';
+import { notifyBookingCreatedSms } from '@/services/sms';
 import {
   experiencePackageStubLocations,
   fetchExperiencePackageById,
 } from '@/lib/experience-package-data';
+import {
+  isQuoteFirstForNonTrivialIntentsEnabled,
+  isQuoteFirstNonTrivialBookingIntent,
+} from '@/lib/quote-first-non-trivial-intents';
 
 function resolveDestinationForRow(payload: WebBookingPayload): QuoteLocation {
   if (payload.destination) {
@@ -33,8 +40,9 @@ function resolveDestinationForRow(payload: WebBookingPayload): QuoteLocation {
 }
 
 /**
- * Create booking without PayFast redirect (pending payment / ops follow-up).
- * Quote totals are reconciled server-side — client quoteAmount is not trusted.
+ * Create booking without a checkout redirect (pending payment / ops follow-up). Epic 16 /
+ * Theme N — settlement is recorded out of band by ops via `markBookingPaymentReceived` (US-N3).
+ * Quote totals are reconciled server-side — client `quoteAmount` is not trusted.
  */
 export async function createBooking(bookingState: unknown) {
   try {
@@ -86,6 +94,29 @@ export async function createBooking(bookingState: unknown) {
         ? { ...experienceMeta }
         : validatedData.bookingMetadata ?? {};
 
+    let clientTyped;
+    try {
+      clientTyped = await enrichWebBookingWithClientType(validatedData, bookingMetadataPersisted);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Could not validate account selection.';
+      return { success: false, error: msg };
+    }
+
+    const poCheck = await assertPurchaseOrderForAccountBookingInsert(supabase, {
+      clientType: clientTyped.client_type,
+      customerAccountId: clientTyped.customer_account_id,
+      purchaseOrderRef: validatedData.purchaseOrderRef,
+    });
+    if (!poCheck.ok) {
+      return { success: false, error: poCheck.message };
+    }
+
+    const useQuoteFirst =
+      isQuoteFirstNonTrivialBookingIntent(validatedData.bookingIntent) &&
+      isQuoteFirstForNonTrivialIntentsEnabled();
+
+    const riderCols = webBookingRiderToDbColumns(validatedData.rider)
+
     const bookingData = {
       origin_place_id: originForRow.placeId,
       origin_address: originForRow.formattedAddress,
@@ -108,14 +139,20 @@ export async function createBooking(bookingState: unknown) {
       customer_name: validatedData.customer.name,
       customer_email: validatedData.customer.email,
       customer_phone: validatedData.customer.phone,
-      status: 'pending',
+      rider_name: riderCols.rider_name,
+      rider_email: riderCols.rider_email,
+      rider_phone: riderCols.rider_phone,
+      status: useQuoteFirst ? 'submitted' : 'pending',
       payment_status: 'pending',
       payment_reference: bookingReference,
       booking_intent: validatedData.bookingIntent,
       hourly_duration_hours: validatedData.hourlyDurationHours ?? null,
       hourly_service_area_notes: validatedData.hourlyServiceAreaNotes ?? null,
       service_pattern_id: validatedData.servicePatternId ?? null,
-      booking_metadata: bookingMetadataPersisted,
+      booking_metadata: clientTyped.booking_metadata,
+      client_type: clientTyped.client_type,
+      customer_account_id: clientTyped.customer_account_id,
+      account_snapshot: clientTyped.account_snapshot,
       invoice_requested: validatedData.invoiceRequested ?? false,
       purchase_order_ref: validatedData.purchaseOrderRef?.trim() || null,
       billing_entity_ref: validatedData.billingEntityRef?.trim() || null,
@@ -136,7 +173,7 @@ export async function createBooking(bookingState: unknown) {
       };
     }
 
-    await notifyBookingCreatedSmsStub({
+    await notifyBookingCreatedSms({
       bookingId: booking.id,
       customerPhone: validatedData.customer.phone,
     });

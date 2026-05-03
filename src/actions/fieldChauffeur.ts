@@ -12,6 +12,7 @@ import {
 	buildChauffeurTripStatusNotifications,
 	insertOperationalNotifications,
 } from '@/lib/operational-notifications'
+import { sendEnRouteRiderTrackSmsIfApplicable } from '@/lib/field-en-route-rider-sms'
 import { createUserServerClient } from '@/lib/supabase/server'
 import type { TripFulfilmentStatusDb } from '@/types/database.types'
 
@@ -122,6 +123,11 @@ export async function updateChauffeurTripStatusAction(raw: z.infer<typeof nextSt
 
 	revalidatePath('/field')
 	revalidatePath(`/field/trips/${parsed.data.tripId}`)
+
+	// US-C1 (15B.4): best-effort rider SMS; must not throw after a successful trip update/audit
+	if (next === 'en_route') {
+		void sendEnRouteRiderTrackSmsIfApplicable(supabase, parsed.data.tripId)
+	}
 
 	return { ok: true as const }
 }

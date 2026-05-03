@@ -110,8 +110,8 @@ export function PaymentSummaryCard({
               <span>SSL Secured</span>
             </div>
             <div className="flex items-center gap-1">
-              <span className="font-semibold text-slate-700">PayFast</span>
-              <span>Protected</span>
+              <span className="font-semibold text-slate-700">EFT</span>
+              <span>by email</span>
             </div>
           </div>
         </div>

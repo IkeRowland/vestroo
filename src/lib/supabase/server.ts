@@ -1,5 +1,6 @@
 import { createServerClient as createSupabaseServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
+import { cache } from 'react';
 
 /**
  * Server-side Supabase client
@@ -25,12 +26,20 @@ export async function createServerClient() {
   });
 }
 
+/** Alias for {@link createServerClient} — Epic 15 / **15C.2** comms matrix reads (`comms_*` RLS). */
+export async function createServiceRoleClient() {
+  return createServerClient();
+}
+
 /**
  * Server-side Supabase client for user operations
  * Uses SSR cookie-based authentication
  * For use in Server Components
+ *
+ * Wrapped in React `cache()` so the same request shares one client instance
+ * (layout `requireOpsStaffPage` + page loaders avoid duplicate auth churn).
  */
-export async function createUserServerClient() {
+export const createUserServerClient = cache(async () => {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
@@ -58,5 +67,5 @@ export async function createUserServerClient() {
       },
     },
   });
-}
+});
 

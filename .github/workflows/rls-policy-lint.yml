@@ -1,0 +1,24 @@
+# Epic 16 Theme O / US-O2 — cross-table RLS policy lint (ADR 0006)
+name: RLS policy lint
+
+on:
+  pull_request:
+    paths:
+      - 'supabase/migrations/**'
+      - 'scripts/lint-rls-policies.mjs'
+
+jobs:
+  lint-rls-policies:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Lint migration RLS policies (terminal definitions)
+        env:
+          RLS_LINT_STRICT: '1'
+        run: node scripts/lint-rls-policies.mjs

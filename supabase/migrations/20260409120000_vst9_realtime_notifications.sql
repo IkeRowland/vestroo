@@ -18,6 +18,7 @@ comment on column public.notifications.channel is
   'Delivery channel; MVP uses in_app only (VST-9).';
 
 -- Chauffeurs may insert a notification row for a trip customer they currently serve (RLS).
+-- rls-lint-ok: Epic 16 Q35 terminal policy; trips EXISTS for recipient match reviewed
 create policy notifications_chauffeur_customer_insert on public.notifications
   for insert to authenticated
   with check (
