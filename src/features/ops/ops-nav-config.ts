@@ -10,6 +10,7 @@ import {
 	Sparkles,
 	Truck,
 	Users,
+	UserPlus,
 } from 'lucide-react'
 
 import { OPS_BOOKINGS_PATH } from '@/features/ops/ops-bookings-url'
@@ -112,6 +113,7 @@ export const OPS_NAV_GROUPS: readonly OpsNavGroup[] = [
 		title: 'Finance',
 		items: [
 			{ href: '/ops/invoicing', label: 'Invoicing', icon: Receipt },
+			{ href: '/ops/finance/referrals', label: 'Referrals', icon: UserPlus },
 			{
 				href: '/ops/settings/bank-account',
 				label: 'Bank account (EFT)',
@@ -146,6 +148,8 @@ const SEGMENT_LABELS: Record<string, string> = {
 	vehicles: 'Vehicles',
 	clients: 'Clients',
 	invoicing: 'Invoicing',
+	finance: 'Finance',
+	referrals: 'Referrals',
 	'bank-account': 'Bank account',
 	compliance: 'Compliance',
 	comms: 'Comms registry',

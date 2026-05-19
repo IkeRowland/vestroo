@@ -20,7 +20,7 @@ import { OpsPagination } from '@/features/ops/components/OpsPagination'
 import { OpsStatusPill } from '@/features/ops/components/OpsStatusPill'
 import { OPS_BOOKINGS_PATH } from '@/features/ops/ops-bookings-url'
 import { OpsFetchErrorIsland } from '@/features/ops/components/OpsFetchErrorIsland'
-import { OpsBookingsQueueOverviewBand } from '@/features/ops/components/OpsBookingsQueueOverviewBand'
+import { OpsNewBookingButton } from '@/features/ops/components/OpsNewBookingSheet'
 import { OpsBookingsQueueFilters } from '@/features/ops/components/OpsBookingsQueueFilters'
 import { OpsBookingsAdvancedSearch } from '@/features/ops/components/OpsBookingsAdvancedSearch'
 import {
@@ -40,16 +40,13 @@ import {
 	hasActiveQueueFilters,
 	isReadyToAssignPreset,
 	OPS_BOOKINGS_QUEUE_NEEDS_ATTENTION_STATUSES,
-	OPS_BOOKINGS_READY_TO_ASSIGN_HREF,
 	OPS_BOOKINGS_READY_TO_ASSIGN_STATUS,
 	parseOpsBookingsQueueSearchParams,
 	serializeOpsBookingsQueueSearchParams,
 	type OpsBookingsQueueParsed,
 } from '@/lib/ops-bookings-queue-query'
-import {
-	buildBookingsQueueOverviewBarSeries,
-	fetchBookingsQueueOverviewChartRows,
-} from '@/lib/ops-bookings-queue-overview-chart'
+import { listActiveReferrersForOps } from '@/actions/referrerOps'
+import { referrerLabelFromBookingEmbed } from '@/lib/referrer-types'
 import {
 	effectiveBookingStatusKeyForOps,
 	extractFirstLinkedTripStatus,
@@ -101,13 +98,16 @@ type BookingsQueueRow = {
 	booking_quotes?: unknown
 	/** `bookings.booking_metadata` — trip-request accept timestamp, etc. */
 	booking_metadata?: unknown
+	referrer_id?: string | null
+	referrers?: unknown
 }
 
 const BOOKINGS_QUEUE_SELECT = `
   id, payment_reference, status, payment_status, booking_intent, client_type, customer_account_id,
   pickup_datetime, origin_name, destination_name, customer_name, customer_email,
-  total_amount, availability_checked_at, created_at, booking_metadata,
+  total_amount, availability_checked_at, created_at, booking_metadata, referrer_id,
   customer_accounts ( id, name ),
+  referrers ( id, name, code ),
   booking_quotes!bookings_current_quote_id_fkey ( status, total_zar ),
   booking_trips (
     sort_order,
@@ -370,8 +370,6 @@ export default async function OpsBookingsPage({ searchParams }: PageProps) {
 	let error: PostgrestError | null = null
 	let rtaCountUnavailable = false
 	let readyToAssignCount: number | null = null
-	let completed7dUnavailable = false
-	let completed7dCount = 0
 	let needsAttentionUnavailable = false
 	let needsAttentionCount: number | null = null
 	let completedTotalUnavailable = false
@@ -380,17 +378,12 @@ export default async function OpsBookingsPage({ searchParams }: PageProps) {
 	let cancelledCount: number | null = null
 	let allBookingsUnavailable = false
 	let allBookingsCount: number | null = null
-	let barSeries = buildBookingsQueueOverviewBarSeries([])
 	let paginationFilterQuery = ''
+	let activeReferrers: Awaited<ReturnType<typeof listActiveReferrersForOps>> = []
 
 	const perPage = parsed.perPage
 
 	if (showMainQueue) {
-		const completed7dFrom = (() => {
-			const t = new Date()
-			return new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), t.getUTCDate() - 7))
-		})()
-
 		const filteredListBase = () =>
 			applyQueueFiltersToBookingsQuery(
 				supabase.from('bookings').select(BOOKINGS_QUEUE_SELECT),
@@ -405,12 +398,11 @@ export default async function OpsBookingsPage({ searchParams }: PageProps) {
 		const [
 			countRes,
 			rtaCountRes,
-			completed7dRes,
 			needsAttentionRes,
 			completedTotalRes,
 			cancelledRes,
 			allBookingsRes,
-			chartRows,
+			referrersForForm,
 		] = await Promise.all([
 			filteredCountBase(),
 			supabase
@@ -420,16 +412,11 @@ export default async function OpsBookingsPage({ searchParams }: PageProps) {
 			supabase
 				.from('bookings')
 				.select('*', { count: 'exact', head: true })
-				.eq('status', 'completed')
-				.gte('updated_at', completed7dFrom.toISOString()),
-			supabase
-				.from('bookings')
-				.select('*', { count: 'exact', head: true })
 				.in('status', [...OPS_BOOKINGS_QUEUE_NEEDS_ATTENTION_STATUSES]),
 			supabase.from('bookings').select('*', { count: 'exact', head: true }).eq('status', 'completed'),
 			supabase.from('bookings').select('*', { count: 'exact', head: true }).eq('status', 'cancelled'),
 			supabase.from('bookings').select('*', { count: 'exact', head: true }),
-			fetchBookingsQueueOverviewChartRows(supabase),
+			listActiveReferrersForOps(),
 		])
 
 		totalCount = countRes.error ? 0 : (countRes.count ?? 0)
@@ -446,8 +433,6 @@ export default async function OpsBookingsPage({ searchParams }: PageProps) {
 		error = listError ?? null
 		rtaCountUnavailable = Boolean(rtaCountRes.error)
 		readyToAssignCount = rtaCountUnavailable ? null : (rtaCountRes.count ?? 0)
-		completed7dUnavailable = Boolean(completed7dRes.error)
-		completed7dCount = completed7dUnavailable ? 0 : (completed7dRes.count ?? 0)
 		needsAttentionUnavailable = Boolean(needsAttentionRes.error)
 		needsAttentionCount = needsAttentionUnavailable ? null : (needsAttentionRes.count ?? 0)
 		completedTotalUnavailable = Boolean(completedTotalRes.error)
@@ -456,7 +441,7 @@ export default async function OpsBookingsPage({ searchParams }: PageProps) {
 		cancelledCount = cancelledUnavailable ? null : (cancelledRes.count ?? 0)
 		allBookingsUnavailable = Boolean(allBookingsRes.error)
 		allBookingsCount = allBookingsUnavailable ? null : (allBookingsRes.count ?? 0)
-		barSeries = buildBookingsQueueOverviewBarSeries(chartRows)
+		activeReferrers = referrersForForm
 
 		rows = (data ?? []) as unknown as BookingsQueueRow[]
 		paginationFilterQuery = serializeOpsBookingsQueueSearchParams(parsed)
@@ -474,7 +459,18 @@ export default async function OpsBookingsPage({ searchParams }: PageProps) {
 						? 'Unified bookings queue (newest first). Use advanced search or the filters below to narrow results.'
 						: 'Advanced booking search is active — the main queue is hidden until you clear search filters.'
 				}
-			/>
+			>
+				{showMainQueue ? (
+					<OpsNewBookingButton
+						referrers={activeReferrers}
+						bookingFormLoad={{
+							bookSearchPrefill: null,
+							portalRebookBootstrap: null,
+							tripRequestPhoneCountryIso2Hint: 'za',
+						}}
+					/>
+				) : null}
+			</OpsPageHeader>
 
 			<OpsBookingsRealtimeBridge />
 
@@ -482,16 +478,6 @@ export default async function OpsBookingsPage({ searchParams }: PageProps) {
 
 			{showMainQueue ? (
 				<>
-					<OpsBookingsQueueOverviewBand
-				totalInView={totalCount}
-				readyToAssign={readyToAssignCount}
-				readyToAssignUnavailable={rtaCountUnavailable}
-				completed7d={completed7dCount}
-				completed7dUnavailable={completed7dUnavailable}
-				barSeries={barSeries}
-				readyToAssignDrillHref={OPS_BOOKINGS_READY_TO_ASSIGN_HREF}
-			/>
-
 			{ignoredParamKeys.length > 0 ? (
 				<p
 					className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-ops-foreground"
@@ -594,6 +580,9 @@ export default async function OpsBookingsPage({ searchParams }: PageProps) {
 								Client
 							</th>
 							<th scope="col" className="px-3 py-2 font-medium">
+								Referrer
+							</th>
+							<th scope="col" className="px-3 py-2 font-medium">
 								Assignment
 							</th>
 							<th scope="col" className="px-3 py-2 font-medium">
@@ -674,6 +663,9 @@ export default async function OpsBookingsPage({ searchParams }: PageProps) {
 										<OpsStatusPill tone="neutral" dot={false}>
 											{row.client_type ? formatQueueStatusLabel(row.client_type) : '—'}
 										</OpsStatusPill>
+									</td>
+									<td className="max-w-[10rem] px-3 py-2 text-sm text-ops-muted">
+										{referrerLabelFromBookingEmbed(row.referrers)}
 									</td>
 									<td className="max-w-[10rem] px-3 py-2 text-sm text-ops-muted">
 										{vehicle ? (

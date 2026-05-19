@@ -21,6 +21,7 @@ import {
 } from '@/lib/account-po-policy';
 
 import { submitTripRequest } from '@/actions/submitTripRequest';
+import { submitOpsTripRequest } from '@/actions/submitOpsTripRequest';
 import { getTripRequestVehicleOffers } from '@/actions/getTripRequestVehicleOffers';
 import type { TripRequestCountryOption } from '@/features/booking/components/trip-request/load-trip-request-countries';
 import {
@@ -156,6 +157,9 @@ export type TripRequestBookingShellProps = {
   onExit?: () => void;
   /** After a successful server submit (e.g. account portal list should refetch via `router.refresh()`). */
   onSubmitSuccess?: () => void;
+  /** Ops embed: persist via staff action with optional referrer attribution. */
+  opsSubmit?: boolean;
+  opsReferrerId?: string | null;
 };
 
 export function TripRequestBookingShell(props: TripRequestBookingShellProps) {
@@ -166,6 +170,8 @@ export function TripRequestBookingShell(props: TripRequestBookingShellProps) {
     bookingSearchHref = '/book/search',
     onExit,
     onSubmitSuccess,
+    opsSubmit = false,
+    opsReferrerId = null,
   } = props;
   const reduceMotion = useReducedMotion();
   const [funnelStep, setFunnelStep] = React.useState<FunnelStep>(0);
@@ -562,7 +568,12 @@ export function TripRequestBookingShell(props: TripRequestBookingShellProps) {
     setSubmitMessage(null);
 
     void (async () => {
-      const result = await submitTripRequest(fullSubmitParsed.data);
+      const result = opsSubmit
+        ? await submitOpsTripRequest({
+            ...fullSubmitParsed.data,
+            referrerId: opsReferrerId ?? null,
+          })
+        : await submitTripRequest(fullSubmitParsed.data);
       if (result.success) {
         setSubmitState('success');
         setBookingRefSuccess(result.bookingReference);

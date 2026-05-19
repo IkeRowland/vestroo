@@ -104,6 +104,10 @@ export type BookingSearchFormProps = {
   tripRequestBookingSearchHref?: string;
   /** Account `/account/bookings` embed: create flow only (no modify tab / no tab chrome). */
   accountBookingsEmbed?: boolean;
+  /** Ops `/ops/bookings` embed — staff trip-request create with optional referrer. */
+  opsBookingsEmbed?: boolean;
+  opsReferrerId?: string | null;
+  onOpsSubmitSuccess?: () => void;
 };
 
 /**
@@ -121,6 +125,9 @@ export function BookingSearchForm({
   bookingFunnelBasePath = '/book',
   tripRequestBookingSearchHref = '/book/search',
   accountBookingsEmbed = false,
+  opsBookingsEmbed = false,
+  opsReferrerId = null,
+  onOpsSubmitSuccess,
 }: BookingSearchFormProps) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<
@@ -974,7 +981,15 @@ export function BookingSearchForm({
             embeddedRidePrefill={tripRequestEmbeddedPrefill}
             phoneCountryIso2Hint={tripRequestPhoneCountryIso2Hint}
             bookingSearchHref={tripRequestBookingSearchHref}
-            onSubmitSuccess={accountBookingsEmbed ? () => router.refresh() : undefined}
+            onSubmitSuccess={
+              opsBookingsEmbed && onOpsSubmitSuccess
+                ? onOpsSubmitSuccess
+                : accountBookingsEmbed
+                  ? () => router.refresh()
+                  : undefined
+            }
+            opsSubmit={opsBookingsEmbed}
+            opsReferrerId={opsReferrerId}
             onExit={() => {
               setTripRequestFunnelOpen(false);
               setTripRequestEmbeddedPrefill(null);
