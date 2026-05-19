@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
+import { opsAccountClientDetailPath } from '@/lib/ops-clients-account-url'
 import {
 	buildOpsClientsHref,
 	getRawOpsClientsSelectedId,
@@ -37,6 +38,12 @@ describe('ops-clients-url (Story 17.11)', () => {
 	it('buildOpsClientsHref encodes id', () => {
 		expect(buildOpsClientsHref({ id: known.values().next().value! })).toBe(
 			'/ops/clients?id=a1111111-1111-4111-8111-111111111111',
+		)
+	})
+
+	it('opsAccountClientDetailPath encodes account id', () => {
+		expect(opsAccountClientDetailPath('a1111111-1111-4111-8111-111111111111')).toBe(
+			'/ops/clients/accounts/a1111111-1111-4111-8111-111111111111',
 		)
 	})
 })

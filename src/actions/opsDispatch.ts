@@ -21,6 +21,7 @@ import {
 	verifyDispatchOverrideToken,
 	type DispatchOverridePayloadV1,
 } from '@/lib/dispatch-override-token'
+import { tryAutoConfirmAccountClientBooking } from '@/lib/ops-account-client-auto-confirm'
 import { isBookingDispatchable } from '@/lib/ops-booking'
 import {
 	findChauffeurWindowConflicts,
@@ -827,11 +828,22 @@ export async function assignBookingToRun(raw: z.infer<typeof assignSchema>) {
 		console.error('assign notification insert failed', nAssign.message)
 	}
 
+	if (
+		(booking.client_type as string | null) === 'account_client' &&
+		(booking.status as string | null) === 'pending_confirmation'
+	) {
+		const auto = await tryAutoConfirmAccountClientBooking(supabase, bookingId)
+		if (auto.confirmed) {
+			revalidatePath('/account/bookings')
+		}
+	}
+
 	revalidatePath('/ops/trips')
 	revalidatePath('/ops/calendar')
 	revalidatePath('/ops/fleet')
 	revalidatePath('/ops/fleet/vehicles')
 	revalidatePath('/ops/bookings')
+	revalidatePath(`/ops/bookings/${bookingId}`)
 
 	logOpsAction({
 		action: 'assignBookingToRun',

@@ -8,6 +8,7 @@ import {
 	loadAccountInvoiceQuoteForViewer,
 } from '@/lib/account-invoices-archive-query'
 import { ACCOUNT_BILLING_QUOTES_LIST_PATH } from '@/lib/account-invoices-list-query'
+import { accountPortalBookingDetailPath } from '@/lib/account-portal-booking-path'
 import { requireAccountPortalRoles } from '@/lib/account-portal-auth'
 import { createUserServerClient } from '@/lib/supabase/server'
 import type { CustomerAccountMemberRoleDb } from '@/types/database.types'
@@ -57,7 +58,7 @@ export default async function AccountBillingQuoteViewerPage({ params }: PageProp
 					</p>
 				</div>
 				<Link
-					href={`/account/bookings?id=${encodeURIComponent(loaded.booking_id)}`}
+					href={accountPortalBookingDetailPath(loaded.booking_id)}
 					className="text-sm font-medium text-primary underline-offset-4 hover:underline"
 				>
 					Open booking →

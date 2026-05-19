@@ -67,6 +67,7 @@ export const accountBookingsCopy = {
 	paginationLabel: 'Bookings list pages',
 
 	detailSheetTitle: 'Trip details',
+	detailBackToBookings: '← Back to bookings',
 	/** Booking detail rail — `pending_confirmation` */
 	detailPendingConfirmationBanner:
 		'This booking is awaiting confirmation from our operations team. Driver and quote details will appear here once confirmed.',
@@ -87,10 +88,13 @@ export const accountBookingsCopy = {
 	detailDriverNote:
 		'Name and contact are shared in your trip confirmation and by your account team as the run approaches.',
 	detailComms: 'Activity',
-	detailCommsEmpty: 'No quote or payment events are recorded for this trip yet.',
+	detailCommsEmpty: 'No activity is recorded for this trip yet.',
 	detailAmount: 'Total',
 
 	timelineCreated: 'Booking created' as const,
+	timelineBookingConfirmed: 'Booking confirmed' as const,
+	timelineTripStarted: 'Trip started' as const,
+	timelineTripCompleted: 'Trip completed' as const,
 	timelineQuoteSent: (v: number) => `Quote v${v} sent`,
 	timelineQuoteAccepted: (v: number) => `Quote v${v} accepted`,
 	timelineQuoteRejected: (v: number) => `Quote v${v} rejected`,

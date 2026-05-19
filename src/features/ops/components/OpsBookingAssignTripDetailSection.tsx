@@ -82,7 +82,7 @@ export function OpsBookingAssignTripDetailSection({
 						description={
 							tripReadinessMessage && tripReadinessMessage.trim().length > 0
 								? tripReadinessMessage
-								: 'A driver and vehicle are assigned. If you still see this panel, refresh the page. Use the Confirm booking checklist above when both trip checks and quote are satisfied.'
+								: 'A driver and vehicle are assigned. If you still see this panel, refresh the page. Save the quote in the Quote section — when both trip and quote are ready, the booking confirms automatically.'
 						}
 					/>
 				) : (

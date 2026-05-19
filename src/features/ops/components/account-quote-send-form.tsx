@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { useCallback, useId, useState, useTransition } from 'react'
 
-import { saveAccountBookingQuoteDraft, sendAccountBookingQuote } from '@/actions/sendAccountBookingQuote'
+import { saveAccountBookingQuoteDraft } from '@/actions/sendAccountBookingQuote'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import type { BookingQuoteLineItem } from '@/types/booking-quote'
@@ -45,7 +45,6 @@ function rowsToLineItems(rows: Row[]): BookingQuoteLineItem[] {
 type AccountQuoteSendFormProps = {
 	bookingId: string
 	defaultFirstLineLabel: string
-	/** When `pending_confirmation`, offers **Save draft** without emailing. */
 	bookingStatus?: string | null
 }
 
@@ -81,12 +80,14 @@ export function AccountQuoteSendForm({
 		return acc + Math.round(qtyN * unit * 100) / 100
 	}, 0)
 
+	const saveHint =
+		bookingStatus === 'pending_confirmation'
+			? 'When a trip is linked, saving the quote confirms the booking for the organisation portal.'
+			: 'Saves the quote without emailing the customer.'
+
 	return (
 		<div className="mt-4 space-y-4">
-			<p className="text-xs text-ops-muted">
-				Enter one or more line items (description and unit price in ZAR). The account client receives
-				the trip confirmation and quote email from the configured comms template.
-			</p>
+			<p className="text-xs text-ops-muted">{saveHint}</p>
 			<div className="overflow-x-auto rounded-md border border-ops-border">
 				<table className="w-full min-w-[28rem] text-left text-sm">
 					<thead className="border-b border-ops-border bg-ops-canvas/40 text-ops-table-head">
@@ -167,35 +168,6 @@ export function AccountQuoteSendForm({
 				</p>
 			</div>
 			<div className="flex flex-wrap gap-2">
-				{bookingStatus === 'pending_confirmation' ? (
-					<Button
-						type="button"
-						variant="outline"
-						size="sm"
-						disabled={pending}
-						onClick={(e) => {
-							e.stopPropagation()
-							setErrorMessage(null)
-							const lineItems = rowsToLineItems(rows)
-							if (lineItems.length === 0) {
-								setErrorMessage(
-									'Add at least one line with a description and a positive unit price (ZAR).',
-								)
-								return
-							}
-							startTransition(async () => {
-								const res = await saveAccountBookingQuoteDraft({ bookingId, lineItems })
-								if (res.ok) {
-									router.refresh()
-									return
-								}
-								setErrorMessage(res.error.message)
-							})
-						}}
-					>
-						{pending ? 'Saving…' : 'Save quote draft'}
-					</Button>
-				) : null}
 				<Button
 					type="button"
 					variant="default"
@@ -212,7 +184,7 @@ export function AccountQuoteSendForm({
 							return
 						}
 						startTransition(async () => {
-							const res = await sendAccountBookingQuote({ bookingId, lineItems })
+							const res = await saveAccountBookingQuoteDraft({ bookingId, lineItems })
 							if (res.ok) {
 								router.refresh()
 								return
@@ -221,7 +193,7 @@ export function AccountQuoteSendForm({
 						})
 					}}
 				>
-					{pending ? 'Sending…' : 'Send quote'}
+					{pending ? 'Saving…' : 'Save quote'}
 				</Button>
 			</div>
 			{errorMessage ? (

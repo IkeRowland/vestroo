@@ -5,6 +5,7 @@ import { z } from 'zod'
 
 import { buildOpsActionFailure } from '@/features/ops/ops-action-errors'
 import { createBookingQuote, sendBookingQuote } from '@/actions/bookingQuoteOps'
+import { tryAutoConfirmAccountClientBooking } from '@/lib/ops-account-client-auto-confirm'
 import { getOpsStaffForAction } from '@/lib/ops-auth'
 import { logOpsAction, newOpsCorrelationId } from '@/lib/ops-action-log'
 import { createUserServerClient } from '@/lib/supabase/server'
@@ -152,6 +153,9 @@ export async function sendAccountBookingQuote(
 		return sent
 	}
 
+	revalidatePath('/account/bookings')
+	revalidatePath(`/account/bookings/${bookingId}`)
+
 	logOpsAction({
 		action: 'sendAccountBookingQuote',
 		outcome: 'success',
@@ -168,9 +172,16 @@ export type SaveAccountBookingQuoteDraftResult =
 	| { ok: true; correlationId: string; quoteId: string }
 	| ReturnType<typeof buildOpsActionFailure>
 
+const accountQuoteSaveStatuses = new Set([
+	'submitted',
+	'triaged',
+	'quote_sent',
+	'pending_confirmation',
+])
+
 /**
- * Ops: persist a **draft** quote for account portal bookings in `pending_confirmation`
- * without emailing (confirmation gate uses the saved row).
+ * Ops: persist a quote for account portal bookings without emailing.
+ * When status is `pending_confirmation` and a trip is linked, auto-confirms to `assigned`.
  */
 export async function saveAccountBookingQuoteDraft(
 	input: SendAccountBookingQuoteInput,
@@ -233,10 +244,10 @@ export async function saveAccountBookingQuoteDraft(
 	}
 
 	const status = String(bookingRaw.status ?? '')
-	if (status !== 'pending_confirmation') {
+	if (!accountQuoteSaveStatuses.has(status)) {
 		return buildOpsActionFailure(
 			'VALIDATION',
-			'Draft save from this action is only for bookings pending confirmation.',
+			'Booking must be submitted, triaged, quote sent, or pending confirmation to save a quote.',
 			correlationId,
 			{ reasonCode: 'BOOKING_STATUS' },
 		)
@@ -252,7 +263,6 @@ export async function saveAccountBookingQuoteDraft(
 		.from('bookings')
 		.update({ current_quote_id: newQuoteId })
 		.eq('id', bookingId)
-		.eq('status', 'pending_confirmation')
 
 	if (upErr) {
 		logOpsAction({
@@ -267,6 +277,12 @@ export async function saveAccountBookingQuoteDraft(
 		return buildOpsActionFailure('DATABASE', upErr.message, correlationId)
 	}
 
+	if (status === 'pending_confirmation') {
+		await tryAutoConfirmAccountClientBooking(supabase, bookingId)
+	}
+
+	revalidatePath('/account/bookings')
+	revalidatePath(`/account/bookings/${bookingId}`)
 	revalidatePath('/ops/bookings')
 	revalidatePath(`/ops/bookings/${bookingId}`)
 

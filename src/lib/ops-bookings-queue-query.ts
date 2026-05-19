@@ -205,10 +205,13 @@ export function serializeOpsBookingsQueueSearchParams(p: OpsBookingsQueueParsed)
 	return u.toString()
 }
 
-export function opsBookingsPathWithQuery(p: OpsBookingsQueueParsed): string {
+export function opsBookingsPathWithQuery(
+	p: OpsBookingsQueueParsed,
+	pathname: string = OPS_BOOKINGS_PATH,
+): string {
 	const filterQs = serializeOpsBookingsQueueSearchParams(p)
 	return buildOpsPaginationHref({
-		pathname: OPS_BOOKINGS_PATH,
+		pathname,
 		search: filterQs,
 		page: p.page,
 		per: p.perPage,
@@ -218,6 +221,7 @@ export function opsBookingsPathWithQuery(p: OpsBookingsQueueParsed): string {
 export function opsBookingsQueueHref(
 	current: OpsBookingsQueueParsed,
 	overrides: Partial<OpsBookingsQueueParsed>,
+	pathname: string = OPS_BOOKINGS_PATH,
 ): string {
 	const filterTouched =
 		overrides.statuses !== undefined ||
@@ -238,7 +242,7 @@ export function opsBookingsQueueHref(
 					? 1
 					: current.page,
 	}
-	return opsBookingsPathWithQuery(next)
+	return opsBookingsPathWithQuery(next, pathname)
 }
 
 function sortIntentValues(values: OpsBookingIntentFilterValue[]): OpsBookingIntentFilterValue[] {

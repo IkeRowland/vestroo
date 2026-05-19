@@ -27,12 +27,15 @@ export const ACCOUNT_PORTAL_BOOKING_DETAIL_SELECT = `
   destination_latitude,
   destination_longitude,
   created_at,
+  status_history,
   booking_trips (
     sort_order,
     trips (
       id,
       service_type,
       status,
+      status_history,
+      updated_at,
       chauffeur_id,
       vehicle_id
     )
@@ -63,6 +66,7 @@ export type AccountPortalBookingDetailRow = {
 	destination_latitude: number | null
 	destination_longitude: number | null
 	created_at: string
+	status_history: unknown
 	booking_trips: unknown
 }
 

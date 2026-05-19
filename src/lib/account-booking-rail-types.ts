@@ -10,6 +10,8 @@ export type AccountBookingTimelineItem = {
 export type AccountBookingRailDetail = {
 	booking: AccountPortalBookingDetailRow
 	quote: OpsBookingQuoteDetailRow | null
+	/** List/detail amount column — quote total when saved, else `bookings.total_amount`. */
+	displayAmountZar: number | null
 	staticMapUrl: string | null
 	timeline: AccountBookingTimelineItem[]
 	trip: {

@@ -77,7 +77,7 @@ export type AccountBookingsListParsed = {
 	/** Point-to-point, hourly, tour, corporate pattern (`cp` URL token). */
 	tripTypes: AccountBookingsTripTypeKey[]
 	/**
-	 * When set, the detail rail is opened for this booking (Story **18.5** / **`/account/bookings?id=`**).
+	 * Legacy **`?id=`** deep link — list page redirects to **`/account/bookings/[id]`**.
 	 * Cleared when list filters are changed in the account UI (same pattern as **FE.18.3** flags).
 	 */
 	selectedBookingId: string | null
@@ -454,6 +454,7 @@ export const ACCOUNT_BOOKINGS_LIST_SELECT = `
   destination_name,
   total_amount,
   created_at,
+  booking_quotes!bookings_current_quote_id_fkey ( status, total_zar ),
   booking_trips (
     sort_order,
     trips (
@@ -476,6 +477,7 @@ export type AccountBookingsListRow = {
 	destination_name: string | null
 	total_amount: number | null
 	created_at: string
+	booking_quotes?: unknown
 	booking_trips: unknown
 }
 

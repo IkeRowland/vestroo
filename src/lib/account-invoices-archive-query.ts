@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 import { formatQueueStatusLabel } from '@/lib/account-bookings-list-query'
+import { accountPortalBookingDetailPath } from '@/lib/account-portal-booking-path'
 import { parseBookingQuoteLineItems, type BookingQuoteLineItem } from '@/types/booking-quote'
 import type { BookingPipelineStatusDb, BookingQuoteStatusDb } from '@/types/database.types'
 
@@ -730,7 +731,7 @@ function buildRailDetailFromSyntheticRow(
 		account_requires_po: accountRequiresPo,
 		credit_terms_days: creditTermsDays,
 		timeline: buildAccountInvoiceTimeline(row),
-		payHref: `/account/bookings?id=${encodeURIComponent(row.booking_id)}`,
+		payHref: accountPortalBookingDetailPath(row.booking_id),
 		fullQuoteHref,
 		canPay,
 	}

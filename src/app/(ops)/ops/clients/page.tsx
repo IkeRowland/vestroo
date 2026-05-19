@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 
 import { OpsAddAccountClientButton } from '@/features/ops/components/OpsAddAccountClientButton'
-import { OpsClientsAccountSection, type OpsClientRecentBooking } from '@/features/ops/components/OpsClientsAccountSection'
+import { OpsClientsAccountSection } from '@/features/ops/components/OpsClientsAccountSection'
 import type { OpsAccountClientRow } from '@/features/ops/types/ops-account-client'
 import { OpsDataFreshnessBar } from '@/features/ops/components/OpsDataFreshnessBar'
 import { OpsEmptyState } from '@/features/ops/components/OpsEmptyState'
@@ -10,10 +10,10 @@ import { OpsFetchErrorIsland } from '@/features/ops/components/OpsFetchErrorIsla
 import { OpsActionGroup, OpsPageHeader, OpsTableShell } from '@/features/ops/components/ops-primitives'
 import { opsClientsCopy } from '@/features/ops/copy/ops-clients-copy'
 import { OPS_BOOKINGS_PATH } from '@/features/ops/ops-bookings-url'
+import { opsAccountClientDetailPath } from '@/lib/ops-clients-account-url'
 import {
 	getRawOpsClientsSelectedId,
 	OPS_CLIENTS_PATH,
-	parseOpsClientsPageSearchParams,
 } from '@/lib/ops-clients-url'
 import { buildOpsBookingsAdvancedSearchHref } from '@/lib/ops-booking-grid-query'
 import { createUserServerClient } from '@/lib/supabase/server'
@@ -101,22 +101,27 @@ export default async function OpsClientsPage({ searchParams }: PageProps) {
 	})
 
 	const accountRows = (accounts ?? []) as OpsAccountClientRow[]
-	const knownIds = new Set(accountRows.map((a) => a.id))
 	const rawSelectedId = getRawOpsClientsSelectedId(raw)
-	if (rawSelectedId && !knownIds.has(rawSelectedId)) {
-		redirect(OPS_CLIENTS_PATH)
-	}
-	const selectedAccountId = parseOpsClientsPageSearchParams(raw, knownIds)
-
-	let recentBookings: OpsClientRecentBooking[] = []
-	if (selectedAccountId) {
-		const { data: bookingRows } = await supabase
-			.from('bookings')
-			.select('id, payment_reference, status, pickup_datetime, created_at')
-			.eq('customer_account_id', selectedAccountId)
-			.order('created_at', { ascending: false })
-			.limit(8)
-		recentBookings = (bookingRows ?? []) as OpsClientRecentBooking[]
+	if (rawSelectedId) {
+		const knownIds = new Set(accountRows.map((a) => a.id))
+		if (!knownIds.has(rawSelectedId)) {
+			redirect(OPS_CLIENTS_PATH)
+		}
+		const qs = new URLSearchParams()
+		for (const [key, value] of Object.entries(raw)) {
+			if (key === 'id') continue
+			if (Array.isArray(value)) {
+				for (const v of value) qs.append(key, v)
+			} else if (value != null) {
+				qs.set(key, value)
+			}
+		}
+		const tail = qs.toString()
+		redirect(
+			tail.length > 0
+				? `${opsAccountClientDetailPath(rawSelectedId)}?${tail}`
+				: opsAccountClientDetailPath(rawSelectedId),
+		)
 	}
 
 	return (
@@ -145,11 +150,7 @@ export default async function OpsClientsPage({ searchParams }: PageProps) {
 						/>
 					</div>
 				) : (
-					<OpsClientsAccountSection
-						accounts={accountRows}
-						selectedAccountId={selectedAccountId}
-						recentBookings={recentBookings}
-					/>
+					<OpsClientsAccountSection accounts={accountRows} />
 				)}
 			</section>
 

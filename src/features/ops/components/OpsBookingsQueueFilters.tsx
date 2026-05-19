@@ -35,13 +35,23 @@ function singleOrMultiValue(values: readonly string[]): '' | '__multi__' | strin
 export type OpsBookingsQueueFiltersProps = {
 	parsed: OpsBookingsQueueParsed
 	className?: string
+	/** Defaults to `/ops/bookings` — account client detail passes its own path. */
+	pathname?: string
+	clearHref?: string
+	hideClientFilter?: boolean
 }
 
-export function OpsBookingsQueueFilters({ parsed, className }: OpsBookingsQueueFiltersProps) {
+export function OpsBookingsQueueFilters({
+	parsed,
+	className,
+	pathname = OPS_BOOKINGS_PATH,
+	clearHref = OPS_BOOKINGS_PATH,
+	hideClientFilter = false,
+}: OpsBookingsQueueFiltersProps) {
 	const router = useRouter()
 
 	const patch = (overrides: Partial<OpsBookingsQueueParsed>) => {
-		router.push(opsBookingsQueueHref(parsed, overrides))
+		router.push(opsBookingsQueueHref(parsed, overrides, pathname))
 	}
 
 	const statusValue = singleOrMultiValue(parsed.statuses)
@@ -164,44 +174,46 @@ export function OpsBookingsQueueFilters({ parsed, className }: OpsBookingsQueueF
 						</Select>
 					</div>
 
-					<div className="min-w-0 space-y-1.5">
-						<label
-							htmlFor="ops-bookings-filter-client"
-							className="block text-xs font-medium text-ops-muted"
-						>
-							Client
-						</label>
-						<Select
-							id="ops-bookings-filter-client"
-							className={SELECT_OPS}
-							value={clientValue}
-							onChange={(e) => {
-								const v = e.target.value
-								if (v === '') {
-									patch({ clients: [] })
-								} else if (v === 'walk_in') {
-									patch({ clients: ['walk_in'] })
-								} else {
-									patch({ clients: ['account_client'] })
-								}
-							}}
-							aria-label="Filter by client type"
-						>
-							<option value="">All clients</option>
-							{clientValue === '__multi__' ? (
-								<option value="__multi__" disabled>
-									Walk-in + Account (pick one or clear)
-								</option>
-							) : null}
-							<option value="walk_in">Walk-in</option>
-							<option value="account_client">Account</option>
-						</Select>
-					</div>
+					{hideClientFilter ? null : (
+						<div className="min-w-0 space-y-1.5">
+							<label
+								htmlFor="ops-bookings-filter-client"
+								className="block text-xs font-medium text-ops-muted"
+							>
+								Client
+							</label>
+							<Select
+								id="ops-bookings-filter-client"
+								className={SELECT_OPS}
+								value={clientValue}
+								onChange={(e) => {
+									const v = e.target.value
+									if (v === '') {
+										patch({ clients: [] })
+									} else if (v === 'walk_in') {
+										patch({ clients: ['walk_in'] })
+									} else {
+										patch({ clients: ['account_client'] })
+									}
+								}}
+								aria-label="Filter by client type"
+							>
+								<option value="">All clients</option>
+								{clientValue === '__multi__' ? (
+									<option value="__multi__" disabled>
+										Walk-in + Account (pick one or clear)
+									</option>
+								) : null}
+								<option value="walk_in">Walk-in</option>
+								<option value="account_client">Account</option>
+							</Select>
+						</div>
+					)}
 				</div>
 
 				<div className="flex shrink-0 items-end">
 					<Link
-						href={OPS_BOOKINGS_PATH}
+						href={clearHref}
 						className="inline-flex min-h-10 w-full items-center justify-center whitespace-nowrap rounded-md border border-ops-border bg-ops-surface px-4 text-sm font-medium text-ops-foreground transition-colors hover:border-primary/40 hover:bg-ops-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ops focus-visible:ring-offset-2 focus-visible:ring-offset-ops-canvas sm:w-auto"
 					>
 						Clear all filters

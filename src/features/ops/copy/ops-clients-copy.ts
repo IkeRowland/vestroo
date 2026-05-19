@@ -9,7 +9,7 @@ export const opsClientsCopy = {
 	accountSectionHeading: 'Account clients',
 	walkInSectionHeading: 'Walk-in clients',
 	walkInSectionHint: 'from recent bookings',
-	tableCaption: 'Account clients — selectable list with profile rail',
+	tableCaption: 'Account clients',
 	emptyAccountTitle: 'No account clients yet',
 	emptyAccountDescription:
 		'Use “Create account client” to add a corporate or recurring billing relationship.',

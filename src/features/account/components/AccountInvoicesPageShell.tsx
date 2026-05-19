@@ -12,6 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { DetailRail, KpiCard, Pagination, SplitView, StatusPill } from '@/components/saas'
 import { accountInvoicesCopy, accountQuotesShellCopy } from '@/features/account/copy/account-invoices-copy'
 import { formatQueueStatusLabel } from '@/lib/account-bookings-list-query'
+import { accountPortalBookingDetailPath } from '@/lib/account-portal-booking-path'
 import {
 	formatInvoiceArchiveQuoteStatus,
 	accountInvoiceArchiveListRowKey,
@@ -290,7 +291,7 @@ export function AccountInvoicesPageShell({
 															{canPay ? (
 																<Button variant="secondary" size="sm" asChild>
 																	<Link
-																		href={`/account/bookings?id=${encodeURIComponent(row.booking_id)}`}
+																		href={accountPortalBookingDetailPath(row.booking_id)}
 																	>
 																		{accountInvoicesCopy.actionPay}
 																	</Link>
@@ -391,7 +392,7 @@ export function AccountInvoicesPageShell({
 																	{canPay ? (
 																		<Button variant="secondary" size="sm" className="min-h-11" asChild>
 																			<Link
-																				href={`/account/bookings?id=${encodeURIComponent(row.booking_id)}`}
+																				href={accountPortalBookingDetailPath(row.booking_id)}
 																			>
 																				{accountInvoicesCopy.actionPay}
 																			</Link>

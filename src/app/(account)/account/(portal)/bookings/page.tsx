@@ -1,9 +1,9 @@
 import Link from 'next/link'
-import { notFound } from 'next/navigation'
+import { redirect } from 'next/navigation'
 
 import { AccountBookingsPageShell } from '@/features/account/components/AccountBookingsPageShell'
 import { accountBookingsPageCopy } from '@/features/account/copy/account-bookings-copy'
-import { loadAccountBookingDetailForRail } from '@/lib/account-booking-rail.server'
+import { accountPortalBookingDetailPath } from '@/lib/account-portal-booking-path'
 import {
 	ACCOUNT_BOOKINGS_LIST_PAGE_SIZE,
 	ACCOUNT_BOOKINGS_LIST_SELECT,
@@ -99,12 +99,8 @@ export default async function AccountBookingsPage({ searchParams }: PageProps) {
 	const rows = (data ?? []) as AccountBookingsListRow[]
 	const total = typeof count === 'number' ? count : rows.length
 
-	const railDetail =
-		parsed.selectedBookingId != null
-			? await loadAccountBookingDetailForRail(supabase, parsed.selectedBookingId, activeAccountId)
-			: null
-	if (parsed.selectedBookingId && !railDetail) {
-		notFound()
+	if (parsed.selectedBookingId) {
+		redirect(accountPortalBookingDetailPath(parsed.selectedBookingId))
 	}
 
 	return (
@@ -133,11 +129,9 @@ export default async function AccountBookingsPage({ searchParams }: PageProps) {
 			) : null}
 
 			<AccountBookingsPageShell
-				portalRole={portalRole}
 				parsed={parsed}
 				rows={rows}
 				total={total}
-				railDetail={railDetail}
 				bookingFormLoad={{
 					bookSearchPrefill,
 					portalRebookBootstrap,

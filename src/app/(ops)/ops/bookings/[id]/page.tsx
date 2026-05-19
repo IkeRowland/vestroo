@@ -6,7 +6,6 @@ import { OpsBookingAssignTripDetailSection } from '@/features/ops/components/Ops
 import { OpsBookingDetailAssignHashScroll } from '@/features/ops/components/ops-booking-detail-assign-hash-scroll'
 import { OpsBookingDetailQuoteHashScroll } from '@/features/ops/components/ops-booking-detail-quote-hash-scroll'
 import { OpsBookingDetailQueueActions } from '@/features/ops/components/ops-booking-detail-queue-actions'
-import { OpsAccountBookingConfirmSection } from '@/features/ops/components/ops-account-booking-confirm-section'
 import { OpsBookingImmutableSummary } from '@/features/ops/components/ops-booking-immutable-summary'
 import { OpsBookingTripAssignmentSummarySection } from '@/features/ops/components/ops-booking-trip-assignment-summary'
 import { QuoteDetailPanel } from '@/features/ops/components/quote-detail-panel'
@@ -94,27 +93,17 @@ export default async function OpsBookingDetailPage({ params }: PageProps) {
 		Array.isArray(booking.booking_trips) && booking.booking_trips.length > 0
 	const hasTripLink = tripAssignmentSummary != null || hasTripLinkFromEmbed
 
-	let accountPendingQuoteCount = 0
-	if (booking.client_type === 'account_client' && booking.status === 'pending_confirmation') {
-		const { count } = await supabase
-			.from('booking_quotes')
-			.select('id', { count: 'exact', head: true })
-			.eq('booking_id', booking.id)
-		accountPendingQuoteCount = typeof count === 'number' ? count : 0
-	}
-	const hasPersistedAccountQuote = accountPendingQuoteCount > 0
-	const showAccountPendingConfirmPanel =
+	const showAccountPendingAssignFlow =
 		booking.client_type === 'account_client' && booking.status === 'pending_confirmation'
 
 	const tripGate =
-		showAccountPendingConfirmPanel && hasTripLink
+		showAccountPendingAssignFlow && hasTripLink
 			? await evaluateAccountClientConfirmationTripGate(supabase, booking.id)
 			: ({ ok: true } as const)
 	const tripReadinessMessage = tripGate.ok ? null : tripGate.message
-	const canAccountOpsConfirm = hasTripLink && hasPersistedAccountQuote && tripGate.ok
 
 	const accountPendingNeedsAssignEmbed =
-		showAccountPendingConfirmPanel && (!hasTripLink || !tripGate.ok)
+		showAccountPendingAssignFlow && (!hasTripLink || !tripGate.ok)
 
 	const assignStageOk =
 		(walkInStage === 'ready_to_assign' && booking.client_type === 'walk_in') ||
@@ -204,15 +193,6 @@ export default async function OpsBookingDetailPage({ params }: PageProps) {
 				assignTripDetailSlot={assignTripDetailSlot}
 				accountDetailTripLinked={tripAssignmentSummary != null}
 			/>
-			{showAccountPendingConfirmPanel ? (
-				<OpsAccountBookingConfirmSection
-					bookingId={booking.id}
-					canConfirm={canAccountOpsConfirm}
-					missingTrip={!hasTripLink}
-					missingQuote={!hasPersistedAccountQuote}
-					tripReadinessMessage={tripReadinessMessage}
-				/>
-			) : null}
 			<QuoteDetailPanel
 				bookingId={booking.id}
 				clientType={booking.client_type as string | null}

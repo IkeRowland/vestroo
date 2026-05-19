@@ -23,6 +23,7 @@ import {
 	type AccountBookingsListRow,
 } from '@/lib/account-bookings-list-query'
 import type { AccountBookingFormLoad } from '@/lib/account-booking-form-load'
+import { accountPortalBookingDetailPath } from '@/lib/account-portal-booking-path'
 import type { CustomerAccountMemberRoleDb } from '@/types/database.types'
 
 type TripEmbed = {
@@ -344,7 +345,7 @@ export function AccountDashboard({
 															{inv.booking_status === 'ready_to_invoice' ||
 															inv.booking_status === 'invoiced' ? (
 																<Link
-																	href={`/account/bookings?id=${encodeURIComponent(inv.booking_id)}`}
+																	href={accountPortalBookingDetailPath(inv.booking_id)}
 																	className="text-xs font-medium text-primary underline-offset-2 hover:underline"
 																>
 																	{accountDashboardCopy.invoicePay}
@@ -390,7 +391,7 @@ export function AccountDashboard({
 														{inv.booking_status === 'ready_to_invoice' ||
 														inv.booking_status === 'invoiced' ? (
 															<Link
-																href={`/account/bookings?id=${encodeURIComponent(inv.booking_id)}`}
+																href={accountPortalBookingDetailPath(inv.booking_id)}
 																className="inline-flex min-h-10 items-center text-xs font-medium text-primary underline-offset-2 hover:underline"
 															>
 																{accountDashboardCopy.invoicePay}
@@ -445,7 +446,7 @@ function DashboardTripCard({ row }: { row: AccountBookingsListRow }) {
 					{pill.label}
 				</StatusPill>
 				<Link
-					href={`/account/bookings?id=${encodeURIComponent(row.id)}`}
+					href={accountPortalBookingDetailPath(row.id)}
 					className="inline-flex min-h-9 items-center justify-center rounded-md border border-account-border bg-account-surface-hover px-3 text-xs font-medium text-account-foreground transition hover:bg-account-surface-active focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-account focus-visible:ring-offset-2 focus-visible:ring-offset-account-canvas"
 				>
 					{accountDashboardCopy.railViewDetails}

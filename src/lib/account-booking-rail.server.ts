@@ -3,6 +3,8 @@ import 'server-only'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 import { accountBookingsCopy } from '@/features/account/copy/account-bookings-copy'
+import { resolveAccountBookingDisplayAmountZar } from '@/lib/account-booking-display-amount'
+import { buildAccountPortalLifecycleTimelineItems } from '@/lib/account-portal-booking-lifecycle-timeline'
 import {
 	extractTripServiceTypeForDetail,
 	type AccountPortalBookingDetailRow,
@@ -72,6 +74,24 @@ export async function loadAccountBookingDetailForRail(
 	if (!loaded) return null
 
 	const { booking, quote } = loaded
+
+	let quoteForAmount = quote
+	if (!quoteForAmount && booking.current_quote_id) {
+		const { data: qRow } = await supabase
+			.from('booking_quotes')
+			.select('id, booking_id, version, total_zar, line_items, rendered_html, pdf_storage_path, expires_at, sent_at, sent_to_email, status, created_at')
+			.eq('id', booking.current_quote_id)
+			.maybeSingle()
+		if (qRow && typeof qRow === 'object' && 'total_zar' in qRow) {
+			quoteForAmount = qRow as typeof quote
+		}
+	}
+
+	const displayAmountZar = resolveAccountBookingDisplayAmountZar({
+		total_amount: booking.total_amount,
+		booking_quotes: quoteForAmount ? { total_zar: quoteForAmount.total_zar, status: quoteForAmount.status } : null,
+	})
+
 	const serviceType = extractTripServiceTypeForDetail(booking.booking_trips)
 	const tripState = firstTripChauffeur(booking.booking_trips)
 	const statusKey = String(booking.status ?? '').trim()
@@ -95,14 +115,14 @@ export async function loadAccountBookingDetailForRail(
 	}
 
 	const mapPts = buildMapPoints(booking)
-	const staticMapUrl = mapPts ? buildAccountBookingStaticMapUrl(mapPts) : null
+	const staticMapUrl = mapPts
+		? buildAccountBookingStaticMapUrl(mapPts, { width: 640, height: 320, scale: 2 })
+		: null
 
-	const timeline: AccountBookingTimelineItem[] = []
-
-	timeline.push({
-		at: booking.created_at,
-		kind: 'created',
-		label: accountBookingsCopy.timelineCreated,
+	const timeline: AccountBookingTimelineItem[] = buildAccountPortalLifecycleTimelineItems({
+		createdAt: booking.created_at,
+		statusHistory: booking.status_history,
+		bookingTrips: booking.booking_trips,
 	})
 
 	const { data: quoteRows } = await supabase
@@ -146,10 +166,6 @@ export async function loadAccountBookingDetailForRail(
 
 	timeline.sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime())
 
-	const timelineForPortal = portalAwaitingOpsConfirmation
-		? timeline.filter((t) => t.kind === 'created')
-		: timeline
-
 	const driver = {
 		assigned: !portalAwaitingOpsConfirmation && showAssigneeDetails,
 		displayName: portalAwaitingOpsConfirmation
@@ -169,8 +185,9 @@ export async function loadAccountBookingDetailForRail(
 	return {
 		booking,
 		quote,
+		displayAmountZar,
 		staticMapUrl,
-		timeline: timelineForPortal,
+		timeline,
 		trip: {
 			serviceType,
 			chauffeurAssigned: tripState.assigned && !portalAwaitingOpsConfirmation,

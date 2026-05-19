@@ -5,7 +5,7 @@ import { z } from 'zod'
 
 import { buildOpsActionFailure } from '@/features/ops/ops-action-errors'
 import { evaluateAccountClientConfirmationTripGate } from '@/lib/ops-account-client-confirmation-trip-gate'
-import { appendBookingStatusHistoryEntry } from '@/lib/ops-trip-complete-booking-invoice-hook'
+import { tryAutoConfirmAccountClientBooking } from '@/lib/ops-account-client-auto-confirm'
 import { getOpsStaffForAction } from '@/lib/ops-auth'
 import { logOpsAction, newOpsCorrelationId } from '@/lib/ops-action-log'
 import { createUserServerClient } from '@/lib/supabase/server'
@@ -35,7 +35,7 @@ export async function confirmAccountClientBookingFromOps(raw: unknown) {
 
 	const { data: booking, error: bErr } = await supabase
 		.from('bookings')
-		.select('id, client_type, status, status_history')
+		.select('id, client_type, status')
 		.eq('id', bookingId)
 		.maybeSingle()
 
@@ -81,40 +81,19 @@ export async function confirmAccountClientBookingFromOps(raw: unknown) {
 		)
 	}
 
-	const prev = String(booking.status ?? '')
-	const nextHistory = appendBookingStatusHistoryEntry(
-		(booking as { status_history?: unknown }).status_history,
-		prev,
-		'assigned',
-		'ops_confirm_account_client_booking',
-	)
-
-	const { error: upErr } = await supabase
-		.from('bookings')
-		.update({
-			status: 'assigned',
-			status_history: nextHistory,
-			current_quote_id: quoteRow.id as string,
-		})
-		.eq('id', bookingId)
-		.eq('status', 'pending_confirmation')
-
-	if (upErr) {
-		logOpsAction({
-			action: 'confirmAccountClientBookingFromOps',
-			outcome: 'failure',
-			level: 'error',
+	const auto = await tryAutoConfirmAccountClientBooking(supabase, bookingId)
+	if (!auto.confirmed) {
+		return buildOpsActionFailure(
+			'VALIDATION',
+			'Booking could not be confirmed. Ensure a quote is saved and a trip is linked.',
 			correlationId,
-			code: 'DATABASE',
-			bookingId,
-			hint: upErr.message,
-		})
-		return buildOpsActionFailure('DATABASE', upErr.message, correlationId)
+		)
 	}
 
 	revalidatePath('/ops/bookings')
 	revalidatePath(`/ops/bookings/${bookingId}`)
 	revalidatePath('/account/bookings')
+	revalidatePath(`/account/bookings/${bookingId}`)
 
 	logOpsAction({
 		action: 'confirmAccountClientBookingFromOps',
