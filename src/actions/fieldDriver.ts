@@ -1,11 +1,29 @@
 'use server'
 
 /**
- * Epic 16 / US-L3 — grep-friendly re-exports for field trip actions.
+ * Epic 16 / US-L3 — grep-friendly aliases for field trip actions.
  * Implementation remains in `./fieldChauffeur` until Epic 17 / US-L4 module rename.
  */
-export {
-	confirmChauffeurAssignmentAction as confirmDriverTripAssignmentAction,
-	logChauffeurContactIntentAction as logDriverTripContactIntentAction,
-	updateChauffeurTripStatusAction as updateDriverTripStatusAction,
+import {
+	confirmChauffeurAssignmentAction,
+	logChauffeurContactIntentAction,
+	updateChauffeurTripStatusAction,
 } from './fieldChauffeur'
+
+export async function confirmDriverTripAssignmentAction(
+	...args: Parameters<typeof confirmChauffeurAssignmentAction>
+) {
+	return confirmChauffeurAssignmentAction(...args)
+}
+
+export async function logDriverTripContactIntentAction(
+	...args: Parameters<typeof logChauffeurContactIntentAction>
+) {
+	return logChauffeurContactIntentAction(...args)
+}
+
+export async function updateDriverTripStatusAction(
+	...args: Parameters<typeof updateChauffeurTripStatusAction>
+) {
+	return updateChauffeurTripStatusAction(...args)
+}

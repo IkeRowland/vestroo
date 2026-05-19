@@ -371,7 +371,7 @@ export function AccountBookingsFilters({ parsed }: { parsed: AccountBookingsList
 						</Button>
 						<Button
 							type="button"
-							variant="link"
+							variant="ghost"
 							size="sm"
 							className="h-9 shrink-0 px-2 text-muted-foreground"
 							onClick={() => {

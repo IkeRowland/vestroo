@@ -238,7 +238,7 @@ export function TripRequestRideDetailsSlide({
               }}
               onInputBlur={() => {
                 clearPickupBlurTimer();
-                pickupBlurTimer.current = window.setTimeout(() => setRecentsPanel(null), 180);
+                pickupBlurTimer.current = setTimeout(() => setRecentsPanel(null), 180);
               }}
             />
             {recentsPanel === 'pickup' && !values.pickupInput.trim() && sessionRecents.length > 0 ? (
@@ -308,7 +308,7 @@ export function TripRequestRideDetailsSlide({
               }}
               onInputBlur={() => {
                 clearDestinationBlurTimer();
-                destinationBlurTimer.current = window.setTimeout(() => setRecentsPanel(null), 180);
+                destinationBlurTimer.current = setTimeout(() => setRecentsPanel(null), 180);
               }}
             />
             {recentsPanel === 'destination' && !values.destinationInput.trim() && sessionRecents.length > 0 ? (

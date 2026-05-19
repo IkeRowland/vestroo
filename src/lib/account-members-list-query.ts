@@ -16,7 +16,7 @@ export const ACCT_MEMBERS_PARAM = {
 
 export type AccountMembersListParsed = {
 	page: number
-	perPage: number
+	perPage: OpsPaginationPerPage
 	search: string
 }
 
@@ -49,7 +49,7 @@ function parsePage(raw: Record<string, string | string[] | undefined>): number {
 	return Math.min(n, ACCOUNT_MEMBERS_LIST_MAX_PAGE)
 }
 
-function parsePer(raw: Record<string, string | string[] | undefined>): number {
+function parsePer(raw: Record<string, string | string[] | undefined>): OpsPaginationPerPage {
 	const v = allParamValues(raw, ACCT_MEMBERS_PARAM.per)[0]
 	const n = v ? Number.parseInt(v, 10) : ACCOUNT_MEMBERS_LIST_PAGE_SIZE
 	if (!Number.isFinite(n) || n < 1) return ACCOUNT_MEMBERS_LIST_PAGE_SIZE

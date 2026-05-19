@@ -102,7 +102,7 @@ export async function loadAccountDashboardSnapshot(
 	if (upcomingRes.error) pushErr(errors, upcomingRes.error.message)
 	if (railRes.error) pushErr(errors, railRes.error.message)
 	if (isAdmin && openInvRes.error) pushErr(errors, openInvRes.error.message)
-	if (isAdmin && membersRes.error) pushErr(errors, membersRes.error)
+	if (isAdmin && membersRes.error) pushErr(errors, membersRes.error.message)
 
 	const railTrips = (railRes.data ?? []) as AccountBookingsListRow[]
 

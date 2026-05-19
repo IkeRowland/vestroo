@@ -76,9 +76,9 @@ export function OpsDataFreshnessBar({
 
 		const onFocus = () => {
 			if (focusTimer != null) {
-				window.clearTimeout(focusTimer)
+				clearTimeout(focusTimer)
 			}
-			focusTimer = window.setTimeout(() => {
+			focusTimer = setTimeout(() => {
 				focusTimer = null
 				run()
 			}, 800)
@@ -90,7 +90,7 @@ export function OpsDataFreshnessBar({
 			document.removeEventListener('visibilitychange', onVisibility)
 			window.removeEventListener('focus', onFocus)
 			if (focusTimer != null) {
-				window.clearTimeout(focusTimer)
+				clearTimeout(focusTimer)
 			}
 		}
 	}, [bumpAndRefresh])

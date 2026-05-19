@@ -93,6 +93,12 @@ type SubmitSuccessPayload = {
 	time_to_submit_ms: number
 }
 
+type SubmitErrorPayload = {
+	variant: string
+	error_category: BookingFunnelSubmitErrorCategory
+	embedded?: boolean
+}
+
 type AnalyticsSink = (event: { name: BookingFunnelEventName; properties: Record<string, unknown> }) => void
 
 let testSink: AnalyticsSink | null = null

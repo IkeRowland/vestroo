@@ -283,7 +283,7 @@ export function AccountBookingsPageShell({
 															<DropdownMenuTrigger asChild>
 																<Button
 																	variant="ghost"
-																	size="icon"
+																	size="sm"
 																	className="h-8 w-8"
 																	aria-label={accountBookingsCopy.tableActions}
 																>
@@ -380,7 +380,7 @@ export function AccountBookingsPageShell({
 																		<DropdownMenuTrigger asChild>
 																			<Button
 																				variant="ghost"
-																				size="icon"
+																				size="sm"
 																				className="min-h-11 min-w-11"
 																				aria-label={accountBookingsCopy.tableActions}
 																			>

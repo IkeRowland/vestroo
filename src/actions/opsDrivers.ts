@@ -89,7 +89,8 @@ export async function inviteDriverAction(raw: InviteDriverInput) {
 
 	const admin = await createServiceRoleClient()
 	const userServer = await createUserServerClient()
-	const { fullName, email, phone } = parsed.data
+	const { fullName, email, phone: phoneRaw } = parsed.data
+	const phone = phoneRaw ?? null
 
 	const { data: existing } = await admin
 		.from('profiles')
@@ -203,7 +204,8 @@ export async function createDriverWithoutInviteAction(raw: InviteDriverInput) {
 
 	const admin = await createServiceRoleClient()
 	const userServer = await createUserServerClient()
-	const { fullName, email, phone } = parsed.data
+	const { fullName, email, phone: phoneRaw } = parsed.data
+	const phone = phoneRaw ?? null
 
 	const { data: existing } = await admin
 		.from('profiles')

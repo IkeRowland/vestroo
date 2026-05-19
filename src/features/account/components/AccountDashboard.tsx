@@ -1,6 +1,8 @@
 import Link from 'next/link'
 import { CalendarDays, Car, Clock, Receipt, Users } from 'lucide-react'
 
+import { cn } from '@/lib/utils'
+
 import { AccountNewBookingButton } from '@/features/account/components/AccountNewBookingSheet'
 import { AccountResponsiveTableShell } from '@/features/account/components/account-responsive-table-shell'
 import { KpiCard } from '@/components/saas/KpiCard'
@@ -16,7 +18,10 @@ import {
 	type AccountInvoiceArchiveRow,
 } from '@/lib/account-invoices-archive-query'
 import { ACCOUNT_BILLING_INVOICES_LIST_PATH } from '@/lib/account-invoices-list-query'
-import type { AccountBookingsListRow } from '@/lib/account-bookings-list-query'
+import {
+	formatQueueStatusLabel,
+	type AccountBookingsListRow,
+} from '@/lib/account-bookings-list-query'
 import type { AccountBookingFormLoad } from '@/lib/account-booking-form-load'
 import type { CustomerAccountMemberRoleDb } from '@/types/database.types'
 

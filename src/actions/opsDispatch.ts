@@ -240,7 +240,7 @@ export async function assignBookingToRun(raw: z.infer<typeof assignSchema>) {
 	const { data: booking, error: bErr } = await supabase
 		.from('bookings')
 		.select(
-			'id, customer_id, client_type, status, status_history, payment_status, total_amount, booking_intent, pickup_datetime, trip_date, estimated_duration, customer_account_id, account_snapshot, booking_metadata, booking_trips(sort_order,trips(vehicles(vehicle_categories(name)))))',
+			'id, customer_id, client_type, status, status_history, payment_status, total_amount, booking_intent, pickup_datetime, trip_date, estimated_duration, customer_account_id, account_snapshot, booking_metadata, booking_trips(sort_order,trips(vehicles(vehicle_categories(name))))',
 		)
 		.eq('id', bookingId)
 		.maybeSingle()

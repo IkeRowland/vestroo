@@ -7,17 +7,8 @@ export const TRIPS_BOARD_SELECT_COLUMNS =
 	'id, status, time_start_estimate, time_end_estimate, vehicle_id, chauffeur_id, ops_delay_note' as const
 
 /** Ops `/ops/trips` live list — flat trip columns plus booking embed for queue parity with Bookings. */
-export const TRIPS_OPS_LIST_SELECT_COLUMNS = [
-	'id',
-	'status',
-	'time_start_estimate',
-	'time_end_estimate',
-	'vehicle_id',
-	'chauffeur_id',
-	'ops_delay_note',
-	'ops_revised_time_end_estimate',
-	'booking_trips(bookings(id,payment_reference,pickup_datetime,customer_name,customer_email,client_type,origin_name,destination_name,customer_accounts(id,name))))',
-].join(',')
+export const TRIPS_OPS_LIST_SELECT_COLUMNS =
+	'id, status, time_start_estimate, time_end_estimate, vehicle_id, chauffeur_id, ops_delay_note, ops_revised_time_end_estimate, booking_trips(bookings(id, payment_reference, pickup_datetime, customer_name, customer_email, client_type, origin_name, destination_name, customer_accounts(id, name)))' as const
 
 /** Ops calendar week: nested reads only where existing RLS already allows staff (`/ops/calendar`). */
 export const TRIPS_CALENDAR_SELECT_COLUMNS =

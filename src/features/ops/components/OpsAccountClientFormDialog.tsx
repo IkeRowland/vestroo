@@ -408,7 +408,7 @@ export function OpsAccountClientFormDialog(props: OpsAccountClientFormDialogProp
 										<select
 											id={`ac-status-${idSuffix}`}
 											value={status}
-											onChange={(e) => setStatus(e.target.value)}
+											onChange={(e) => setStatus(safeAccountStatus(e.target.value))}
 											disabled={busy}
 											className="flex h-9 w-full rounded-md border border-ops-border bg-ops-canvas px-2 text-sm text-ops-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ops"
 										>

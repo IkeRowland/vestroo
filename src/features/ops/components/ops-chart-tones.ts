@@ -16,7 +16,7 @@ export type OpsChartTone = ChartTone
 export const OPS_CHART_TONE_INDEX = CHART_TONE_INDEX
 
 export function opsChartToneTextClass(tone: OpsChartTone): `text-ops-chart-${1 | 2 | 3 | 4 | 5 | 6}` {
-	return saasChartToneTextClass('ops', tone)
+	return saasChartToneTextClass('ops', tone) as `text-ops-chart-${1 | 2 | 3 | 4 | 5 | 6}`
 }
 
 /** For `currentColor` / `fill` on SVG when Tailwind class is awkward. */
