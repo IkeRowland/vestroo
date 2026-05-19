@@ -47,7 +47,41 @@ export async function fetchReferredBookingsForOps(
 	if (error) {
 		return { rows: [], errorMessage: error.message }
 	}
-	return { rows: (data ?? []) as ReferredBookingRow[], errorMessage: null }
+
+	const rows: ReferredBookingRow[] = (data ?? []).map((raw) => {
+		const row = raw as Record<string, unknown>
+		const embed = row.referrers
+		const refObj = Array.isArray(embed) ? embed[0] : embed
+		const referrers =
+			refObj && typeof refObj === 'object'
+				? {
+						id: String((refObj as { id: unknown }).id),
+						name: String((refObj as { name: unknown }).name),
+						code:
+							typeof (refObj as { code?: unknown }).code === 'string'
+								? (refObj as { code: string }).code
+								: null,
+					}
+				: null
+
+		return {
+			id: String(row.id),
+			payment_reference:
+				typeof row.payment_reference === 'string' ? row.payment_reference : null,
+			customer_name: typeof row.customer_name === 'string' ? row.customer_name : null,
+			pickup_datetime: typeof row.pickup_datetime === 'string' ? row.pickup_datetime : null,
+			status: typeof row.status === 'string' ? row.status : null,
+			total_amount:
+				typeof row.total_amount === 'number' && Number.isFinite(row.total_amount)
+					? row.total_amount
+					: null,
+			created_at: String(row.created_at),
+			referrer_id: typeof row.referrer_id === 'string' ? row.referrer_id : null,
+			referrers,
+		}
+	})
+
+	return { rows, errorMessage: null }
 }
 
 export function countBookingsPerReferrer(
