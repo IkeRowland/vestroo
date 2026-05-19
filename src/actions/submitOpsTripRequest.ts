@@ -13,9 +13,11 @@ import { insertTripRequestBooking } from '@/lib/trip-request-booking-insert'
 import { createServerClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 
-const opsTripRequestInputSchema = tripRequestSubmitPayloadSchema.extend({
-	referrerId: z.string().uuid().nullable().optional(),
-})
+const opsTripRequestInputSchema = tripRequestSubmitPayloadSchema.and(
+	z.object({
+		referrerId: z.string().uuid().nullable().optional(),
+	}),
+)
 
 export type SubmitOpsTripRequestInput = z.infer<typeof opsTripRequestInputSchema>
 
