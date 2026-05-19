@@ -9,7 +9,7 @@ import { isQuoteFirstForNonTrivialIntentsEnabled } from '@/lib/quote-first-non-t
 import { isPortalActiveAccountBookingInsert } from '@/lib/account-portal-booking-insert'
 
 type TripRequestClientTyped = {
-	client_type: 'walk_in' | 'account_client'
+	client_type: 'walk_in' | 'account_client' | 'referral'
 	customer_account_id: string | null
 	account_snapshot: Record<string, unknown> | null
 	booking_metadata: Record<string, unknown>

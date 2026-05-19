@@ -22,7 +22,7 @@ import type { OpsBookingIntentFilterValue } from '@/lib/ops-booking-grid-query'
  * - `status` → `bookings.status` (whitelist {@link OPS_BOOKINGS_QUEUE_STATUS_ORDER})
  * - `payment` → `bookings.payment_status` (whitelist {@link OPS_BOOKINGS_QUEUE_PAYMENT_ORDER})
  * - `intent` → `bookings.booking_intent` — includes `_null` for SQL `.is('booking_intent', null)`
- * - `client` → `bookings.client_type` — `walk_in` | `account_client`
+ * - `client` → `bookings.client_type` — `walk_in` | `account_client` | `referral`
  */
 
 /**
@@ -144,11 +144,24 @@ function parseIntentTokens(values: string[]): OpsBookingIntentFilterValue[] {
 	return [...new Set(out)]
 }
 
-function uniqueSortedClients(values: string[]): ('walk_in' | 'account_client')[] {
-	const out: ('walk_in' | 'account_client')[] = []
+export const OPS_BOOKINGS_QUEUE_CLIENT_TYPES = [
+	'walk_in',
+	'account_client',
+	'referral',
+] as const
+
+export type OpsBookingsQueueClientType =
+	(typeof OPS_BOOKINGS_QUEUE_CLIENT_TYPES)[number]
+
+function uniqueSortedClients(values: string[]): OpsBookingsQueueClientType[] {
+	const out: OpsBookingsQueueClientType[] = []
 	for (const v of values) {
 		const t = v.trim()
-		if (t === 'walk_in' || t === 'account_client') {
+		if (
+			t === 'walk_in' ||
+			t === 'account_client' ||
+			t === 'referral'
+		) {
 			out.push(t)
 		}
 	}
@@ -162,7 +175,7 @@ export type OpsBookingsQueueParsed = {
 	statuses: string[]
 	payments: string[]
 	intents: OpsBookingIntentFilterValue[]
-	clients: ('walk_in' | 'account_client')[]
+	clients: OpsBookingsQueueClientType[]
 	/** 1-based; coerced from URL **`page`**. */
 	page: number
 	/** Page size — **`10` \| `20` \| `50`** from URL **`per`**. */
@@ -293,7 +306,7 @@ export function toggleQueueIntent(
 
 export function toggleQueueClient(
 	current: OpsBookingsQueueParsed,
-	client: 'walk_in' | 'account_client',
+	client: OpsBookingsQueueClientType,
 ): OpsBookingsQueueParsed {
 	const set = new Set(current.clients)
 	if (set.has(client)) {
@@ -337,7 +350,8 @@ export function getIgnoredBookingsQueueParamKeys(
 			(s) =>
 				s.trim() !== '' &&
 				s.trim() !== 'walk_in' &&
-				s.trim() !== 'account_client',
+				s.trim() !== 'account_client' &&
+				s.trim() !== 'referral',
 		)
 	) {
 		ignored.push('client')
@@ -352,6 +366,20 @@ export function formatQueueStatusLabel(statusKey: string): string {
 		.split('_')
 		.map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
 		.join(' ')
+}
+
+/** Human-readable `bookings.client_type` for ops queue and detail. */
+export function formatClientTypeLabel(clientType: string | null | undefined): string {
+	switch (clientType) {
+		case 'walk_in':
+			return 'Walk-in'
+		case 'account_client':
+			return 'Account'
+		case 'referral':
+			return 'Referral'
+		default:
+			return clientType ? formatQueueStatusLabel(clientType) : '—'
+	}
 }
 
 /** Labels for `/ops/bookings` intent filter dropdown (includes `_null` → Standard / empty). */

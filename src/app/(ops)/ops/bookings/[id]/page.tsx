@@ -59,9 +59,9 @@ export default async function OpsBookingDetailPage({ params }: PageProps) {
 		quote != null && Number.isFinite(quote.total_zar) ? quote.total_zar : booking.total_amount
 
 	const walkInStage =
-		booking.client_type === 'walk_in'
+		booking.client_type === 'walk_in' || booking.client_type === 'referral'
 			? deriveWalkInQueueStageForBookingRow({
-					client_type: booking.client_type,
+					client_type: 'walk_in',
 					status: booking.status,
 					availability_checked_at: booking.availability_checked_at,
 					booking_trips: booking.booking_trips,
@@ -106,7 +106,8 @@ export default async function OpsBookingDetailPage({ params }: PageProps) {
 		showAccountPendingAssignFlow && (!hasTripLink || !tripGate.ok)
 
 	const assignStageOk =
-		(walkInStage === 'ready_to_assign' && booking.client_type === 'walk_in') ||
+		(walkInStage === 'ready_to_assign' &&
+			(booking.client_type === 'walk_in' || booking.client_type === 'referral')) ||
 		(booking.client_type === 'account_client' &&
 			(accountStage === 'availability_checked' || accountStage === 'pending_confirmation'))
 	const dispatchBlocked =
@@ -141,7 +142,10 @@ export default async function OpsBookingDetailPage({ params }: PageProps) {
 				bookingId={booking.id}
 				assignStageOk={assignStageOk}
 				dispatchBlocked={dispatchBlocked}
-				walkInNotDispatchable={booking.client_type === 'walk_in' && !dispatchable.ok}
+				walkInNotDispatchable={
+					(booking.client_type === 'walk_in' || booking.client_type === 'referral') &&
+					!dispatchable.ok
+				}
 				dispatchable={dispatchable}
 				matchingDrivers={matchingDrivers}
 				driversError={assignState.driversError}

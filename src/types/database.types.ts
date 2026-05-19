@@ -140,8 +140,8 @@ export type CorporateInvoicingBookingColumns = {
 	billing_entity_ref: string | null
 }
 
-/** `bookings.client_type` — migration `20260419120000_vst14_account_clients_and_quotes.sql` */
-export type ClientTypeDb = 'walk_in' | 'account_client'
+/** `bookings.client_type` — migrations VST-14 + `20260519140000_bookings_client_type_referral.sql` */
+export type ClientTypeDb = 'walk_in' | 'account_client' | 'referral'
 
 /** Epic 15 / 15B.1 — optional rider PII on `public.bookings` (`20260426120000_epic15_15b1_*`). */
 export type BookingRiderColumnsDb = {

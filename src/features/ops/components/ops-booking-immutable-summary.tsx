@@ -7,7 +7,7 @@ import {
 	type OpsBookingDetailRow,
 	opsBookingServiceTypeLabel,
 } from '@/lib/ops-booking-detail'
-import { formatQueueStatusLabel } from '@/lib/ops-bookings-queue-query'
+import { formatClientTypeLabel, formatQueueStatusLabel } from '@/lib/ops-bookings-queue-query'
 
 function formatZar(amount: number | null): string {
 	if (amount == null || Number.isNaN(amount)) {
@@ -109,7 +109,9 @@ export function OpsBookingImmutableSummary({
 				</div>
 				<div>
 					<dt className="text-xs font-medium uppercase tracking-wide text-ops-muted">Client type</dt>
-					<dd className="mt-1 text-sm text-ops-foreground">{booking.client_type ?? '—'}</dd>
+					<dd className="mt-1 text-sm text-ops-foreground">
+						{formatClientTypeLabel(booking.client_type)}
+					</dd>
 				</div>
 				<div>
 					<dt className="text-xs font-medium uppercase tracking-wide text-ops-muted">Created</dt>

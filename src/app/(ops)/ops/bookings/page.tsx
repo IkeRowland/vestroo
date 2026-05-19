@@ -34,6 +34,7 @@ import {
 	type OpsBookingIntentFilterValue,
 } from '@/lib/ops-booking-grid-query'
 import {
+	formatClientTypeLabel,
 	formatQueueIntentFilterLabel,
 	formatQueueStatusLabel,
 	getIgnoredBookingsQueueParamKeys,
@@ -661,7 +662,7 @@ export default async function OpsBookingsPage({ searchParams }: PageProps) {
 									</td>
 									<td className="px-3 py-2 text-sm capitalize text-ops-muted">
 										<OpsStatusPill tone="neutral" dot={false}>
-											{row.client_type ? formatQueueStatusLabel(row.client_type) : '—'}
+											{formatClientTypeLabel(row.client_type)}
 										</OpsStatusPill>
 									</td>
 									<td className="max-w-[10rem] px-3 py-2 text-sm text-ops-muted">

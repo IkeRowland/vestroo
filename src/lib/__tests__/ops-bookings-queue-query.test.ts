@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+	formatClientTypeLabel,
 	isCancelledQueuePreset,
 	isCompletedQueuePreset,
 	isNeedsAttentionPreset,
 	isReadyToAssignPreset,
 	OPS_BOOKINGS_NEEDS_ATTENTION_HREF,
+	OPS_BOOKINGS_QUEUE_CLIENT_TYPES,
 	OPS_BOOKINGS_QUEUE_STATUS_ORDER,
 	OPS_BOOKINGS_READY_TO_ASSIGN_HREF,
 	OPS_BOOKINGS_READY_TO_ASSIGN_STATUS,
@@ -13,6 +15,18 @@ import {
 	opsBookingsPathWithQuery,
 	parseOpsBookingsQueueSearchParams,
 } from '@/lib/ops-bookings-queue-query'
+
+describe('client type filter', () => {
+	it('includes referral in whitelist and label', () => {
+		expect(OPS_BOOKINGS_QUEUE_CLIENT_TYPES).toContain('referral')
+		expect(formatClientTypeLabel('referral')).toBe('Referral')
+	})
+
+	it('parseOpsBookingsQueueSearchParams accepts client=referral', () => {
+		const p = parseOpsBookingsQueueSearchParams({ client: 'referral' })
+		expect(p.clients).toEqual(['referral'])
+	})
+})
 
 describe('ready_to_assign preset (14.8)', () => {
 	it('exports OPS_BOOKINGS_READY_TO_ASSIGN_STATUS for shared fulfil/bookings queries (14.9)', () => {

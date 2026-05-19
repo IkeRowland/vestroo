@@ -1,6 +1,9 @@
 import { describe, it, expect } from 'vitest'
 
-import { assertClientResolutionForSubmit } from '@/actions/client-type-resolution'
+import {
+	assertClientResolutionForSubmit,
+	resolveOpsReferrerClientTypeInsert,
+} from '@/actions/client-type-resolution'
 
 const row = (id: string, name: string) => ({
 	id,
@@ -33,6 +36,20 @@ describe('assertClientResolutionForSubmit', () => {
 				clientTypeSource: 'no_match',
 			}),
 		).toThrow(/confirm whether this is a business booking/)
+	})
+
+	it('resolveOpsReferrerClientTypeInsert sets referral client type', () => {
+		const base = { trip_request: { version: 1 } }
+		expect(resolveOpsReferrerClientTypeInsert(base)).toEqual({
+			client_type: 'referral',
+			customer_account_id: null,
+			account_snapshot: null,
+			client_type_source: 'ops_referrer',
+			booking_metadata: {
+				...base,
+				client_type_source: 'ops_referrer',
+			},
+		})
 	})
 
 	it('allows account_client when id is in candidate list', () => {

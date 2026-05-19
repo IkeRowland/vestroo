@@ -3,6 +3,7 @@
 import { z } from 'zod'
 
 import { enrichTripRequestBookingWithClientType } from '@/actions/booking-client-type-enrich'
+import { resolveOpsReferrerClientTypeInsert } from '@/actions/client-type-resolution'
 import {
 	passengerPhoneToE164,
 	tripRequestSubmitPayloadSchema,
@@ -92,6 +93,10 @@ export async function submitOpsTripRequest(raw: unknown) {
 		} catch (e) {
 			const msg = e instanceof Error ? e.message : 'Could not validate account selection.'
 			return { success: false as const, error: msg }
+		}
+
+		if (resolvedReferrerId) {
+			clientTyped = resolveOpsReferrerClientTypeInsert(bookingMetadata)
 		}
 
 		const poCheck = await assertPurchaseOrderForAccountBookingInsert(supabase, {

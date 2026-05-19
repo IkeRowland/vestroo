@@ -13,6 +13,7 @@ export type ClientTypeSourceValue =
 	| WebClientTypeResolution['clientTypeSource']
 	| 'ops_manual'
 	| 'direct_pay_skip'
+	| 'ops_referrer'
 
 export type ClientTypeResolutionPayload = WebClientTypeResolution
 
@@ -126,6 +127,28 @@ export function resolveBookingClientTypeInsert(
 		customer_account_id: row.id,
 		account_snapshot: buildAccountSnapshotFromRow(row),
 		client_type_source: 'user_confirmed_domain_match',
+	}
+}
+
+/**
+ * Ops new booking with an active referrer — overrides Q6 email/account resolution.
+ */
+export function resolveOpsReferrerClientTypeInsert(bookingMetadataBase: Record<string, unknown>): {
+	client_type: 'referral'
+	customer_account_id: null
+	account_snapshot: null
+	client_type_source: 'ops_referrer'
+	booking_metadata: Record<string, unknown>
+} {
+	return {
+		client_type: 'referral',
+		customer_account_id: null,
+		account_snapshot: null,
+		client_type_source: 'ops_referrer',
+		booking_metadata: {
+			...bookingMetadataBase,
+			client_type_source: 'ops_referrer',
+		},
 	}
 }
 

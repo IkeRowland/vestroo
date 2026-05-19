@@ -7,12 +7,15 @@ import { Select } from '@/components/ui/select'
 import { OPS_BOOKINGS_PATH } from '@/features/ops/ops-bookings-url'
 import type { OpsBookingIntentFilterValue } from '@/lib/ops-booking-grid-query'
 import {
+	formatClientTypeLabel,
 	formatQueueIntentFilterLabel,
 	formatQueueStatusLabel,
+	OPS_BOOKINGS_QUEUE_CLIENT_TYPES,
 	OPS_BOOKINGS_QUEUE_INTENT_CHIP_VALUES,
 	OPS_BOOKINGS_QUEUE_PAYMENT_ORDER,
 	OPS_BOOKINGS_QUEUE_STATUS_ORDER,
 	opsBookingsQueueHref,
+	type OpsBookingsQueueClientType,
 	type OpsBookingsQueueParsed,
 	type OpsBookingsQueuePaymentValue,
 	type OpsBookingsQueueStatusValue,
@@ -190,10 +193,10 @@ export function OpsBookingsQueueFilters({
 									const v = e.target.value
 									if (v === '') {
 										patch({ clients: [] })
-									} else if (v === 'walk_in') {
-										patch({ clients: ['walk_in'] })
-									} else {
-										patch({ clients: ['account_client'] })
+									} else if (
+										(OPS_BOOKINGS_QUEUE_CLIENT_TYPES as readonly string[]).includes(v)
+									) {
+										patch({ clients: [v as OpsBookingsQueueClientType] })
 									}
 								}}
 								aria-label="Filter by client type"
@@ -201,11 +204,14 @@ export function OpsBookingsQueueFilters({
 								<option value="">All clients</option>
 								{clientValue === '__multi__' ? (
 									<option value="__multi__" disabled>
-										Walk-in + Account (pick one or clear)
+										Multiple client types (pick one or clear)
 									</option>
 								) : null}
-								<option value="walk_in">Walk-in</option>
-								<option value="account_client">Account</option>
+								{OPS_BOOKINGS_QUEUE_CLIENT_TYPES.map((value) => (
+									<option key={value} value={value}>
+										{formatClientTypeLabel(value)}
+									</option>
+								))}
 							</Select>
 						</div>
 					)}

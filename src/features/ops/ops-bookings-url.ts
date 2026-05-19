@@ -8,7 +8,7 @@
  * - `status` → `bookings.status` — repeat key or comma list (e.g. `status=submitted&status=paid`)
  * - `payment` → `bookings.payment_status` — same repetition pattern
  * - `intent` → `bookings.booking_intent` — includes `_null` for empty intent
- * - `client` → `bookings.client_type` (`walk_in` | `account_client`)
+ * - `client` → `bookings.client_type` (`walk_in` | `account_client` | `referral`)
  *
  * **`OPS_BOOKINGS_DEFAULT_HREF`** — optional slice for dashboards or deep links that should open a
  * pre-filtered view (e.g. trip requests); do not use as the primary 12.2 home card CTA.
