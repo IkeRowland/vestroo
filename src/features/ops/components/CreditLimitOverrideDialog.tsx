@@ -23,7 +23,6 @@ export function CreditLimitOverrideDialog({
 	onOpenChange,
 	bookingId,
 	reasonCode,
-	serviceRunId,
 	driverProfileId,
 	vehicleId,
 	onCompleted,
@@ -32,7 +31,6 @@ export function CreditLimitOverrideDialog({
 	onOpenChange: (open: boolean) => void
 	bookingId: string
 	reasonCode: OverridableReason
-	serviceRunId: string
 	driverProfileId: string
 	vehicleId: string
 	onCompleted: () => void
@@ -71,7 +69,6 @@ export function CreditLimitOverrideDialog({
 			}
 			const assign = await assignBookingToRun({
 				bookingId,
-				serviceRunId,
 				driverProfileId,
 				vehicleId,
 				overrideToken: signed.token,

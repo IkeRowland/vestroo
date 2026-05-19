@@ -1,6 +1,8 @@
+import { OPS_BOOKINGS_READY_TO_ASSIGN_HREF } from '@/lib/ops-bookings-queue-query'
+
 /**
- * Fulfil console queue tabs — predicates must stay aligned with
- * `docs/fulfil-queue-buckets.md` and `/ops/fulfil` Supabase queries.
+ * Fulfil console queue buckets — predicates must stay aligned with
+ * `docs/fulfil-queue-buckets.md` and `/ops/bookings` queue filters.
  */
 export type FulfilQueueBucket = 'paid' | 'pending' | 'trip_request'
 
@@ -9,6 +11,9 @@ export const FULFIL_QUEUE_BUCKETS: readonly FulfilQueueBucket[] = [
 	'pending',
 	'trip_request',
 ] as const
+
+/** Deep link for the **Assignment (paid)** queue — same view as the “Ready to assign” bookings preset. */
+export const OPS_FULFIL_ASSIGNMENT_PAID_HREF = OPS_BOOKINGS_READY_TO_ASSIGN_HREF
 
 export const FULFIL_QUEUE_TABS: ReadonlyArray<{
 	id: FulfilQueueBucket
@@ -51,7 +56,7 @@ export function isTripRequestIntent(intent: string | null | undefined): boolean 
  * Assignment (`queue=paid`) bucket: **`ready_to_assign`**, no **`booking_trips`** link yet.
  * - **Standard intents:** same as Epic 14.1 / Q18 (walk-in paid → RTA).
  * **Public trip requests:** once **`payment_status = 'paid'`** and **`status = 'ready_to_assign'`**,
- * they join this tab so ops can assign run / driver / vehicle (same as other paid RTA rows).
+ * they join this tab so ops can assign a driver and vehicle (same as other paid RTA rows).
  */
 export function matchesPaidBucket(row: FulfilBookingBucketInput): boolean {
 	if (row.status !== 'ready_to_assign') {
@@ -109,17 +114,17 @@ export const FULFIL_EMPTY_COPY: Record<FulfilQueueBucket, FulfilEmptyCopy> = {
 	paid: {
 		title: 'No bookings waiting for assignment',
 		description:
-			'This queue lists bookings in ready_to_assign with no linked trip yet — including walk-ins (Epic 14.1) and paid public trip requests. After payment clears — or staff moves a row to ready_to_assign — assign a run, driver, and vehicle here.',
+			'This queue lists bookings in ready_to_assign with no linked trip yet — including walk-ins (Epic 14.1) and paid public trip requests. After payment clears — or staff moves a row to ready_to_assign — assign a driver and vehicle from the booking detail assign panel.',
 	},
 	pending: {
 		title: 'No bookings need payment or pre-assign triage',
 		description:
-			'Pending lists non–trip-request bookings where status or payment is not fully paid yet (cash, EFT, or other manual steps). Walk-ins move to ready_to_assign on the Assignment tab once ops records the payment.',
+			'Pending lists non–trip-request bookings where status or payment is not fully paid yet (cash, EFT, or other manual steps). Walk-ins move to ready_to_assign on the Bookings queue (Ready to assign) once ops records the payment.',
 	},
 	trip_request: {
 		title: 'No public trip requests in the queue',
 		description:
-			'Trip requests use booking_intent = trip_request. Review and mark accepted when ops is ready; once payment is recorded and the booking reaches ready_to_assign, it appears on the Assignment (paid) tab for vehicle and driver assignment.',
+			'Trip requests use booking_intent = trip_request. Review and mark accepted when ops is ready; once payment is recorded and the booking reaches ready_to_assign, it appears in the Bookings Ready to assign view for vehicle and driver assignment.',
 	},
 }
 

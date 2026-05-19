@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { Bell, CheckCircle2, X } from 'lucide-react'
 
+import { OPS_FLEET_PATH } from '@/lib/ops-vehicles-url'
 import { createClientClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 import {
@@ -58,10 +59,10 @@ function alertHref(alert: OpsAlert): string | null {
 		case 'trips':
 			return '/ops/trips'
 		case 'vehicles':
-			return '/ops/vehicles'
+			return OPS_FLEET_PATH
 		case 'driver_profiles':
 		case 'profiles':
-			return '/ops/roster'
+			return '/ops/fleet/drivers'
 		case 'invoices':
 			return '/ops/invoicing'
 		case 'booking_quotes':

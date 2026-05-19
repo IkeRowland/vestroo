@@ -5,37 +5,57 @@ import Link from 'next/link'
 import { Car, Fuel, Gauge, Users } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
-import { OpsStatusPill } from '@/features/ops/components/OpsStatusPill'
+import { OpsDriverAvatarThumb } from '@/features/ops/components/OpsDriverAvatarThumb'
 import { opsVehiclesCopy } from '@/features/ops/copy/ops-vehicles-copy'
 import {
 	formatVehicleFuelLabel,
 	formatVehicleTransmissionLabel,
 } from '@/features/ops/lib/ops-vehicle-field-labels'
 import type { OpsFleetVehicleRow } from '@/features/ops/ops-fleet-types'
-import type { VehicleFleetStatusKey } from '@/features/ops/lib/ops-vehicles-fleet-status'
-import {
-	getVehicleFleetStatusLabel,
-	getVehicleFleetStatusPillTone,
-} from '@/features/ops/lib/ops-vehicles-fleet-status'
+import { formatYmdLocal, startOfWeekMondayLocal } from '@/lib/ops-calendar-url'
+import { buildOpsFleetDriversHref, formatMonthYmFromDate } from '@/lib/ops-fleet-drivers-url'
 import { cn } from '@/lib/utils'
+
+function assignDriverHrefForVehicle(v: OpsFleetVehicleRow): string {
+	const weekStartYmd = formatYmdLocal(startOfWeekMondayLocal(new Date()))
+	const monthYm = formatMonthYmFromDate(new Date())
+	if (v.assigned_driver) {
+		return buildOpsFleetDriversHref({
+			view: 'week',
+			weekStartYmd,
+			monthYm,
+			driverId: v.assigned_driver.id,
+			tripId: null,
+			driversView: 'list',
+			driverEdit: true,
+		})
+	}
+	return buildOpsFleetDriversHref({
+		view: 'week',
+		weekStartYmd,
+		monthYm,
+		driverId: null,
+		tripId: null,
+		driversView: 'list',
+	})
+}
 
 export type OpsVehicleFleetCardProps = {
 	vehicle: OpsFleetVehicleRow
 	categoryLabel: string
-	statusKey: VehicleFleetStatusKey
-	activeTripCount: number
+	/** When false, vehicle stays on the fleet list but is excluded from assignment suggestions. */
+	inactiveFleet?: boolean
 	onOpen: () => void
 	className?: string
 }
 
 /**
- * Single fleet card (**FE.17.6**) — fixed **16:9** media, status pill, quick stats, primary **Open** + secondary assign link.
+ * Single fleet card (**FE.17.6**) — fixed **16:9** media, driver summary, quick stats, **Open** + assign driver link.
  */
 export function OpsVehicleFleetCard({
 	vehicle,
 	categoryLabel,
-	statusKey,
-	activeTripCount,
+	inactiveFleet = false,
 	onOpen,
 	className,
 }: OpsVehicleFleetCardProps) {
@@ -45,6 +65,7 @@ export function OpsVehicleFleetCard({
 		vehicle.license_plate
 
 	const hasImage = Boolean(vehicle.primary_image_url?.trim())
+	const driver = vehicle.assigned_driver
 
 	return (
 		<article
@@ -84,12 +105,25 @@ export function OpsVehicleFleetCard({
 				</div>
 
 				<div className="flex flex-wrap items-center gap-2">
-					<OpsStatusPill tone={getVehicleFleetStatusPillTone(statusKey)}>
-						{getVehicleFleetStatusLabel(statusKey)}
-					</OpsStatusPill>
-					{activeTripCount > 0 ? (
-						<span className="text-xs tabular-nums text-ops-muted">
-							{activeTripCount} active {activeTripCount === 1 ? 'trip' : 'trips'}
+					{driver ? (
+						<div className="flex min-w-0 items-center gap-2">
+							<OpsDriverAvatarThumb
+								imageUrl={driver.avatar_url}
+								objectPosition={driver.avatar_object_position}
+								displayName={driver.full_name}
+								sizeClassName="h-8 w-8"
+								imageSizes="32px"
+							/>
+							<span className="min-w-0 truncate text-xs font-medium text-ops-foreground">
+								{driver.full_name}
+							</span>
+						</div>
+					) : (
+						<span className="text-xs text-ops-muted">{opsVehiclesCopy.driverNotAssigned}</span>
+					)}
+					{inactiveFleet ? (
+						<span className="rounded bg-amber-950/50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-200">
+							Inactive
 						</span>
 					) : null}
 				</div>
@@ -121,10 +155,11 @@ export function OpsVehicleFleetCard({
 					</Button>
 					<Button type="button" size="sm" variant="outline" className="border-ops-border" asChild>
 						<Link
-							href={opsVehiclesCopy.fulfilAssignHref}
+							href={assignDriverHrefForVehicle(vehicle)}
+							scroll={false}
 							aria-label={opsVehiclesCopy.cardAssignAria(displayName)}
 						>
-							{opsVehiclesCopy.assignToTrip}
+							{opsVehiclesCopy.assignToDriver}
 						</Link>
 					</Button>
 				</div>

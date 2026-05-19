@@ -42,7 +42,10 @@ describe('AccountSidebar (FE.18.2)', () => {
 			/>,
 		)
 		expect(screen.getByRole('link', { name: accountSidebarCopy.itemInvoices }).getAttribute('href')).toBe(
-			'/account/invoices',
+			'/account/billing/invoices',
+		)
+		expect(screen.getByRole('link', { name: accountSidebarCopy.itemQuotes }).getAttribute('href')).toBe(
+			'/account/billing/quotes',
 		)
 		expect(screen.getByRole('link', { name: accountSidebarCopy.itemMembers }).getAttribute('href')).toBe(
 			'/account/members',

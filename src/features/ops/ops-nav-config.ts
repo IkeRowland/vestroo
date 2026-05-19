@@ -6,7 +6,6 @@ import {
 	Landmark,
 	LayoutDashboard,
 	Mail,
-	MapPin,
 	Receipt,
 	Sparkles,
 	Truck,
@@ -18,10 +17,9 @@ import { isOpsDispatchBoardNavEnabled } from '@/lib/ops-dispatch-board-nav-env'
 import type { ProfileRole } from '@/types/database.types'
 
 /**
- * TEMP: Sidebar links for **Experiences** and **Close protection**. Set `true` to restore both routes
- * under Configuration.
+ * TEMP: Sidebar link for **Experiences**. Set `true` to show **`/ops/experiences`** under Configuration.
  */
-export const OPS_NAV_SHOW_EXPERIENCES_AND_CLOSE_PROTECTION = false
+export const OPS_NAV_SHOW_EXPERIENCES = false
 
 /** Roles that may use the ops console shell (see `requireOpsStaffPage`). */
 export const OPS_CONSOLE_ROLES: readonly ProfileRole[] = ['dispatcher', 'admin']
@@ -38,11 +36,7 @@ export const OPS_PRIMARY_WORKFLOW_QUEUE_ROLES: readonly ProfileRole[] = [
 	'admin',
 ]
 
-export type OpsNavGroupId =
-	| 'fulfilment'
-	| 'fleet_people'
-	| 'finance'
-	| 'configuration'
+export type OpsNavGroupId = 'fulfilment' | 'finance' | 'configuration'
 
 export type OpsNavItem = {
 	href: string
@@ -89,6 +83,8 @@ function buildFulfilmentGroup(): OpsNavGroup {
 			icon: Mail,
 		},
 		{ href: '/ops/trips', label: 'Trips', icon: Car },
+		{ href: '/ops/clients', label: 'Clients', icon: Users },
+		{ href: '/ops/fleet/drivers', label: 'Fleet', icon: Truck },
 	)
 
 	return {
@@ -101,25 +97,16 @@ function buildFulfilmentGroup(): OpsNavGroup {
 /**
  * Domain-grouped navigation for `/ops/*` (FE.5.1). Labels follow VST / ops-console wording.
  *
- * **FE.5.11 (Story 5.11 + 16.22) audit:** Sidebar groups cover **fulfilment & bookings** (including the
- * **`/ops/bookings`** unified queue — **Q20**), **fleet & people**, **finance**, and optionally **configuration**
- * (**`/ops/experiences`**, **`/ops/close-protection`**) when **`OPS_NAV_SHOW_EXPERIENCES_AND_CLOSE_PROTECTION`**.
+ * **FE.5.11 (Story 5.11 + 16.22) audit:** Sidebar groups cover **fulfilment & bookings** (including **Clients**,
+ * **Fleet** at **`/ops/fleet/drivers`** (index **`/ops/fleet`** redirects to Drivers), and the **`/ops/bookings`** unified queue — **Q20**), **finance**, and optionally **configuration**
+ * (**`/ops/experiences`**) when **`OPS_NAV_SHOW_EXPERIENCES`**.
  * **`/ops/dispatch`** (Theme C dispatch board) is **nav-gated** via
  * **`NEXT_PUBLIC_OPS_DISPATCH_BOARD_NAV_ENABLED`** until the route ships — see **`docs/ops-console.md`**
  * § FE.5.11 and **`docs/capstone-backend-module-matrix.md`** § FE.5.11 / BE.6.7. Routes without nav yet
- * (**`/ops/users`**, **`/ops/clients`**, service-area authoring) remain **deferred**.
+ * (**`/ops/users`**, service-area authoring) remain **deferred**.
  */
 export const OPS_NAV_GROUPS: readonly OpsNavGroup[] = [
 	buildFulfilmentGroup(),
-	{
-		id: 'fleet_people',
-		title: 'Fleet & People',
-		items: [
-			{ href: '/ops/vehicles', label: 'Vehicles', icon: Truck },
-			{ href: '/ops/clients', label: 'Clients', icon: Users },
-			{ href: '/ops/roster', label: 'Roster', icon: Users },
-		],
-	},
 	{
 		id: 'finance',
 		title: 'Finance',
@@ -133,19 +120,12 @@ export const OPS_NAV_GROUPS: readonly OpsNavGroup[] = [
 			},
 		],
 	},
-	...(OPS_NAV_SHOW_EXPERIENCES_AND_CLOSE_PROTECTION
+	...(OPS_NAV_SHOW_EXPERIENCES
 		? [
 				{
 					id: 'configuration' as const,
 					title: 'Configuration',
-					items: [
-						{ href: '/ops/experiences', label: 'Experiences', icon: Sparkles },
-						{
-							href: '/ops/close-protection',
-							label: 'Close protection',
-							icon: MapPin,
-						},
-					],
+					items: [{ href: '/ops/experiences', label: 'Experiences', icon: Sparkles }],
 				} satisfies OpsNavGroup,
 			]
 		: []),
@@ -158,10 +138,12 @@ const SEGMENT_LABELS: Record<string, string> = {
 	fulfil: 'Fulfil',
 	bookings: 'Bookings',
 	'comms-retry': 'Comms retry',
+	assign: 'Assign trip',
 	trips: 'Trips',
 	search: 'Booking search',
+	fleet: 'Fleet',
+	categories: 'Categories',
 	vehicles: 'Vehicles',
-	roster: 'Roster',
 	clients: 'Clients',
 	invoicing: 'Invoicing',
 	'bank-account': 'Bank account',
@@ -170,7 +152,6 @@ const SEGMENT_LABELS: Record<string, string> = {
 	reports: 'Reports',
 	suggestions: 'Suggestions',
 	experiences: 'Experiences',
-	'close-protection': 'Close protection',
 	// Epic 16 / US-A3 — breadcrumb labels for workflow + future ops paths
 	'walk-in': 'Walk-in bookings',
 	accounts: 'Account bookings',
@@ -182,7 +163,7 @@ const SEGMENT_LABELS: Record<string, string> = {
 	admin: 'Admin',
 	roles: 'Roles & permissions',
 	settings: 'Settings',
-	'service-runs': 'Service runs',
+	'service-runs': 'Shuttle departures',
 }
 
 export function isOpsNavItemVisible(
@@ -226,10 +207,7 @@ export function getOpsBreadcrumbs(pathname: string): { href: string; label: stri
 	for (let i = 0; i < tail.length; i++) {
 		const seg = tail[i]!
 		path += `/${seg}`
-		const prev = tail[i - 1]
-		const label =
-			SEGMENT_LABELS[seg] ??
-			(prev === 'close-protection' ? 'Engagement' : humanizeSegment(seg))
+		const label = SEGMENT_LABELS[seg] ?? humanizeSegment(seg)
 		crumbs.push({ href: path, label })
 	}
 

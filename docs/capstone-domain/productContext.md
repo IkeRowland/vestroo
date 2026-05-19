@@ -2,7 +2,7 @@
 
 ## Company
 
-**Vestroo Pty Ltd** is a 100% Black-owned premium transport operator in **Gauteng, South Africa**, delivering shuttle services, corporate transport, VIP transfers, curated tours, and close-protection mobility for individuals, corporates, and government.
+**Vestroo Pty Ltd** is a 100% Black-owned premium transport operator in **Gauteng, South Africa**, delivering shuttle services, corporate transport, VIP transfers, and curated tours for individuals, corporates, and government.
 
 Authoritative brief: [Overview Vestroo-Pty-Ltd.pdf](../Overview%20Vestroo-Pty-Ltd.pdf).
 

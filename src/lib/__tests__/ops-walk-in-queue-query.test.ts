@@ -5,6 +5,7 @@ import {
 	getIgnoredWalkInQueueParamKeys,
 	OPS_WALK_IN_NEW_QUEUE_HREF,
 	OPS_WALK_IN_STAGE_ORDER,
+	deriveWalkInQueueStageForBookingRow,
 	opsWalkInStageLabel,
 	parseOpsWalkInQueueFull,
 	parseOpsWalkInQueueSearchParams,
@@ -99,6 +100,74 @@ describe('ops-walk-in-queue-query (Story 16.20 / US-A1)', () => {
 			expect(u.pathname).toBe(OPS_BOOKINGS_PATH)
 			expect(u.searchParams.get('client')).toBe('walk_in')
 			expect(u.searchParams.get('status')).toBe('submitted')
+		})
+	})
+
+	describe('deriveWalkInQueueStageForBookingRow', () => {
+		const walkInBase = {
+			client_type: 'walk_in' as const,
+			availability_checked_at: null as string | null,
+		}
+
+		it('returns null for non–walk-in clients', () => {
+			expect(
+				deriveWalkInQueueStageForBookingRow({
+					...walkInBase,
+					client_type: 'account_client',
+					status: 'ready_to_assign',
+				}),
+			).toBeNull()
+		})
+
+		it('maps assigned → in_progress', () => {
+			expect(
+				deriveWalkInQueueStageForBookingRow({ ...walkInBase, status: 'assigned' }),
+			).toBe('in_progress')
+		})
+
+		it('maps cancelled and expired → completed (queue view-only CTAs)', () => {
+			expect(
+				deriveWalkInQueueStageForBookingRow({ ...walkInBase, status: 'cancelled' }),
+			).toBe('completed')
+			expect(
+				deriveWalkInQueueStageForBookingRow({ ...walkInBase, status: 'expired' }),
+			).toBe('completed')
+		})
+
+		it('when ready_to_assign but booking_trips embed has a vehicle, returns in_progress', () => {
+			const booking_trips = [
+				{
+					sort_order: 0,
+					trips: {
+						vehicles: { name: 'Shuttle A' },
+					},
+				},
+			]
+			expect(
+				deriveWalkInQueueStageForBookingRow({
+					...walkInBase,
+					status: 'ready_to_assign',
+					booking_trips,
+				}),
+			).toBe('in_progress')
+		})
+		it('when ready_to_assign but linked trip status is completed, returns completed', () => {
+			const booking_trips = [
+				{
+					sort_order: 0,
+					trips: {
+						status: 'completed',
+						vehicles: { name: 'Shuttle A' },
+					},
+				},
+			]
+			expect(
+				deriveWalkInQueueStageForBookingRow({
+					...walkInBase,
+					status: 'ready_to_assign',
+					booking_trips,
+				}),
+			).toBe('completed')
 		})
 	})
 

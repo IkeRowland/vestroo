@@ -1,6 +1,14 @@
 /**
- * **`/account/invoices`** URL state — **Story 18.6** / **FE.18.5** (namespaced pagination; legacy **`status=open`** preserved).
+ * Account billing archive list URL state — **`/account/billing/invoices`** & **`/account/billing/quotes`**
+ * (**Story 18.6** / **FE.18.5**); legacy **`/account/invoices`** redirects here. Namespaced pagination; legacy **`status=open`** preserved on invoices.
  */
+
+export const ACCOUNT_BILLING_INVOICES_LIST_PATH = '/account/billing/invoices' as const
+export const ACCOUNT_BILLING_QUOTES_LIST_PATH = '/account/billing/quotes' as const
+
+export type AccountBillingArchiveListPath =
+	| typeof ACCOUNT_BILLING_INVOICES_LIST_PATH
+	| typeof ACCOUNT_BILLING_QUOTES_LIST_PATH
 
 export const ACCOUNT_INVOICES_LIST_PAGE_SIZE = 25
 
@@ -88,14 +96,18 @@ export function serializeAccountInvoicesListSearchParams(p: AccountInvoicesListP
 	return u.toString()
 }
 
-export function accountInvoicesListPathWithQuery(p: AccountInvoicesListParsed): string {
+export function accountInvoicesListPathWithQuery(
+	p: AccountInvoicesListParsed,
+	listPath: AccountBillingArchiveListPath = ACCOUNT_BILLING_INVOICES_LIST_PATH,
+): string {
 	const qs = serializeAccountInvoicesListSearchParams(p)
-	return qs.length > 0 ? `/account/invoices?${qs}` : '/account/invoices'
+	return qs.length > 0 ? `${listPath}?${qs}` : listPath
 }
 
 export function accountInvoicesListHref(
 	current: AccountInvoicesListParsed,
 	overrides: Partial<AccountInvoicesListParsed>,
+	listPath: AccountBillingArchiveListPath = ACCOUNT_BILLING_INVOICES_LIST_PATH,
 ): string {
 	const next: AccountInvoicesListParsed = {
 		page: overrides.page !== undefined ? overrides.page : current.page,
@@ -104,7 +116,7 @@ export function accountInvoicesListHref(
 			overrides.selectedInvoiceId !== undefined ? overrides.selectedInvoiceId : current.selectedInvoiceId,
 		openOnly: overrides.openOnly !== undefined ? overrides.openOnly : current.openOnly,
 	}
-	return accountInvoicesListPathWithQuery(next)
+	return accountInvoicesListPathWithQuery(next, listPath)
 }
 
 export function accountInvoicesListSearchExcludingPage(p: AccountInvoicesListParsed): string {

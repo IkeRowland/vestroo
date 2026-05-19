@@ -55,8 +55,7 @@ export function OpsInvoicingHooksPanel() {
 						message={actionError.message}
 						sanitizeMessage={false}
 						correlationId={actionError.correlationId}
-						onRefresh={() => router.refresh()}
-						refreshLabel="Refresh page"
+						onRetry={() => router.refresh()}
 						secondaryAction={{ label: 'Back to trips', href: '/ops/trips' }}
 					/>
 				</div>

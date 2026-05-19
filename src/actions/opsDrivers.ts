@@ -155,7 +155,7 @@ export async function inviteDriverAction(raw: InviteDriverInput) {
 		payload: { email, full_name: fullName },
 	})
 
-	revalidatePath('/ops/roster')
+	revalidatePath('/ops/fleet/drivers')
 
 	logOpsAction({
 		action: 'inviteDriverAction',
@@ -269,7 +269,7 @@ export async function createDriverWithoutInviteAction(raw: InviteDriverInput) {
 		payload: { email, full_name: fullName },
 	})
 
-	revalidatePath('/ops/roster')
+	revalidatePath('/ops/fleet/drivers')
 
 	logOpsAction({
 		action: 'createDriverWithoutInviteAction',

@@ -13,7 +13,6 @@ const MARKETING_PATHS = [
   '/services/corporate',
   '/services/vip',
   '/services/tours',
-  '/services/close-protection',
   '/tours',
 ] as const
 

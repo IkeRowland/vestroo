@@ -2,11 +2,11 @@
 
 import { useMemo, useState, useTransition } from 'react'
 
+import { submitAvailabilityCheckAction } from '@/actions/opsAvailabilityCheck'
 import {
 	RATIONALE_MAX_LENGTH,
-	submitAvailabilityCheckAction,
 	type AvailabilityRouteScope,
-} from '@/actions/opsAvailabilityCheck'
+} from '@/lib/ops-availability-check-input'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { OpsErrorState } from '@/features/ops/components/OpsErrorState'

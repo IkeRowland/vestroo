@@ -38,15 +38,6 @@ export function BookingsQueueRowSecondaryLinks({
 				</Link>
 			</li>
 			<li>
-				<Link
-					href={`/ops/close-protection?bookingId=${encodeURIComponent(bookingId)}`}
-					className="text-primary underline-offset-2 hover:underline"
-					onClick={(e) => e.stopPropagation()}
-				>
-					Close protection
-				</Link>
-			</li>
-			<li>
 				<Button
 					type="button"
 					variant="ghost"

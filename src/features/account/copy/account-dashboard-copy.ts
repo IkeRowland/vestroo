@@ -19,6 +19,8 @@ export const accountDashboardCopy = {
 
 	sectionUpcoming: 'Upcoming trips',
 	sectionInvoices: 'Recent invoices',
+	/** Account portal submission — same wording as `/account/bookings` list. */
+	railStatusPendingConfirmation: 'Pending Confirmation',
 	railStatusPendingQuote: 'Pending quote',
 	railStatusConfirmed: 'Confirmed',
 	railStatusDriverAssigned: 'Driver assigned',
@@ -39,5 +41,5 @@ export const accountDashboardCopy = {
 	invoiceActionUnavailable: '—',
 	/** Generic — technical detail is server-logged only. */
 	invoicePreviewFailedMessage:
-		'Recent invoices could not be loaded. Open Invoices in the sidebar for the full list.',
+		'Recent invoices could not be loaded. Open Billing → Invoices in the sidebar for the full list.',
 } as const

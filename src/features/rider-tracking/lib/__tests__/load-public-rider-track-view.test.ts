@@ -76,7 +76,6 @@ describe('loadPublicRiderTrackView', () => {
 			created_at: '2026-04-01T08:00:00.000Z',
 			chauffeur_id: null,
 			vehicle_id: null,
-			service_run_id: null,
 			service_type: 'Charter',
 		}
 		const from = vi.fn((table: string) => {

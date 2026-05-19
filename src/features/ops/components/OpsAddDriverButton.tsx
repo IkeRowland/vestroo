@@ -125,7 +125,7 @@ function AddDriverDialog({ onClose }: { onClose: () => void }) {
 			return
 		}
 		setSuccess(
-			'Driver added to the roster. No email was sent — they can use Forgot password on the sign-in page when they need access.',
+			'Driver added. No email was sent — they can use Forgot password on the sign-in page when they need access.',
 		)
 		setFullName('')
 		setEmail('')
@@ -151,7 +151,7 @@ function AddDriverDialog({ onClose }: { onClose: () => void }) {
 					Add driver
 				</h2>
 				<p className="mt-1 text-sm text-ops-muted">
-					Send an invite so they receive email to set a password, or add them to the roster now without email
+					Send an invite so they receive email to set a password, or add them as a driver now without email
 					(they can use Forgot password on sign-in when ready).
 				</p>
 

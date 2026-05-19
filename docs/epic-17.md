@@ -329,7 +329,7 @@ The implementation MUST roll out new primitives to the following surfaces in thi
 8. **`/ops/roster`** — week calendar + driver detail rail.
 9. **`/ops/invoicing`** — KPI cards (Completed / Awaiting / Overdue) + table.
 10. **`/ops/comms`** — refreshed table for templates + activity timeline.
-11. **`/ops/compliance`, `/ops/close-protection`, `/ops/experiences`** — apply new chrome and shared primitives without changing logic.
+11. **`/ops/compliance`, `/ops/experiences`** — apply new chrome and shared primitives without changing logic.
 12. **`/ops/settings`** — refresh form layout, group config into sections.
 13. **`/ops/login`** — FE.17.11.
 14. **`/ops/reports/*`** (if/when added) — adopt area + bar charts; consider Option B (Recharts) only here.
@@ -374,7 +374,7 @@ Each surface is a **separate story** (17.x) so PRs stay small.
 14. **17.14 — `OpsCalendarWeek` + `/ops/calendar`** (FE.17.9).
 15. **17.15 — `OpsCalendarMonth` + `/ops/roster`** (FE.17.9).
 16. **17.16 — `/ops/invoicing` redesign** consuming 17.4 + 17.7.
-17. **17.17 — `/ops/comms`, `/ops/compliance`, `/ops/close-protection`, `/ops/experiences`** chrome polish.
+17. **17.17 — `/ops/comms`, `/ops/compliance`, `/ops/experiences`** chrome polish.
 18. **17.18 — `/ops/settings` redesign**.
 19. **17.19 — `/ops/login` refresh** (FE.17.11).
 20. **17.20 — Documentation finalisation**: extend `ops-design-system-parity.md` § 17, update `ui-ux-specification.md`, add reference matrix.

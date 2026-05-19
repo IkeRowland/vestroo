@@ -1,19 +1,34 @@
-/** User-visible strings for **`/account/invoices`** — **Story 18.6** / **FE.18.5** (B2B shuttle / chauffeur). */
+/** User-visible strings for **`/account/billing/invoices`** — **Story 18.6** / **FE.18.5** (B2B shuttle / chauffeur). */
 
 export const accountInvoicesPageCopy = {
-	pageTitle: 'Invoices & quotes',
+	pageTitle: 'Invoices',
 	pageSubtitle: (orgName: string) =>
-		`${orgName} — payments workspace for sent quotes and invoice-queue trips (admin only).`,
+		`${orgName} — invoice queue and payment status (admin only).`,
 	backToAccount: '← Account home',
 	loadError: (msg: string) => `Could not load invoices (${msg}).`,
 	signedInAs: (email: string) => `Signed in as ${email}`,
+}
+
+export const accountQuotesPageCopy = {
+	pageTitle: 'Quotes',
+	pageSubtitle: (orgName: string) =>
+		`${orgName} — sent and historical quotes outside the active invoice queue (admin only).`,
+	backToAccount: '← Account home',
+	loadError: (msg: string) => `Could not load quotes (${msg}).`,
+	signedInAs: (email: string) => `Signed in as ${email}`,
+}
+
+export const accountQuotesShellCopy = {
+	tableCaption: 'Organisation quotes',
+	tableEmpty: 'No quotes on file for this organisation yet.',
+	detailSheetTitle: 'Quote details',
 }
 
 export const accountInvoicesCopy = {
 	kpiPaid90d: 'Paid (last 90 days)',
 	kpiAwaiting: 'Awaiting payment',
 	kpiOverdue: 'Overdue',
-	tableCaption: 'Organisation invoices and quotes',
+	tableCaption: 'Organisation invoices',
 	colReference: 'Reference',
 	colIssueDate: 'Issue date',
 	colDueDate: 'Due date',
@@ -23,7 +38,7 @@ export const accountInvoicesCopy = {
 	actionPay: 'Pay',
 	actionDownloadPdf: 'Download PDF',
 	actionUnavailable: '—',
-	tableEmpty: 'No invoices or quotes match these filters.',
+	tableEmpty: 'No invoices match these filters.',
 	tableEmptyOpen: 'No open invoice-queue items right now.',
 	showingRange: (from: number, to: number, total: number) => `Showing ${from}–${to} of ${total}`,
 	paginationLabel: 'Invoice list pages',

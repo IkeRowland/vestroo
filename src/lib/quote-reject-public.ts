@@ -1,6 +1,6 @@
 import { appendOpsAuditLog } from '@/lib/ops-audit'
 import { buildBookSearchPrefillHrefFromBooking } from '@/lib/quote-accept-prefill'
-import { QUOTE_LINK_SYSTEM_AUDIT_ACTOR_ID } from '@/lib/quote-reject-constants'
+import { resolveQuoteLinkOpsAuditActorId } from '@/lib/resolve-quote-link-audit-actor'
 import { createServerClient } from '@/lib/supabase/server'
 import { signQuoteTokenWithPurpose, verifyQuoteToken } from '@/lib/quote-tokens'
 import type { BookingQuoteStatusDb } from '@/types/database.types'
@@ -257,9 +257,14 @@ export async function runPublicQuoteRejectSubmit(
 		return { ok: false, error: 'server' }
 	}
 
-	const actorId = booking.customer_id ?? QUOTE_LINK_SYSTEM_AUDIT_ACTOR_ID
+	const actor = await resolveQuoteLinkOpsAuditActorId(supabase)
+	if (!actor.ok) {
+		console.error('[quote-reject] resolveQuoteLinkOpsAuditActorId failed:', actor.message)
+		return { ok: true }
+	}
+
 	const audit = await appendOpsAuditLog(supabase, {
-		actorId,
+		actorId: actor.actorId,
 		actorRole: 'customer',
 		action: 'customer_rejected_quote',
 		entity: 'booking_quotes',
@@ -268,6 +273,7 @@ export async function runPublicQuoteRejectSubmit(
 			booking_id: bookingId,
 			quote_id: quoteId,
 			rejection_reason: reason,
+			...(booking.customer_id ? { booking_customer_id: booking.customer_id } : {}),
 		},
 	})
 	if (!audit.ok) {

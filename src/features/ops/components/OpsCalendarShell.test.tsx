@@ -36,6 +36,7 @@ describe('OpsCalendarShell (Story 17.14)', () => {
 		const { container } = render(
 			<OpsCalendarShell
 				weekStartYmd="2026-04-20"
+				monthYm="2026-04"
 				view="week"
 				selectedEventId="e1"
 				events={[

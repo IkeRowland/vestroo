@@ -26,10 +26,9 @@ vi.mock('next/navigation', () => ({
 	redirect: redirectMock,
 }))
 
-import {
-	RATIONALE_MAX_LENGTH,
-	submitAvailabilityCheckAction,
-} from '../opsAvailabilityCheck'
+import { RATIONALE_MAX_LENGTH } from '@/lib/ops-availability-check-input'
+
+import { submitAvailabilityCheckAction } from '../opsAvailabilityCheck'
 
 const BOOKING_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
 const STAFF_USER_ID = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc'
@@ -70,7 +69,7 @@ type Mocks = {
 	tripsByDriver?: TripRow[]
 	assignmentsByDriver?: ChauffeurAssignmentRow[]
 	tripsError?: { message: string } | null
-	vehicleProfile?: { id: string } | null
+	vehicleProfile?: { id: string; is_fleet_active?: boolean } | null
 	vehicleProfileError?: { message: string } | null
 	driverProfile?: { id: string; role: string; status: string } | null
 	driverProfileError?: { message: string } | null
@@ -485,7 +484,7 @@ describe('submitAvailabilityCheckAction — conflict / rationale rule', () => {
 					status: 'cancelled',
 				},
 			],
-			vehicleProfile: { id: VEHICLE_A },
+			vehicleProfile: { id: VEHICLE_A, is_fleet_active: true },
 			driverProfile: { id: DRIVER_A, role: 'chauffeur', status: 'active' },
 			captures: { bookingUpdateFilters: [] },
 		}
@@ -502,7 +501,7 @@ describe('submitAvailabilityCheckAction — happy path', () => {
 		getOpsStaffForAction.mockResolvedValue(staffSession())
 		const state: Mocks = {
 			booking: makeBooking(),
-			vehicleProfile: { id: VEHICLE_A },
+			vehicleProfile: { id: VEHICLE_A, is_fleet_active: true },
 			driverProfile: { id: DRIVER_A, role: 'chauffeur', status: 'active' },
 			captures: { bookingUpdateFilters: [] },
 		}
@@ -570,7 +569,7 @@ describe('submitAvailabilityCheckAction — happy path', () => {
 					status: 'confirmed',
 				},
 			],
-			vehicleProfile: { id: VEHICLE_A },
+			vehicleProfile: { id: VEHICLE_A, is_fleet_active: true },
 			driverProfile: { id: DRIVER_A, role: 'chauffeur', status: 'active' },
 			captures: { bookingUpdateFilters: [] },
 		}
@@ -624,7 +623,7 @@ describe('submitAvailabilityCheckAction — happy path', () => {
 		getOpsStaffForAction.mockResolvedValue(staffSession())
 		const state: Mocks = {
 			booking: makeBooking(),
-			vehicleProfile: { id: VEHICLE_A },
+			vehicleProfile: { id: VEHICLE_A, is_fleet_active: true },
 			driverProfile: { id: DRIVER_A, role: 'customer', status: 'active' },
 			captures: { bookingUpdateFilters: [] },
 		}
@@ -642,7 +641,7 @@ describe('submitAvailabilityCheckAction — happy path', () => {
 		getOpsStaffForAction.mockResolvedValue(staffSession())
 		const state: Mocks = {
 			booking: makeBooking(),
-			vehicleProfile: { id: VEHICLE_A },
+			vehicleProfile: { id: VEHICLE_A, is_fleet_active: true },
 			driverProfile: { id: DRIVER_A, role: 'chauffeur', status: 'active' },
 			updateError: { message: 'permission denied' },
 			captures: { bookingUpdateFilters: [] },
@@ -663,7 +662,7 @@ describe('submitAvailabilityCheckAction — happy path', () => {
 		appendOpsAuditLog.mockResolvedValue({ ok: false, message: 'audit failed' })
 		const state: Mocks = {
 			booking: makeBooking(),
-			vehicleProfile: { id: VEHICLE_A },
+			vehicleProfile: { id: VEHICLE_A, is_fleet_active: true },
 			driverProfile: { id: DRIVER_A, role: 'chauffeur', status: 'active' },
 			captures: { bookingUpdateFilters: [] },
 		}

@@ -26,9 +26,9 @@ describe('fetchLatestRiderTrackLivePosition', () => {
 	it('returns null without chauffeur or vehicle', async () => {
 		const supabase = makeSupabaseMock(null)
 		const r = await fetchLatestRiderTrackLivePosition(supabase, {
+			id: 'trip-1',
 			chauffeur_id: null,
 			vehicle_id: 'v1',
-			service_run_id: 'r1',
 		})
 		expect(r).toBeNull()
 		expect(resolveChauffeurAssignmentIdForTrip).not.toHaveBeenCalled()
@@ -41,9 +41,9 @@ describe('fetchLatestRiderTrackLivePosition', () => {
 			updated_at: '2026-04-01T12:00:00.000Z',
 		})
 		const r = await fetchLatestRiderTrackLivePosition(supabase, {
+			id: 'trip-1',
 			chauffeur_id: 'c1',
 			vehicle_id: 'v1',
-			service_run_id: 'r1',
 		})
 		expect(r).toEqual({
 			lat: -26.2,

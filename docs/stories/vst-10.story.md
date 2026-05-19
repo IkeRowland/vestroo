@@ -2,7 +2,7 @@
 
 ## Status: Done
 
-**Dependencies:** **[VST-5](vst-5.story.md)** MUST be **complete and stable** (schema, RLS, **`bookings.booking_intent`** including **`experience_package`**, **`bookings.booking_metadata`** per **`docs/data-models.md`**; **`BookingIntentDb`** and related types in **`src/types/database.types.ts`**). **[VST-6](vst-6.story.md)** MUST be **stable** for **quote** and **`createBooking`** paths (Server Actions, lifecycle, staging **search → quote → payment → confirmation**). **[VST-4](vst-4.story.md)** is **optional** for **marketing listing** and SEO surfaces; reuse **`src/app/(marketing)/`** patterns where they **exist** (e.g. **`services/`** may exist — verify at implementation time). **VST-11** (**close protection**) is **explicitly out of scope** for this story.
+**Dependencies:** **[VST-5](vst-5.story.md)** MUST be **complete and stable** (schema, RLS, **`bookings.booking_intent`** including **`experience_package`**, **`bookings.booking_metadata`** per **`docs/data-models.md`**; **`BookingIntentDb`** and related types in **`src/types/database.types.ts`**). **[VST-6](vst-6.story.md)** MUST be **stable** for **quote** and **`createBooking`** paths (Server Actions, lifecycle, staging **search → quote → payment → confirmation**). **[VST-4](vst-4.story.md)** is **optional** for **marketing listing** and SEO surfaces; reuse **`src/app/(marketing)/`** patterns where they **exist** (e.g. **`services/`** may exist — verify at implementation time). **VST-11** (retired numbered slot) is **explicitly out of scope** for this story.
 
 ## Story
 
@@ -20,7 +20,7 @@
 2. **Experience package** = marketed, bookable packaged offering; **itinerary** = ordered description of stops, durations, and highlights (structured, not only prose).
 3. **Booking** = customer commitment row; **booking attachments** for packages live in **`booking_metadata`** (and/or normalised child tables) and MUST stay consistent with **`docs/data-models.md`**.
 
-**Out of scope (for this slice):** **VST-11** **close protection** engagement workflow, tactical coordination, and restricted CP UI. **Reference-only** material under **`docs/capstone-reference/`** and **`src/features/capstone-reference/`** is **not** a deliverable. **Building a full headless CMS** (e.g. dedicated third-party editorial stack) is **out of scope unless** the team **explicitly selects** it in **`docs/tours-and-experiences.md`** — default expectation is **Postgres-backed catalogue** and/or **git-versioned markdown** under **`src/content/`** with a documented **trade-off** (editorial workflow, preview, non-dev updates, migration cost).
+**Out of scope (for this slice):** **VST-11** retired engagement workflow and any related tactical coordination UI. **Reference-only** material under **`docs/capstone-reference/`** and **`src/features/capstone-reference/`** is **not** a deliverable. **Building a full headless CMS** (e.g. dedicated third-party editorial stack) is **out of scope unless** the team **explicitly selects** it in **`docs/tours-and-experiences.md`** — default expectation is **Postgres-backed catalogue** and/or **git-versioned markdown** under **`src/content/`** with a documented **trade-off** (editorial workflow, preview, non-dev updates, migration cost).
 
 ## Acceptance Criteria (ACs)
 

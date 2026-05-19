@@ -199,8 +199,7 @@ export function OpsInvoicingQueueClient({
 				title={opsInvoicingCopy.fetchErrorTitle}
 				message={fetchError}
 				sanitizeMessage={false}
-				onRefresh={() => router.refresh()}
-				refreshLabel="Retry"
+				onRetry={() => router.refresh()}
 				secondaryAction={{ label: 'Back to trips', href: '/ops/trips' }}
 			/>
 		)

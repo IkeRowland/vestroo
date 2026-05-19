@@ -9,7 +9,7 @@ export const OPS_EMPTY_COPY = {
 	trips: {
 		title: 'No trips in this list',
 		description:
-			'Trips appear after paid bookings are assigned to a service run, vehicle, and driver from Fulfil.',
+			'Trips appear after paid bookings are assigned to a driver and vehicle from the Assignment tab.',
 	},
 	incidents: {
 		title: 'No compliance incidents logged',
@@ -23,7 +23,7 @@ export const OPS_EMPTY_COPY = {
 	},
 } as const
 
-/** Hint shown when server-side recovery is “refresh”. */
+/** Hint shown under recoverable ops error surfaces (single “Try again” action). */
 export function opsDataRetryHint(): string {
-	return 'Refresh this page to retry. If the problem continues, contact support.'
+	return 'Use Try again to reload this data. If the problem continues, contact support.'
 }

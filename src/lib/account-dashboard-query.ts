@@ -29,7 +29,7 @@ function pushErr(bucket: string[], msg: string) {
 export const ACCOUNT_DASHBOARD_HREFS = {
 	tripsThisMonth: '/account/bookings?period=this_month',
 	upcomingTrips: '/account/bookings?status=upcoming',
-	openInvoices: '/account/invoices?status=open',
+	openInvoices: '/account/billing/invoices?status=open',
 	members: '/account/members',
 } as const
 

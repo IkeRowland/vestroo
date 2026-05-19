@@ -10,6 +10,7 @@ import {
   type ExperiencePackageBookingMetadata,
 } from '@/actions/booking-schemas';
 import { enrichWebBookingWithClientType } from '@/actions/booking-client-type-enrich';
+import { isPortalActiveAccountBookingInsert } from '@/lib/account-portal-booking-insert';
 import { assertPurchaseOrderForAccountBookingInsert } from '@/lib/account-po-policy';
 import { reconcileBookingQuote } from '@/lib/booking-quote-reconcile';
 import type { QuoteLocation } from '@/lib/booking-quote-types';
@@ -117,6 +118,10 @@ export async function createBooking(bookingState: unknown) {
 
     const riderCols = webBookingRiderToDbColumns(validatedData.rider)
 
+    const portalAccountBooking =
+      clientTyped.client_type === 'account_client' &&
+      isPortalActiveAccountBookingInsert(clientTyped.booking_metadata as Record<string, unknown>);
+
     const bookingData = {
       origin_place_id: originForRow.placeId,
       origin_address: originForRow.formattedAddress,
@@ -142,7 +147,11 @@ export async function createBooking(bookingState: unknown) {
       rider_name: riderCols.rider_name,
       rider_email: riderCols.rider_email,
       rider_phone: riderCols.rider_phone,
-      status: useQuoteFirst ? 'submitted' : 'pending',
+      status: portalAccountBooking
+        ? 'pending_confirmation'
+        : useQuoteFirst
+          ? 'submitted'
+          : 'pending',
       payment_status: 'pending',
       payment_reference: bookingReference,
       booking_intent: validatedData.bookingIntent,

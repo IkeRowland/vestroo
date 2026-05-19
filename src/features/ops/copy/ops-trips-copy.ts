@@ -5,7 +5,7 @@ export const opsTripsCopy = {
 	pageTitle: 'Trips',
 	pageDescription:
 		'Status transitions, delay notes with revised end time, and vehicle swaps for assigned trips.',
-	tableCaption: 'Trips — select a row to open assignment details',
+	tableCaption: 'Trips — select a row to open trip details',
 	rowOpenDetailAria: (tripIdShort: string) => `Open trip details for ${tripIdShort}`,
 	detailRailTitle: (tripId: string) => `Trip ${tripId}`,
 	assignmentSummaryHeading: 'Assignment summary',
@@ -17,13 +17,10 @@ export const opsTripsCopy = {
 	vehicleHeading: 'Vehicle',
 	commsHeading: 'Staff messages and activity',
 	commsStubBody: 'No messages or activity logged for this trip yet.',
-	closeProtectionLink: 'Close protection (this trip)',
 	delayLabel: 'Delay',
 	revisedEndLabel: 'Revised end',
 	scheduleFromTo: (start: string, end: string) => `${start} → ${end}`,
 	metaDriver: 'Driver',
-	metaRun: 'Service run',
-	runValueShort: (idPrefix: string) => `${idPrefix}…`,
 } as const
 
 /** Human-readable trip fulfilment status for pills and labels (DB uses snake_case). */

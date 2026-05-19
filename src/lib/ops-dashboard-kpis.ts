@@ -5,6 +5,10 @@
  * Keys and drill targets must stay aligned with that document.
  */
 
+import { OPS_BOOKINGS_DEFAULT_HREF } from '@/features/ops/ops-bookings-url'
+import {
+	OPS_BOOKINGS_NEEDS_ATTENTION_HREF,
+} from '@/lib/ops-bookings-queue-query'
 import { OPS_TRIPS_PATH } from '@/lib/ops-trips-url'
 
 /** Fixed v1 set — do not add keys without updating the doc and loaders. */
@@ -101,9 +105,9 @@ export const OPS_DASHBOARD_KPI_DEFINITIONS: Record<
 export function opsDashboardKpiDrillHref(id: OpsDashboardKpiId): string {
 	switch (id) {
 		case 'bookings_pending_payment':
-			return `${OPS_TRIPS_PATH}?queue=pending`
+			return OPS_BOOKINGS_NEEDS_ATTENTION_HREF
 		case 'bookings_trip_request':
-			return `${OPS_TRIPS_PATH}?queue=trip_request`
+			return OPS_BOOKINGS_DEFAULT_HREF
 		case 'trips_open':
 		case 'trips_booking':
 		case 'trips_en_route':

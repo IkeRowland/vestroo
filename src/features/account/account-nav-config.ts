@@ -1,6 +1,7 @@
 import type { LucideIcon } from 'lucide-react'
 import {
 	CreditCard,
+	FileText,
 	HelpCircle,
 	LayoutDashboard,
 	ListChecks,
@@ -10,6 +11,10 @@ import {
 } from 'lucide-react'
 
 import { accountSidebarCopy } from '@/features/account/copy/account-sidebar-copy'
+import {
+	ACCOUNT_BILLING_INVOICES_LIST_PATH,
+	ACCOUNT_BILLING_QUOTES_LIST_PATH,
+} from '@/lib/account-invoices-list-query'
 import type { CustomerAccountMemberRoleDb } from '@/types/database.types'
 
 export type AccountNavGroupId = 'activity' | 'billing' | 'organisation' | 'help'
@@ -45,9 +50,15 @@ const BILLING: AccountNavGroup = {
 	title: accountSidebarCopy.groupBilling,
 	items: [
 		{
-			href: '/account/invoices',
+			href: ACCOUNT_BILLING_INVOICES_LIST_PATH,
 			label: accountSidebarCopy.itemInvoices,
 			icon: CreditCard,
+			adminOnly: true,
+		},
+		{
+			href: ACCOUNT_BILLING_QUOTES_LIST_PATH,
+			label: accountSidebarCopy.itemQuotes,
+			icon: FileText,
 			adminOnly: true,
 		},
 	],

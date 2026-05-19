@@ -113,7 +113,7 @@ Authoritative framing remains **corporate shuttle**, consistent with [`docs/epic
 | **Q22** | **Separate primary pages for walk-in and account workflows** (`/ops/walk-in`, `/ops/accounts`). |
 | **Q23** | **Availability check is a mandatory stage** before `sendWalkInQuote` and before `assignBookingToRun`. Admin override available with mandatory reason text (mirrors Epic 13 Q12); override writes to `ops_audit_log` with `action='availability_check_override'`. |
 | **Q24** | **Dispatch scheduler is read-only aggregation + existing assign action** for v1. Manual drag-assign only. |
-| **Q25** | **Driver rename exception: Close Protection.** Close-protection engagement staff retain "Close Protection Officer". |
+| **Q25** | **Retired** — a former Epic **16** carve-out for specialty staffing copy was tied to a product slice that is **no longer in scope**; **Q21** applies unless legal requires a bespoke label (capture outside this table). |
 | **Q26** | **KPI dashboard v1 card set is finite and locked** at 12 cards. Definitions in `docs/ops-dashboard-kpis-v1.md`. |
 | **Q27** | **Live map defaults to dark mode.** |
 | **Q28** | **`ops_alerts` is a new domain table**, 7 alert kinds in v1. |
@@ -578,7 +578,7 @@ Authoritative framing remains **corporate shuttle**, consistent with [`docs/epic
   - **Documentation** (`docs/**`) — flagged **rename freely except capstone-reference**
   - **Migrations** (`supabase/migrations/**`) — flagged **historical / immutable, out of scope**
   - **Capstone reference** (`src/legacy/capstone-reference/**`, `docs/capstone-reference/**`) — flagged **out of scope per Epic 5 FE.5.9 / Epic 9**
-- **AC:** Columns: file path, line number, context (5 chars before/after), current text, proposed action (`rename to driver` / `keep — DB scope deferred to Epic 17` / `keep — capstone reference` / `keep — historical migration`), exception flag (Q25 Close Protection / Q34 DB / capstone).
+- **AC:** Columns: file path, line number, context (5 chars before/after), current text, proposed action (`rename to driver` / `keep — DB scope deferred to Epic 17` / `keep — capstone reference` / `keep — historical migration`), exception flag (Q34 DB / capstone).
 - **AC:** Audit produced via grep tooling; sign-off recorded at top of file.
 - **AC:** Becomes the single source of truth for US-L3 sweep work.
 
@@ -621,7 +621,7 @@ Authoritative framing remains **corporate shuttle**, consistent with [`docs/epic
   - `/ops/fulfil` empty-state "assign a run, chauffeur, and vehicle here" → "assign a run, driver, and vehicle here".
 - **AC:** Email templates under `src/lib/email/templates/` updated for any "chauffeur" customer-facing strings.
 - **AC:** `/q/[token]/accept`, `/q/[token]/reject`, `/q/[token]/expired` user-facing surfaces audited.
-- **AC:** Final repo-wide grep gate: `grep -ri "chauffeur" src/app src/features src/components --include="*.tsx" --include="*.html"` returns only documented exceptions (close-protection mentions per Q25; raw type imports from `database.types.ts` which intentionally retain DB literals).
+- **AC:** Final repo-wide grep gate: `grep -ri "chauffeur" src/app src/features src/components --include="*.tsx" --include="*.html"` returns only documented exceptions (raw type imports from `database.types.ts` which intentionally retain DB literals).
 
 **US-L4 — As a developer (non-blocking)**, low-risk filenames are renamed.
 

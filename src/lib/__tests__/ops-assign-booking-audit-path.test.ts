@@ -5,7 +5,6 @@ import type { Suggestion } from '@/lib/dispatch-suggestions'
 
 const bookingId = 'b1111111-1111-4111-8111-111111111111'
 const tripId = 't1111111-1111-4111-8111-111111111111'
-const serviceRunId = 'r1111111-1111-4111-8111-111111111111'
 const driverProfileId = 'h1111111-1111-4111-8111-111111111111'
 const vehicleA = 'a1111111-1111-4111-8111-111111111111'
 const vehicleB = 'b2222222-2222-4222-8222-222222222222'
@@ -23,7 +22,6 @@ describe('resolveAssignmentCalibrationAudit', () => {
 	const baseInput = {
 		bookingId,
 		tripId,
-		serviceRunId,
 		driverProfileId,
 		assignedVehicleId: vehicleA,
 	}
@@ -94,7 +92,6 @@ describe('resolveAssignmentCalibrationAudit', () => {
 			rank: 2,
 			booking_id: bookingId,
 			trip_id: tripId,
-			service_run_id: serviceRunId,
 			chauffeur_id: driverProfileId,
 		})
 	})

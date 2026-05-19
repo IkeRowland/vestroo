@@ -16,8 +16,6 @@ This document is the **single index** for how each primary `src/app/(ops)/ops/**
 | `/ops/experiences` | RSC per navigation + **server actions** | **`experience_packages`** catalogue (`createOpsExperiencePackageAction`, `updateOpsExperiencePackageAction`, `deactivateOpsExperiencePackageAction` in `src/actions/opsExperiencePackages.ts`) calls **`revalidatePath('/ops/experiences')`**, **`/tours`**, and affected **`/tours/[slug]`** after mutations; experience **bookings** list is still RSC-only | `OpsDataFreshnessBar`; fetch errors → `OpsFetchErrorIsland`; package panel shows mutation banners + correlation id on failure |
 | `/ops/invoicing` | RSC + server action | `updateBookingInvoicingHooksAction` mutates `bookings` | `OpsDataFreshnessBar`; action errors → `OpsErrorState` in panel with refresh |
 | `/ops/compliance` | Server actions for lists + admin DSR | `listComplianceIncidentsAction`, `listExpiringComplianceDocumentsAction`, DSR actions | `OpsDataFreshnessBar`; list failures → `OpsFetchErrorIsland` (includes **correlation id** when returned) |
-| `/ops/close-protection` | Server actions | `listCloseProtectionEngagementsAction`, create/update actions | `OpsDataFreshnessBar`; list failure → `OpsFetchErrorIsland` |
-| `/ops/close-protection/[id]` | Server action + RSC | `getCloseProtectionEngagementByIdAction` | No realtime; staff rely on navigation + **Refresh** from browser or returning to list (detail remains `notFound` on hard failure) |
 
 ### Realtime reconnect behaviour (board)
 

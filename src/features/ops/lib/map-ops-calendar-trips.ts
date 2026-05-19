@@ -20,6 +20,8 @@ export type OpsCalendarTripRailPayload = {
 	vehicleName: string
 	clientLabel: string
 	driverName: string
+	/** **`profiles.id`** for the assigned chauffeur (fleet drivers deep-linking). */
+	chauffeurProfileId: string
 	notes: string | null
 	serviceType: string | null
 }
@@ -122,6 +124,7 @@ export function mapTripsToCalendarWeekData(
 			vehicleName: vehicleNameFromRow(row),
 			clientLabel: clientLine(row),
 			driverName: driver,
+			chauffeurProfileId: String(row.chauffeur_id ?? ''),
 			notes: row.ops_delay_note?.trim() ? row.ops_delay_note : null,
 			serviceType: row.service_type,
 		}

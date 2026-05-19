@@ -6,6 +6,7 @@ import type { OpsStatusPillTone } from '@/features/ops/ops-status-pill-tones'
  */
 const BOOKING_STATUS_TONES: Readonly<Record<string, OpsStatusPillTone>> = {
 	pending: 'neutral',
+	pending_confirmation: 'warning',
 	submitted: 'info',
 	triaged: 'info',
 	quote_sent: 'info',

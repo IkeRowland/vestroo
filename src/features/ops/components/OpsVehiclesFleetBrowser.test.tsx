@@ -19,6 +19,7 @@ const baseVehicle: OpsFleetVehicleRow = {
 	name: '2024 Test Sedan',
 	license_plate: 'CA123GP',
 	category_id: 'c1',
+	is_fleet_active: true,
 	operation_status: 'charging',
 	vehicle_condition: 'available',
 	make: 'Test',
@@ -32,6 +33,7 @@ const baseVehicle: OpsFleetVehicleRow = {
 	description: null,
 	primary_image_url: null,
 	gallery_image_urls: [],
+	assigned_driver: null,
 }
 
 describe('OpsVehiclesFleetBrowser (Story 17.12)', () => {
@@ -58,7 +60,6 @@ describe('OpsVehiclesFleetBrowser (Story 17.12)', () => {
 			<OpsVehiclesFleetBrowser
 				vehicles={[baseVehicle]}
 				categories={[{ id: 'c1', name: 'Sedan' }]}
-				activeTripCountByVehicleId={{ [baseVehicle.id]: 0 }}
 				view="list"
 				selectedVehicleId={null}
 				onEditVehicle={vi.fn()}
@@ -68,7 +69,7 @@ describe('OpsVehiclesFleetBrowser (Story 17.12)', () => {
 		const row = screen.getByTestId('ops-vehicles-fleet-row')
 		fireEvent.click(row)
 		expect(mockPush).toHaveBeenCalledWith(
-			'/ops/vehicles?id=v1111111-1111-4111-8111-111111111111',
+			'/ops/fleet/vehicles?id=v1111111-1111-4111-8111-111111111111',
 			{ scroll: false },
 		)
 	})
@@ -78,7 +79,6 @@ describe('OpsVehiclesFleetBrowser (Story 17.12)', () => {
 			<OpsVehiclesFleetBrowser
 				vehicles={[baseVehicle]}
 				categories={[{ id: 'c1', name: 'Sedan' }]}
-				activeTripCountByVehicleId={{ [baseVehicle.id]: 0 }}
 				view="list"
 				selectedVehicleId={baseVehicle.id}
 				onEditVehicle={vi.fn()}

@@ -11,7 +11,7 @@ type OpsFetchErrorIslandProps = {
 }
 
 /**
- * Client island: fetch/load errors on ops pages with explicit `router.refresh()` recovery (AC2).
+ * Client island: fetch/load errors on ops pages with `router.refresh()` recovery via Try again (AC2).
  */
 export function OpsFetchErrorIsland({ title, message, correlationId }: OpsFetchErrorIslandProps) {
 	const router = useRouter()
@@ -20,8 +20,7 @@ export function OpsFetchErrorIsland({ title, message, correlationId }: OpsFetchE
 			title={title}
 			message={message}
 			correlationId={correlationId}
-			onRefresh={() => router.refresh()}
-			refreshLabel="Refresh page"
+			onRetry={() => router.refresh()}
 			secondaryAction={{ label: 'Trips', href: '/ops/trips' }}
 		/>
 	)

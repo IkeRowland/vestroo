@@ -1,5 +1,3 @@
-import type { SupabaseClient } from '@supabase/supabase-js'
-
 import type { MapsTarget } from '@/lib/maps'
 
 type BookingNavFields = {
@@ -13,20 +11,12 @@ type BookingNavFields = {
 
 /**
  * Resolve navigation target for a trip + optional booking row.
- * DB resolution for service run is attempted when `serviceRunId` is set.
  *
- * Precedence (documented in docs/field-tools.md):
+ * Precedence:
  * 1. Booking destination coordinates, else destination address
  * 2. Booking origin coordinates, else origin address
- * 3. First ordered service point on the run’s route (service_run → service_route_points)
  */
-export async function resolveFieldMapsTarget(
-	supabase: SupabaseClient,
-	args: {
-		serviceRunId: string | null
-		booking: BookingNavFields | null
-	},
-): Promise<MapsTarget | null> {
+export function resolveFieldMapsTarget(args: { booking: BookingNavFields | null }): MapsTarget | null {
 	const b = args.booking
 	if (b) {
 		if (
@@ -61,60 +51,6 @@ export async function resolveFieldMapsTarget(
 		if (b.origin_address && b.origin_address.trim().length > 0) {
 			return { kind: 'query', query: b.origin_address.trim() }
 		}
-	}
-
-	if (!args.serviceRunId) {
-		return null
-	}
-
-	const { data: run, error: runErr } = await supabase
-		.from('service_runs')
-		.select('service_route_id')
-		.eq('id', args.serviceRunId)
-		.maybeSingle()
-
-	if (runErr || !run?.service_route_id) {
-		return null
-	}
-
-	const routeId = run.service_route_id as string
-
-	const { data: points, error: ptErr } = await supabase
-		.from('service_route_points')
-		.select('order_index, service_point_id')
-		.eq('service_route_id', routeId)
-		.order('order_index', { ascending: true })
-		.limit(1)
-
-	if (ptErr || !points?.length) {
-		return null
-	}
-
-	const spId = points[0].service_point_id as string
-	const { data: sp, error: spErr } = await supabase
-		.from('service_points')
-		.select('lat, lng, name, address')
-		.eq('id', spId)
-		.maybeSingle()
-
-	if (spErr || !sp) {
-		return null
-	}
-
-	const lat = sp.lat as number
-	const lng = sp.lng as number
-	if (Number.isFinite(lat) && Number.isFinite(lng)) {
-		return {
-			kind: 'coords',
-			lat,
-			lng,
-			label: (sp.name as string) || (sp.address as string) || undefined,
-		}
-	}
-
-	const addr = (sp.address as string | null)?.trim()
-	if (addr) {
-		return { kind: 'query', query: addr }
 	}
 
 	return null

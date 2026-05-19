@@ -28,9 +28,16 @@ const baseTrip = {
 	time_end_estimate: '2026-04-28T11:00:00.000Z',
 	vehicle_id: VEHICLE_ID,
 	chauffeur_id: DRIVER_ID,
-	service_run_id: null,
 	ops_delay_note: null,
 	ops_revised_time_end_estimate: null,
+	ref_label: 'VST-TESTREF',
+	pickup_datetime: '2026-04-28T12:00:00.000Z',
+	customer_name: 'Alex Rider',
+	customer_email: 'alex@example.com',
+	linked_account_name: null,
+	client_type: 'walk_in',
+	origin_name: 'O.R. Tambo International Airport',
+	destination_name: 'Sandton City',
 }
 
 describe('OpsTripsSplitBrowser (Story 17.13)', () => {
@@ -61,6 +68,9 @@ describe('OpsTripsSplitBrowser (Story 17.13)', () => {
 				selectedTripId={null}
 			/>,
 		)
+		expect(screen.getByRole('columnheader', { name: 'Reference' })).toBeTruthy()
+		expect(screen.getByText('VST-TESTREF')).toBeTruthy()
+		expect(screen.getByText('Alex Rider')).toBeTruthy()
 		fireEvent.click(screen.getByTestId('ops-trips-row'))
 		expect(mockPush).toHaveBeenCalledWith(`/ops/trips?id=${TRIP_ID}`, { scroll: false })
 	})

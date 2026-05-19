@@ -106,7 +106,7 @@ Each card uses the **shared** `AccountKpiCard` component (parallel to `OpsKpiCar
 
 The system MUST refresh the bookings list using primitives shared with Epic 17:
 
-* **Filter row:** date range, status (pill multi-select), trip type (point-to-point, hourly, tour, close protection — match domain), search.
+* **Filter row:** date range, status (pill multi-select), trip type (point-to-point, hourly, tour, corporate pattern — match domain), search.
 * **Table:** Booking ref, date+time, route (pickup → drop-off, ellipsised), vehicle class, status pill, amount (if quoted), action menu.
 * **Row click** opens detail rail (split view) showing:
   * Pickup / drop-off addresses with mini map snapshot (static Google Static Maps, no client JS).

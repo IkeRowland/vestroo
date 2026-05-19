@@ -9,35 +9,52 @@ import * as React from 'react'
 import { Button } from '@/components/ui/button'
 import { OpsCardGrid } from '@/features/ops/components/OpsCardGrid'
 import { OpsDetailRail } from '@/features/ops/components/OpsDetailRail'
+import { OpsDriverAvatarThumb } from '@/features/ops/components/OpsDriverAvatarThumb'
 import { OpsSplitView } from '@/features/ops/components/OpsSplitView'
-import { OpsStatusPill } from '@/features/ops/components/OpsStatusPill'
+import { OpsTableShell } from '@/features/ops/components/ops-primitives'
 import { OpsVehicleFleetCard } from '@/features/ops/components/OpsVehicleFleetCard'
 import type { OpsFleetCategoryOption, OpsFleetVehicleRow } from '@/features/ops/ops-fleet-types'
-import { OpsTableShell } from '@/features/ops/components/ops-primitives'
 import { opsVehiclesCopy } from '@/features/ops/copy/ops-vehicles-copy'
 import {
 	formatVehicleFuelLabel,
 	formatVehicleTransmissionLabel,
 } from '@/features/ops/lib/ops-vehicle-field-labels'
+import { formatYmdLocal, startOfWeekMondayLocal } from '@/lib/ops-calendar-url'
 import {
-	getVehicleFleetStatusKey,
-	getVehicleFleetStatusLabel,
-	getVehicleFleetStatusPillTone,
-} from '@/features/ops/lib/ops-vehicles-fleet-status'
+	buildOpsFleetDriversHref,
+	formatMonthYmFromDate,
+} from '@/lib/ops-fleet-drivers-url'
 import { buildOpsVehiclesHref } from '@/lib/ops-vehicles-url'
 import type { OpsVehiclesPageView } from '@/lib/ops-vehicles-url'
 import { cn } from '@/lib/utils'
 
-function formatSnakeTitle(raw: string): string {
-	const t = raw.trim()
-	if (!t) return '—'
-	return t.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+function assignDriverHrefForVehicle(v: OpsFleetVehicleRow): string {
+	const weekStartYmd = formatYmdLocal(startOfWeekMondayLocal(new Date()))
+	const monthYm = formatMonthYmFromDate(new Date())
+	if (v.assigned_driver) {
+		return buildOpsFleetDriversHref({
+			view: 'week',
+			weekStartYmd,
+			monthYm,
+			driverId: v.assigned_driver.id,
+			tripId: null,
+			driversView: 'list',
+			driverEdit: true,
+		})
+	}
+	return buildOpsFleetDriversHref({
+		view: 'week',
+		weekStartYmd,
+		monthYm,
+		driverId: null,
+		tripId: null,
+		driversView: 'list',
+	})
 }
 
 export type OpsVehiclesFleetBrowserProps = {
 	vehicles: OpsFleetVehicleRow[]
 	categories: OpsFleetCategoryOption[]
-	activeTripCountByVehicleId: Record<string, number>
 	view: OpsVehiclesPageView
 	selectedVehicleId: string | null
 	onEditVehicle: (v: OpsFleetVehicleRow) => void
@@ -47,7 +64,6 @@ export type OpsVehiclesFleetBrowserProps = {
 export function OpsVehiclesFleetBrowser({
 	vehicles,
 	categories,
-	activeTripCountByVehicleId,
 	view,
 	selectedVehicleId,
 	onEditVehicle,
@@ -103,10 +119,7 @@ export function OpsVehiclesFleetBrowser({
 						Category
 					</th>
 					<th scope="col" className="py-2 pr-4 font-semibold">
-						Fleet status
-					</th>
-					<th scope="col" className="py-2 pr-4 font-semibold">
-						Active trips
+						Driver
 					</th>
 					<th scope="col" className="py-2 pr-4 font-semibold">
 						Actions
@@ -116,20 +129,20 @@ export function OpsVehiclesFleetBrowser({
 			<tbody>
 				{vehicles.length === 0 ? (
 					<tr>
-						<td colSpan={6} className="py-8 text-center text-sm text-ops-muted">
+						<td colSpan={5} className="py-8 text-center text-sm text-ops-muted">
 							No vehicles yet. Use “Add vehicle” to create the first one.
 						</td>
 					</tr>
 				) : (
 					vehicles.map((v) => {
 						const catLabel = categories.find((c) => c.id === v.category_id)?.name ?? '—'
-						const active = activeTripCountByVehicleId[v.id] ?? 0
 						const displayName =
 							v.name?.trim() ||
 							[v.model_year, v.make, v.model].filter(Boolean).join(' ') ||
 							'—'
-						const statusKey = getVehicleFleetStatusKey(v.vehicle_condition, active)
 						const selected = selectedVehicleId === v.id
+						const inactive = !v.is_fleet_active
+						const driver = v.assigned_driver
 						return (
 							<tr
 								key={v.id}
@@ -176,20 +189,39 @@ export function OpsVehiclesFleetBrowser({
 										</div>
 										<div className="min-w-0">
 											<div className="truncate font-medium">{displayName}</div>
-											{v.color ? (
-												<div className="truncate text-xs text-ops-muted">{v.color}</div>
-											) : null}
+											<div className="flex flex-wrap items-center gap-2">
+												{v.color ? (
+													<div className="truncate text-xs text-ops-muted">{v.color}</div>
+												) : null}
+												{inactive ? (
+													<span className="rounded bg-amber-950/50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-200">
+														Inactive
+													</span>
+												) : null}
+											</div>
 										</div>
 									</div>
 								</td>
 								<td className="py-3 pr-4 font-mono text-sm text-ops-muted">{v.license_plate}</td>
 								<td className="py-3 pr-4 text-sm text-ops-muted">{catLabel}</td>
 								<td className="py-3 pr-4">
-									<OpsStatusPill tone={getVehicleFleetStatusPillTone(statusKey)}>
-										{getVehicleFleetStatusLabel(statusKey)}
-									</OpsStatusPill>
+									{driver ? (
+										<div className="flex items-center gap-2">
+											<OpsDriverAvatarThumb
+												imageUrl={driver.avatar_url}
+												objectPosition={driver.avatar_object_position}
+												displayName={driver.full_name}
+												sizeClassName="h-9 w-9"
+												imageSizes="36px"
+											/>
+											<span className="min-w-0 truncate text-sm font-medium text-ops-foreground">
+												{driver.full_name}
+											</span>
+										</div>
+									) : (
+										<span className="text-sm text-ops-muted">{opsVehiclesCopy.driverNotAssigned}</span>
+									)}
 								</td>
-								<td className="py-3 pr-4 text-sm tabular-nums text-ops-foreground/90">{active}</td>
 								<td className="py-3 pr-4" onClick={(e) => e.stopPropagation()}>
 									<div className="flex flex-wrap gap-2">
 										<Button
@@ -212,7 +244,9 @@ export function OpsVehiclesFleetBrowser({
 											Archive
 										</Button>
 										<Button size="sm" variant="secondary" className="border-ops-border" asChild>
-											<Link href={opsVehiclesCopy.fulfilAssignHref}>{opsVehiclesCopy.assignToTrip}</Link>
+											<Link href={assignDriverHrefForVehicle(v)} scroll={false}>
+												{opsVehiclesCopy.assignToDriver}
+											</Link>
 										</Button>
 									</div>
 								</td>
@@ -233,19 +267,17 @@ export function OpsVehiclesFleetBrowser({
 			<div role="region" aria-label={opsVehiclesCopy.gridListAria}>
 				<OpsCardGrid>
 					{vehicles.map((v) => {
-					const catLabel = categories.find((c) => c.id === v.category_id)?.name ?? '—'
-					const active = activeTripCountByVehicleId[v.id] ?? 0
-					const statusKey = getVehicleFleetStatusKey(v.vehicle_condition, active)
-					return (
-						<OpsVehicleFleetCard
-							key={v.id}
-							vehicle={v}
-							categoryLabel={catLabel}
-							statusKey={statusKey}
-							activeTripCount={active}
-							onOpen={() => openVehicleFromCard(v)}
-						/>
-					)
+						const catLabel = categories.find((c) => c.id === v.category_id)?.name ?? '—'
+						const inactive = !v.is_fleet_active
+						return (
+							<OpsVehicleFleetCard
+								key={v.id}
+								vehicle={v}
+								categoryLabel={catLabel}
+								inactiveFleet={inactive}
+								onOpen={() => openVehicleFromCard(v)}
+							/>
+						)
 					})}
 				</OpsCardGrid>
 			</div>
@@ -278,7 +310,9 @@ export function OpsVehiclesFleetBrowser({
 							Archive
 						</Button>
 						<Button size="sm" variant="secondary" className="border-ops-border" asChild>
-							<Link href={opsVehiclesCopy.fulfilAssignHref}>{opsVehiclesCopy.assignToTrip}</Link>
+							<Link href={assignDriverHrefForVehicle(selectedVehicle)} scroll={false}>
+								{opsVehiclesCopy.assignToDriver}
+							</Link>
 						</Button>
 					</div>
 				}
@@ -311,44 +345,32 @@ export function OpsVehiclesFleetBrowser({
 						)}
 					</div>
 
-					<section aria-labelledby="ops-vehicle-detail-status">
+					<section aria-labelledby="ops-vehicle-detail-driver">
 						<h3
-							id="ops-vehicle-detail-status"
+							id="ops-vehicle-detail-driver"
 							className="text-xs font-semibold uppercase tracking-wide text-ops-muted"
 						>
-							{opsVehiclesCopy.detailStatusHeading}
+							{opsVehiclesCopy.detailDriverHeading}
 						</h3>
-						<div className="mt-2 flex flex-wrap items-center gap-2">
-							<OpsStatusPill
-								tone={getVehicleFleetStatusPillTone(
-									getVehicleFleetStatusKey(
-										selectedVehicle.vehicle_condition,
-										activeTripCountByVehicleId[selectedVehicle.id] ?? 0,
-									),
-								)}
-							>
-								{getVehicleFleetStatusLabel(
-									getVehicleFleetStatusKey(
-										selectedVehicle.vehicle_condition,
-										activeTripCountByVehicleId[selectedVehicle.id] ?? 0,
-									),
-								)}
-							</OpsStatusPill>
-							<span className="text-xs text-ops-muted">
-								{opsVehiclesCopy.activeTripsLabel}:{' '}
-								<span className="tabular-nums text-ops-foreground">
-									{activeTripCountByVehicleId[selectedVehicle.id] ?? 0}
-								</span>
-							</span>
+						<div className="mt-3 flex items-center gap-3">
+							{selectedVehicle.assigned_driver ? (
+								<>
+									<OpsDriverAvatarThumb
+										imageUrl={selectedVehicle.assigned_driver.avatar_url}
+										objectPosition={selectedVehicle.assigned_driver.avatar_object_position}
+										displayName={selectedVehicle.assigned_driver.full_name}
+										sizeClassName="h-14 w-14"
+										imageSizes="56px"
+										className="border border-ops-border"
+									/>
+									<p className="text-sm font-medium text-ops-foreground">
+										{selectedVehicle.assigned_driver.full_name}
+									</p>
+								</>
+							) : (
+								<p className="text-sm text-ops-muted">{opsVehiclesCopy.driverNotAssigned}</p>
+							)}
 						</div>
-						<dl className="mt-3 space-y-1 text-sm">
-							<div className="flex justify-between gap-2">
-								<dt className="text-ops-muted">{opsVehiclesCopy.operationStatusLabel}</dt>
-								<dd className="text-right text-ops-foreground">
-									{formatSnakeTitle(selectedVehicle.operation_status)}
-								</dd>
-							</div>
-						</dl>
 					</section>
 
 					<section aria-labelledby="ops-vehicle-detail-specs">

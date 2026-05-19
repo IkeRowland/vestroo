@@ -20,7 +20,7 @@
 2. **Runs** = operational instances; **patterns** = templates; avoid **public-transit** framing in dispatcher copy (no generic “bus route” for VIP/corporate work).
 3. **Trip status** and **assignment** semantics MUST stay aligned with **`docs/data-models.md`** and migrations — not ad-hoc strings outside typed/ constrained columns.
 
-**Out of scope (for this slice):** Full **VST-9** **realtime** map, live **vehicle location** streams, and operational notification fan-out (those stories consume this data). Full **VST-12** **compliance** document vault, incident UI, and retention/export consoles. **VST-11** tactical **close protection** engagement workflow and restricted coordination beyond normal **trip** / **run** assignment. **Reference-only** code under **`src/features/capstone-reference/`** is **not** a deliverable — ship **production** ops UI under the agreed App Router group (e.g. **`src/app/(ops)/`**) or document an explicit **split ops app** decision in **Dev Technical Guidance**.
+**Out of scope (for this slice):** Full **VST-9** **realtime** map, live **vehicle location** streams, and operational notification fan-out (those stories consume this data). Full **VST-12** **compliance** document vault, incident UI, and retention/export consoles. **VST-11** retired numbered slot (no active engagement workflow in ops). **Reference-only** code under **`src/features/capstone-reference/`** is **not** a deliverable — ship **production** ops UI under the agreed App Router group (e.g. **`src/app/(ops)/`**) or document an explicit **split ops app** decision in **Dev Technical Guidance**.
 
 ## Acceptance Criteria (ACs)
 
@@ -89,7 +89,7 @@
 - **Conventions:** Prefer **Server Actions** for mutations; place feature UI under **`src/features/*`** and actions under **`src/actions/`** per **`docs/repo-conventions.md`**; follow patterns in **`docs/front-end-api-interaction.md`**.
 - **VST-6 handoff:** Guest **`bookings`** may lack **`customer_id`**; **`booking_trips`/`trips`** creation is **ops-owned** — assignment flows MUST handle **guest** rows and **PII** on **`bookings`** (`customer_name`, `customer_email`, `customer_phone`) without leaking across chauffeurs (field story **VST-8** will tighten chauffeur-visible fields).
 - **Testing:** Add **unit/integration** tests for assignment and exception **Server Actions** where feasible; **`npm run test`** MUST pass. RLS verification: **`docs/local-development.md`** + **`supabase/smoke_rls.sql`** after migrations.
-- **Scope guard:** Do **not** implement **VST-9** realtime channels, **VST-12** compliance screens, or **VST-11** close-protection tactics; keep hooks (status fields, audit) **compatible** with later subscriptions.
+- **Scope guard:** Do **not** implement **VST-9** realtime channels, **VST-12** compliance screens, or **VST-11** engagement tactics; keep hooks (status fields, audit) **compatible** with later subscriptions.
 
 ## Story Progress Notes
 

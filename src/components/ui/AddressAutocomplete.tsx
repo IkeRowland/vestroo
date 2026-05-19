@@ -102,16 +102,26 @@ export function AddressAutocomplete({
 
       const handlePlaceChanged = () => {
         const place = autocomplete.getPlace();
-        
-        // Validate place has required data
-        if (place.geometry && place.place_id && place.formatted_address) {
-          try {
-            // Use refs to get latest callbacks without recreating autocomplete
-            onSelectRef.current(place as PlaceResult);
-            onChangeRef.current(place.formatted_address);
-          } catch (error) {
-            console.error('Error handling place selection:', error);
-          }
+        const loc = place.geometry?.location;
+        const formatted =
+          (place.formatted_address && place.formatted_address.trim()) ||
+          (place.name && place.name.trim()) ||
+          '';
+        // `formatted_address` is sometimes empty for valid geometry hits — fall back to `name`.
+        if (!place.place_id || !loc || !formatted) {
+          return;
+        }
+        try {
+          // Only call `onSelect` — parents sync the text input there. A follow-up
+          // `onChange(formatted_address)` races React/Zustand updates and can clear
+          // the resolved place (stale closure in trip-request / booking forms).
+          onSelectRef.current({
+            ...place,
+            formatted_address: place.formatted_address?.trim() ? place.formatted_address : formatted,
+            geometry: place.geometry,
+          } as PlaceResult);
+        } catch (error) {
+          console.error('Error handling place selection:', error);
         }
       };
 

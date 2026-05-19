@@ -52,7 +52,6 @@ This index provides a comprehensive catalog of all project documentation for eas
 * [Field tools — chauffeur web (VST-8)](field-tools.md) — `/field/*`, maps deep links, contact policy, audit
 * [Realtime and notifications (VST-9)](realtime-and-notifications.md) — vehicle tracking, ETA, Supabase Realtime, rate limits, privacy tiers
 * [Tours and experiences (VST-10)](tours-and-experiences.md) — `experience_packages`, booking metadata, marketing `/tours`, ops list
-* [Close protection engagements (VST-11)](close-protection-engagements.md) — `close_protection_engagements`, staff-only ops UI, PII boundaries; handoff to VST-12
 * [Compliance and safety (VST-12)](compliance-and-safety.md) — POPIA-oriented engineering checklist, incidents, compliance documents, retention hooks, admin DSR actions
 * [Integrations and payments (VST-13)](integrations-and-payments.md) — maps (Google), PayFast, webhooks, corporate invoicing hooks, env matrix; **[INT.8.1 — Email template parity](integrations-and-payments.md#int-8-1)**; **[INT.8.2 — SMS stub and policy parity](integrations-and-payments.md#int-8-2)**; **[INT.8.3 — Momo / PayOS vs PayFast](integrations-and-payments.md#int-8-3)**; **[INT.8.4 — Scheduled jobs and background work](integrations-and-payments.md#int-8-4)**; **[INT.8.5 — Secrets / `share/` patterns](integrations-and-payments.md#int-8-5)**; **[INT.8.6 — Third-party HTTP clients and idempotency](integrations-and-payments.md#int-8-6)**
 * [Dependencies and lockfile](dependencies.md) — `package-lock.json` as source of truth, audits, scheduled `npm audit` workflow

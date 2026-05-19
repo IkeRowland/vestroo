@@ -1,3 +1,4 @@
+import { AccountQuoteSendForm } from '@/features/ops/components/account-quote-send-form'
 import { OpsTableShell } from '@/features/ops/components/ops-primitives'
 import { ResendBookingQuoteButton } from '@/features/ops/components/resend-booking-quote-button'
 import { WalkInQuoteSendForm } from '@/features/ops/components/walk-in-quote-send-form'
@@ -48,6 +49,19 @@ function canSendWalkInQuote(clientType: string | null, bookingStatus: string | n
 	return s === 'submitted' || s === 'triaged' || s === 'quote_sent'
 }
 
+function canSendAccountClientQuote(clientType: string | null, bookingStatus: string | null): boolean {
+	if (clientType !== 'account_client') {
+		return false
+	}
+	const s = bookingStatus ?? ''
+	return (
+		s === 'submitted' ||
+		s === 'triaged' ||
+		s === 'quote_sent' ||
+		s === 'pending_confirmation'
+	)
+}
+
 /**
  * Ops booking detail — current quote summary (Story 13.5 / US-B2).
  */
@@ -59,10 +73,12 @@ export function QuoteDetailPanel({
 	defaultQuoteLineLabel,
 }: QuoteDetailPanelProps) {
 	const walkInSend = canSendWalkInQuote(clientType, bookingStatus)
+	const accountSend = canSendAccountClientQuote(clientType, bookingStatus)
 
 	if (!quote) {
 		return (
 			<section
+				id="ops-booking-quote"
 				className="rounded-lg border border-ops-border bg-ops-surface/20 p-4 text-sm text-ops-muted"
 				aria-labelledby="quote-heading"
 			>
@@ -73,6 +89,13 @@ export function QuoteDetailPanel({
 				{walkInSend ? (
 					<WalkInQuoteSendForm
 						bookingId={bookingId}
+						defaultFirstLineLabel={defaultQuoteLineLabel}
+					/>
+				) : null}
+				{accountSend ? (
+					<AccountQuoteSendForm
+						bookingId={bookingId}
+						bookingStatus={bookingStatus}
 						defaultFirstLineLabel={defaultQuoteLineLabel}
 					/>
 				) : null}
@@ -90,6 +113,7 @@ export function QuoteDetailPanel({
 
 	return (
 		<section
+			id="ops-booking-quote"
 			className="rounded-lg border border-ops-border bg-ops-surface/20 p-4"
 			aria-labelledby="quote-heading"
 		>

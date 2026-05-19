@@ -74,7 +74,7 @@ export type AccountBookingsListParsed = {
 	/** Inclusive YYYY-MM-DD, UTC day bounds on `pickup_datetime` when set. */
 	dateFrom: string | null
 	dateTo: string | null
-	/** Point-to-point, hourly, tour, close protection (as corporate_pattern). */
+	/** Point-to-point, hourly, tour, corporate pattern (`cp` URL token). */
 	tripTypes: AccountBookingsTripTypeKey[]
 	/**
 	 * When set, the detail rail is opened for this booking (Story **18.5** / **`/account/bookings?id=`**).
@@ -99,6 +99,7 @@ export type AccountBookingsListParsed = {
  */
 export const ACCOUNT_DASHBOARD_UPCOMING_STATUSES: readonly string[] = [
 	'pending',
+	'pending_confirmation',
 	'submitted',
 	'triaged',
 	'quote_sent',

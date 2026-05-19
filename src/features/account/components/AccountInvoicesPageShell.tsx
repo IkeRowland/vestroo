@@ -10,16 +10,18 @@ import { AccountResponsiveTableShell } from '@/features/account/components/accou
 import { Button } from '@/components/ui/button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { DetailRail, KpiCard, Pagination, SplitView, StatusPill } from '@/components/saas'
-import { accountInvoicesCopy } from '@/features/account/copy/account-invoices-copy'
+import { accountInvoicesCopy, accountQuotesShellCopy } from '@/features/account/copy/account-invoices-copy'
 import { formatQueueStatusLabel } from '@/lib/account-bookings-list-query'
 import {
 	formatInvoiceArchiveQuoteStatus,
+	accountInvoiceArchiveListRowKey,
 	type AccountInvoiceArchiveRow,
 	type AccountInvoiceRailDetail,
 } from '@/lib/account-invoices-archive-query'
 import {
 	ACCOUNT_INVOICES_LIST_PAGE_SIZE,
 	ACCT_INV_PARAM,
+	type AccountBillingArchiveListPath,
 	accountInvoicesListHref,
 	accountInvoicesListPathWithQuery,
 	accountInvoicesListSearchExcludingPage,
@@ -37,10 +39,6 @@ function formatMedium(iso: string | null): string {
 	const d = new Date(iso)
 	if (Number.isNaN(d.getTime())) return '—'
 	return new Intl.DateTimeFormat('en-ZA', { dateStyle: 'medium' }).format(d)
-}
-
-function rowListKey(row: AccountInvoiceArchiveRow): string {
-	return row.quote_id ?? row.booking_id
 }
 
 function dueDateForRow(row: AccountInvoiceArchiveRow, creditTermsDays: number): string {
@@ -85,6 +83,8 @@ type Props = {
 	kpis: { paid90d: number; awaitingPayment: number; overdue: number }
 	railDetail: AccountInvoiceRailDetail | null
 	creditTermsDays: number
+	listBasePath: AccountBillingArchiveListPath
+	variant: 'invoices' | 'quotes'
 }
 
 export function AccountInvoicesPageShell({
@@ -94,6 +94,8 @@ export function AccountInvoicesPageShell({
 	kpis,
 	railDetail,
 	creditTermsDays,
+	listBasePath,
+	variant,
 }: Props) {
 	const router = useRouter()
 	const listFocusReturnRef = React.useRef<HTMLDivElement>(null)
@@ -102,10 +104,15 @@ export function AccountInvoicesPageShell({
 	const [pdfPending, startPdf] = React.useTransition()
 	const [pdfError, setPdfError] = React.useState<string | null>(null)
 
+	const tableCaption =
+		variant === 'quotes' ? accountQuotesShellCopy.tableCaption : accountInvoicesCopy.tableCaption
+	const detailSheetTitle =
+		variant === 'quotes' ? accountQuotesShellCopy.detailSheetTitle : accountInvoicesCopy.detailSheetTitle
+
 	const totalPages = Math.max(1, Math.ceil(total / parsed.perPage))
 
 	const onCloseRail = () => {
-		router.push(accountInvoicesListPathWithQuery({ ...parsed, selectedInvoiceId: null }))
+		router.push(accountInvoicesListPathWithQuery({ ...parsed, selectedInvoiceId: null }, listBasePath))
 	}
 
 	const onDownloadPdf = (quoteId: string) => {
@@ -128,10 +135,11 @@ export function AccountInvoicesPageShell({
 				theme="account"
 				listFocusReturnRef={listFocusReturnRef}
 				detailVisible={showRail}
-				detailSheetDialogTitle={accountInvoicesCopy.detailSheetTitle}
+				detailSheetDialogTitle={detailSheetTitle}
 				onCloseDetail={onCloseRail}
 				list={
 					<div ref={listFocusReturnRef} className="min-w-0 space-y-6" tabIndex={-1}>
+						{variant === 'invoices' ? (
 						<div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
 							<KpiCard
 								theme="account"
@@ -164,44 +172,49 @@ export function AccountInvoicesPageShell({
 								shortDefinition={`Invoiced and past due (issue date + ${creditTermsDays} day credit terms).`}
 							/>
 						</div>
+						) : null}
 
 						<div>
 							<div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
 								<p className="text-sm text-account-muted" role="status">
 									{total === 0
-										? parsed.openOnly
+										? parsed.openOnly && variant === 'invoices'
 											? accountInvoicesCopy.tableEmptyOpen
-											: accountInvoicesCopy.tableEmpty
+											: variant === 'quotes'
+												? accountQuotesShellCopy.tableEmpty
+												: accountInvoicesCopy.tableEmpty
 										: (() => {
 												const fromIdx = (parsed.page - 1) * parsed.perPage + 1
 												const toIdx = Math.min(total, parsed.page * parsed.perPage)
 												return accountInvoicesCopy.showingRange(fromIdx, toIdx, total)
 											})()}
 								</p>
+								{variant === 'invoices' ? (
 								<div className="flex flex-wrap gap-2">
 									{parsed.openOnly ? (
 										<Button variant="outline" size="sm" asChild>
-											<Link href={accountInvoicesListHref(parsed, { openOnly: false, page: 1 })}>
+											<Link href={accountInvoicesListHref(parsed, { openOnly: false, page: 1 }, listBasePath)}>
 												Show all
 											</Link>
 										</Button>
 									) : (
 										<Button variant="outline" size="sm" asChild>
-											<Link href={accountInvoicesListHref(parsed, { openOnly: true, page: 1 })}>
+											<Link href={accountInvoicesListHref(parsed, { openOnly: true, page: 1 }, listBasePath)}>
 												Open items only
 											</Link>
 										</Button>
 									)}
 								</div>
+								) : null}
 							</div>
 
 							<div className="max-h-[min(70vh,800px)] overflow-y-auto rounded-account-card border border-account-border bg-account-surface shadow-account-1 md:overflow-x-auto">
 								<AccountResponsiveTableShell
-									stackAriaLabel={accountInvoicesCopy.tableCaption}
+									stackAriaLabel={tableCaption}
 									desktop={
 										<Table
 											className="min-w-[880px] border-collapse text-left"
-											aria-label={accountInvoicesCopy.tableCaption}
+											aria-label={tableCaption}
 										>
 									<TableHeader>
 										<TableRow className="border-b border-account-border bg-account-surface-hover/80 text-xs font-medium uppercase tracking-wide text-account-muted hover:bg-account-surface-hover/80">
@@ -227,7 +240,7 @@ export function AccountInvoicesPageShell({
 									</TableHeader>
 									<TableBody>
 										{rows.map((row) => {
-											const key = rowListKey(row)
+											const key = accountInvoiceArchiveListRowKey(row)
 											const canPay =
 												row.booking_status === 'ready_to_invoice' || row.booking_status === 'invoiced'
 											const hasPdf =
@@ -240,10 +253,14 @@ export function AccountInvoicesPageShell({
 													className="cursor-pointer border-b border-account-border last:border-0 hover:bg-account-surface-active/30"
 													onClick={() =>
 														router.push(
-															accountInvoicesListHref(parsed, {
-																selectedInvoiceId: key,
-																page: parsed.page,
-															}),
+															accountInvoicesListHref(
+																parsed,
+																{
+																	selectedInvoiceId: key,
+																	page: parsed.page,
+																},
+																listBasePath,
+															),
 														)
 													}
 												>
@@ -305,7 +322,7 @@ export function AccountInvoicesPageShell({
 									mobileStack={
 										<ul className="divide-y divide-account-border p-3">
 											{rows.map((row) => {
-												const key = rowListKey(row)
+												const key = accountInvoiceArchiveListRowKey(row)
 												const canPay =
 													row.booking_status === 'ready_to_invoice' || row.booking_status === 'invoiced'
 												const hasPdf =
@@ -314,10 +331,14 @@ export function AccountInvoicesPageShell({
 													row.pdf_storage_path.trim() !== ''
 												const open = () =>
 													router.push(
-														accountInvoicesListHref(parsed, {
-															selectedInvoiceId: key,
-															page: parsed.page,
-														}),
+														accountInvoicesListHref(
+															parsed,
+															{
+																selectedInvoiceId: key,
+																page: parsed.page,
+															},
+															listBasePath,
+														),
 													)
 												return (
 													<li key={key}>
@@ -407,7 +428,7 @@ export function AccountInvoicesPageShell({
 								<div className="pt-2">
 									<Pagination
 										theme="account"
-										pathname="/account/invoices"
+										pathname={listBasePath}
 										query={accountInvoicesListSearchExcludingPage(parsed)}
 										currentPage={parsed.page}
 										totalPages={totalPages}

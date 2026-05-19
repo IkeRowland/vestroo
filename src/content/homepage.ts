@@ -165,7 +165,7 @@ export const homepageContent = {
   services_overview: {
     title: 'What we offer',
     subtitle:
-      'Premium shuttle, corporate patterns, VIP transfers, curated tours, and confidential close-protection enquiries—each with clear next steps.',
+      'Premium shuttle, corporate patterns, VIP transfers, and curated tours—each with clear next steps.',
     hub_cta_label: 'View all services',
     hub_href: '/services',
   },

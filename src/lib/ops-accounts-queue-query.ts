@@ -19,8 +19,9 @@ import {
  *
  * | Stage tab | URL `stage` | Server predicate (after `client_type='account_client'`) | CTA in row |
  * |-----------|-------------|---------------------------------------------------------|------------|
- * | New                  | `new`                  | `status = 'submitted'`                                                                       | **Triage** (`triageAccountBookingAction`) |
- * | Triaged              | `triaged`              | `status = 'triaged' AND availability_checked_at IS NULL`                                     | **Check availability** (B2 route gated) |
+ * | Pending confirmation | `pending_confirmation` | `status = 'pending_confirmation'` (portal submissions)                                      | **Process Booking** → booking detail |
+ * | New                  | `new`                  | `status = 'submitted'`                                                                       | **Send Quote** (booking detail **Quote** `#ops-booking-quote`) |
+ * | Triaged              | `triaged`              | `status = 'triaged' AND availability_checked_at IS NULL`                                     | **Send Quote** (booking detail **Quote** `#ops-booking-quote`) |
  * | Availability checked | `availability_checked` | `status = 'triaged' AND availability_checked_at IS NOT NULL`                                 | **Assign trip** (`opsFulfilAssignBookingHref`) |
  * | Assigned             | `assigned`             | `status = 'assigned'`                                                                        | **Confirm dispatch** (booking detail; respect `can_dispatch_account_booking` chip) |
  * | In progress          | `in_progress`          | `status = 'in_progress'`                                                                     | view-only |
@@ -44,6 +45,7 @@ export const OPS_ACCOUNTS_NEW_QUEUE_HREF =
 	`${OPS_BOOKINGS_PATH}?client=account_client&status=submitted` as const
 
 export type OpsAccountsStageKey =
+	| 'pending_confirmation'
 	| 'new'
 	| 'triaged'
 	| 'availability_checked'
@@ -54,6 +56,7 @@ export type OpsAccountsStageKey =
 	| 'paid'
 
 export const OPS_ACCOUNTS_STAGE_ORDER: readonly OpsAccountsStageKey[] = [
+	'pending_confirmation',
 	'new',
 	'triaged',
 	'availability_checked',
@@ -123,6 +126,8 @@ export function getIgnoredAccountsQueueParamKeys(
 /** Maps account queue tab → `/ops/bookings` `status` keys (best-effort vs tab SQL). */
 export function accountsStageToBookingsStatuses(stage: OpsAccountsStageKey): string[] {
 	switch (stage) {
+		case 'pending_confirmation':
+			return ['pending_confirmation']
 		case 'new':
 			return ['submitted']
 		case 'triaged':
@@ -180,6 +185,9 @@ export function deriveAccountsQueueStageForBookingRow(
 		return null
 	}
 	const st = row.status ?? ''
+	if (st === 'pending_confirmation') {
+		return 'pending_confirmation'
+	}
 	if (st === 'submitted') {
 		return 'new'
 	}
@@ -208,6 +216,8 @@ export function deriveAccountsQueueStageForBookingRow(
 
 export function opsAccountsStageLabel(stage: OpsAccountsStageKey): string {
 	switch (stage) {
+		case 'pending_confirmation':
+			return 'Pending confirmation'
 		case 'new':
 			return 'New'
 		case 'triaged':

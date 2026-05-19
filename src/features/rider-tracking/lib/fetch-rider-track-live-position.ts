@@ -22,9 +22,9 @@ type CurrentLocationJson = {
 export async function fetchLatestRiderTrackLivePosition(
 	supabase: SupabaseClient,
 	trip: {
+		id: string
 		chauffeur_id: string | null
 		vehicle_id: string | null
-		service_run_id: string | null
 	},
 ): Promise<RiderTrackLivePositionDto | null> {
 	const chauffeurId = trip.chauffeur_id
@@ -32,9 +32,7 @@ export async function fetchLatestRiderTrackLivePosition(
 	if (!chauffeurId || !vehicleId) return null
 
 	const assignmentId = await resolveChauffeurAssignmentIdForTrip(supabase, {
-		chauffeur_id: chauffeurId,
-		vehicle_id: vehicleId,
-		service_run_id: trip.service_run_id,
+		tripId: trip.id,
 	})
 	if (!assignmentId) return null
 

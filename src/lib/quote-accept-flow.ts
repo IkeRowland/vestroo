@@ -239,8 +239,10 @@ export async function runQuoteAcceptCheckout(rawToken: string): Promise<QuoteAcc
 		}
 	}
 
-	const refreshed = await loadBookingForAccept(supabase, bookingId)
-	if (!refreshed || refreshed.status !== 'awaiting_payment' || !refreshed.quote_accepted_at) {
+	// Use the row returned by the UPDATE `.select(...)` — avoids a follow-up read that can
+	// briefly lag (e.g. replica) and falsely fail verification while the write already succeeded.
+	const refreshed = dbResult.booking
+	if (refreshed.status !== 'awaiting_payment' || !refreshed.quote_accepted_at) {
 		return {
 			kind: 'transition_failed',
 			detail: 'Acceptance could not be confirmed. Please refresh or contact support.',
@@ -264,7 +266,7 @@ async function acceptSentQuoteInDb(
 	supabase: Awaited<ReturnType<typeof createServerClient>>,
 	quoteId: string,
 	bookingId: string,
-): Promise<{ ok: true } | { ok: false; step: 'quote' | 'booking' }> {
+): Promise<{ ok: true; booking: BookingAcceptRow } | { ok: false; step: 'quote' | 'booking' }> {
 	const now = new Date().toISOString()
 	const { data: qRow, error: qErr } = await supabase
 		.from('booking_quotes')
@@ -284,10 +286,10 @@ async function acceptSentQuoteInDb(
 		.update({ status: 'awaiting_payment', quote_accepted_at: now })
 		.eq('id', bookingId)
 		.eq('status', 'quote_sent')
-		.select('id')
+		.select(BOOKING_ACCEPT_SELECT)
 		.maybeSingle()
 
-	if (bErr || !bRow?.id) {
+	if (bErr || !bRow || typeof bRow !== 'object' || !('id' in bRow)) {
 		await supabase
 			.from('booking_quotes')
 			.update({ status: 'sent', accepted_at: null })
@@ -296,5 +298,5 @@ async function acceptSentQuoteInDb(
 		return { ok: false, step: 'booking' }
 	}
 
-	return { ok: true }
+	return { ok: true, booking: bRow as unknown as BookingAcceptRow }
 }

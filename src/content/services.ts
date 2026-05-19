@@ -8,7 +8,6 @@ export type ServiceSlug =
   | 'corporate'
   | 'vip'
   | 'tours'
-  | 'close-protection'
 
 export type ServiceContent = {
   slug: ServiceSlug
@@ -100,24 +99,6 @@ export const servicesList: ServiceContent[] = [
     `,
     primary_cta: { label: 'Browse experiences', href: '/tours' },
     secondary_cta: { label: 'Point-to-point booking', href: '/book/search' },
-  },
-  {
-    slug: 'close-protection',
-    nav_label: 'Close protection',
-    short_title: 'Close protection',
-    meta_title: 'Close protection transport (overview)',
-    meta_description:
-      'High-level close protection transport coordination in South Africa — discreet enquiry path for qualified engagements (overview; detail via consultation).',
-    hero_title: 'Close protection engagements',
-    audience:
-      'Security details, family offices, and risk teams who need movement integrated with protection protocols.',
-    promise:
-      'A private consultation path to scope engagements—we do not publish tactical detail on the open web.',
-    body_html: `
-      <p>Vestroo can support <strong>close protection engagements</strong> where chauffeured transport must align with a wider security plan. Scope, rostering, and vehicle choices are agreed in consultation—not via instant online checkout.</p>
-      <p>Contact us with a secure summary of requirements; we will route your enquiry to the right operations lead.</p>
-    `,
-    primary_cta: { label: 'Enquire confidentially', href: '/contact' },
   },
 ]
 

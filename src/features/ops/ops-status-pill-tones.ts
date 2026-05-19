@@ -50,6 +50,16 @@ const MAP: Readonly<Record<string, OpsStatusPillTone>> = {
 	on_hold: 'warning',
 	suspended: 'danger',
 	closed: 'neutral',
+	/** Fleet drivers list: available, no active trip */
+	fleet_drivers_trip_idle: 'neutral',
+	/** Fleet drivers list: active profile with ≥1 non-terminal trip */
+	fleet_drivers_trip_busy: 'info',
+	/** Fleet drivers list: inactive profile */
+	fleet_drivers_trip_unavailable: 'neutral',
+	/** Fleet drivers: shift column — active */
+	fleet_drivers_shift_active: 'success',
+	/** Fleet drivers: shift column — inactive */
+	fleet_drivers_shift_inactive: 'neutral',
 }
 
 export function normalizeOpsStatusKey(raw: string): string {

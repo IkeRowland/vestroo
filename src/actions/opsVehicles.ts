@@ -7,6 +7,8 @@ import { buildOpsActionFailure } from '@/features/ops/ops-action-errors'
 import { getOpsStaffForAction } from '@/lib/ops-auth'
 import { logOpsAction, newOpsCorrelationId } from '@/lib/ops-action-log'
 import { createUserServerClient } from '@/lib/supabase/server'
+import type { SupabaseClient } from '@supabase/supabase-js'
+import { PROFILE_ROLE_OPS_DRIVER_DB } from '@/types/database.types'
 
 const transmissionEnum = z.enum(['automatic', 'manual', 'cvt', 'semi_automatic'])
 const fuelTypeEnum = z.enum(['petrol', 'diesel', 'electric', 'hybrid', 'plug_in_hybrid'])
@@ -25,13 +27,19 @@ const vehicleSpecsSchema = {
 	gallery_image_urls: z.array(z.string().trim().url().max(2048)).max(20).optional(),
 } as const
 
+const assignedDriverField = {
+	assigned_driver_profile_id: z.string().uuid().nullable().optional(),
+} as const
+
 const createVehicleSchema = z.object({
 	name: z.string().trim().min(1).max(200),
 	license_plate: z.string().trim().min(1).max(32),
 	category_id: z.string().uuid(),
+	is_fleet_active: z.boolean().optional(),
 	operation_status: z.string().trim().min(1).max(64).optional(),
 	vehicle_condition: z.string().trim().min(1).max(64).optional(),
 	...vehicleSpecsSchema,
+	...assignedDriverField,
 })
 
 const updateVehicleSchema = z.object({
@@ -39,14 +47,51 @@ const updateVehicleSchema = z.object({
 	name: z.string().trim().min(1).max(200).optional(),
 	license_plate: z.string().trim().min(1).max(32).optional(),
 	category_id: z.string().uuid().optional(),
+	is_fleet_active: z.boolean().optional(),
 	operation_status: z.string().trim().min(1).max(64).optional(),
 	vehicle_condition: z.string().trim().min(1).max(64).optional(),
 	...vehicleSpecsSchema,
+	...assignedDriverField,
 })
 
 const archiveVehicleSchema = z.object({
 	id: z.string().uuid(),
 })
+
+async function applyVehicleAssignedDriver(
+	supabase: SupabaseClient,
+	vehicleId: string,
+	driverProfileId: string | null,
+): Promise<{ ok: true } | { ok: false; message: string }> {
+	const { error: clearErr } = await supabase
+		.from('profiles')
+		.update({ default_vehicle_id: null })
+		.eq('default_vehicle_id', vehicleId)
+		.eq('role', PROFILE_ROLE_OPS_DRIVER_DB)
+	if (clearErr) {
+		return { ok: false, message: clearErr.message }
+	}
+	if (!driverProfileId) {
+		return { ok: true }
+	}
+	const { data: prof, error: pErr } = await supabase
+		.from('profiles')
+		.select('id, role')
+		.eq('id', driverProfileId)
+		.maybeSingle()
+	if (pErr || !prof || (prof as { role: string }).role !== PROFILE_ROLE_OPS_DRIVER_DB) {
+		return { ok: false, message: 'Driver profile not found' }
+	}
+	const { error: uErr } = await supabase
+		.from('profiles')
+		.update({ default_vehicle_id: vehicleId })
+		.eq('id', driverProfileId)
+		.eq('role', PROFILE_ROLE_OPS_DRIVER_DB)
+	if (uErr) {
+		return { ok: false, message: uErr.message }
+	}
+	return { ok: true }
+}
 
 export type OpsVehicleActionSuccess = { ok: true }
 export type OpsVehicleActionResult = OpsVehicleActionSuccess | ReturnType<typeof buildOpsActionFailure>
@@ -87,6 +132,7 @@ export async function createOpsVehicleAction(
 			name: p.name,
 			license_plate: p.license_plate,
 			category_id: p.category_id,
+			is_fleet_active: p.is_fleet_active ?? true,
 			image_urls: [],
 			operation_status: p.operation_status ?? 'charging',
 			vehicle_condition: p.vehicle_condition ?? 'available',
@@ -117,14 +163,33 @@ export async function createOpsVehicleAction(
 		return buildOpsActionFailure('DATABASE', error?.message, correlationId)
 	}
 
+	const vehicleId = data.id as string
+	if (p.assigned_driver_profile_id) {
+		const link = await applyVehicleAssignedDriver(supabase, vehicleId, p.assigned_driver_profile_id)
+		if (!link.ok) {
+			logOpsAction({
+				action: 'create_ops_vehicle',
+				outcome: 'failure',
+				level: 'error',
+				correlationId,
+				code: 'DATABASE',
+				hint: link.message,
+				entityId: vehicleId,
+			})
+			return buildOpsActionFailure('DATABASE', link.message, correlationId)
+		}
+	}
+
 	logOpsAction({
 		action: 'create_ops_vehicle',
 		outcome: 'success',
 		level: 'info',
 		correlationId,
-		entityId: data.id as string,
+		entityId: vehicleId,
 	})
-	revalidatePath('/ops/vehicles')
+	revalidatePath('/ops/fleet')
+	revalidatePath('/ops/fleet/vehicles')
+	revalidatePath('/ops/fleet/drivers')
 	return { ok: true }
 }
 
@@ -156,11 +221,12 @@ export async function updateOpsVehicleAction(
 		return buildOpsActionFailure('FORBIDDEN', gate.message, correlationId)
 	}
 
-	const { id, ...patch } = parsed.data
+	const { id, assigned_driver_profile_id, ...patch } = parsed.data
 	const updates: Record<string, unknown> = {}
 	if (patch.name !== undefined) updates.name = patch.name
 	if (patch.license_plate !== undefined) updates.license_plate = patch.license_plate
 	if (patch.category_id !== undefined) updates.category_id = patch.category_id
+	if (patch.is_fleet_active !== undefined) updates.is_fleet_active = patch.is_fleet_active
 	if (patch.operation_status !== undefined) updates.operation_status = patch.operation_status
 	if (patch.vehicle_condition !== undefined) updates.vehicle_condition = patch.vehicle_condition
 	if (patch.make !== undefined) updates.make = patch.make
@@ -175,24 +241,45 @@ export async function updateOpsVehicleAction(
 	if (patch.primary_image_url !== undefined) updates.primary_image_url = patch.primary_image_url
 	if (patch.gallery_image_urls !== undefined) updates.gallery_image_urls = patch.gallery_image_urls
 
-	if (Object.keys(updates).length === 0) {
+	const hasVehicleFieldUpdates = Object.keys(updates).length > 0
+	const hasDriverAssignment = assigned_driver_profile_id !== undefined
+
+	if (!hasVehicleFieldUpdates && !hasDriverAssignment) {
 		return buildOpsActionFailure('VALIDATION', 'No changes to apply', correlationId)
 	}
 
 	const supabase = await createUserServerClient()
-	const { error } = await supabase.from('vehicles').update(updates).eq('id', id)
+	if (hasVehicleFieldUpdates) {
+		const { error } = await supabase.from('vehicles').update(updates).eq('id', id)
 
-	if (error) {
-		logOpsAction({
-			action: 'update_ops_vehicle',
-			outcome: 'failure',
-			level: 'error',
-			correlationId,
-			code: 'DATABASE',
-			entityId: id,
-			hint: error.message,
-		})
-		return buildOpsActionFailure('DATABASE', error.message, correlationId)
+		if (error) {
+			logOpsAction({
+				action: 'update_ops_vehicle',
+				outcome: 'failure',
+				level: 'error',
+				correlationId,
+				code: 'DATABASE',
+				entityId: id,
+				hint: error.message,
+			})
+			return buildOpsActionFailure('DATABASE', error.message, correlationId)
+		}
+	}
+
+	if (hasDriverAssignment) {
+		const link = await applyVehicleAssignedDriver(supabase, id, assigned_driver_profile_id ?? null)
+		if (!link.ok) {
+			logOpsAction({
+				action: 'update_ops_vehicle',
+				outcome: 'failure',
+				level: 'error',
+				correlationId,
+				code: 'DATABASE',
+				entityId: id,
+				hint: link.message,
+			})
+			return buildOpsActionFailure('DATABASE', link.message, correlationId)
+		}
 	}
 
 	logOpsAction({
@@ -202,7 +289,9 @@ export async function updateOpsVehicleAction(
 		correlationId,
 		entityId: id,
 	})
-	revalidatePath('/ops/vehicles')
+	revalidatePath('/ops/fleet')
+	revalidatePath('/ops/fleet/vehicles')
+	revalidatePath('/ops/fleet/drivers')
 	return { ok: true }
 }
 
@@ -247,6 +336,7 @@ export async function archiveOpsVehicleAction(
 		correlationId,
 		entityId: parsed.data.id,
 	})
-	revalidatePath('/ops/vehicles')
+	revalidatePath('/ops/fleet')
+	revalidatePath('/ops/fleet/vehicles')
 	return { ok: true }
 }

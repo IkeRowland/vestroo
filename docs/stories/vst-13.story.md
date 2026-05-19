@@ -38,7 +38,7 @@
 
 2. Prefer **corporate pattern** / **contracted service** language for B2B; **invoicing hooks** = **schema flags + metadata + ops visibility** — not **ERP** or **full ledger**.
 
-3. **Maps** = **Places / Autocomplete** and **Directions** (or equivalent routing) as **documented contracts**; avoid implying **tactical** or **close protection** routing intelligence (VST-11 remains separate).
+3. **Maps** = **Places / Autocomplete** and **Directions** (or equivalent routing) as **documented contracts**; avoid implying **tactical** routing intelligence beyond documented provider capabilities.
 
 
 

@@ -18,7 +18,6 @@ export type AssignmentCalibrationAudit =
 type BasePayload = {
 	booking_id: string
 	trip_id: string
-	service_run_id: string
 	vehicle_id: string
 	chauffeur_id: string
 }
@@ -33,12 +32,11 @@ export function resolveAssignmentCalibrationAudit(input: {
 	fromSuggestion: AssignFromSuggestionHints | undefined
 	/**
 	 * Vehicle id on the created trip / assign payload — same field as `assignBookingToRun`’s
-	 * **`vehicleId`** (not `serviceRunId` / not driver profile id).
+	 * **`vehicleId`** (not driver profile id).
 	 */
 	assignedVehicleId: string
 	bookingId: string
 	tripId: string
-	serviceRunId: string
 	driverProfileId: string
 	/** Full ranked list from `suggestVehiclesForBooking` (sorted); only the first three are considered. */
 	suggestionsAtAssign: Suggestion[]
@@ -46,7 +44,6 @@ export function resolveAssignmentCalibrationAudit(input: {
 	const base: BasePayload = {
 		booking_id: input.bookingId,
 		trip_id: input.tripId,
-		service_run_id: input.serviceRunId,
 		vehicle_id: input.assignedVehicleId,
 		chauffeur_id: input.driverProfileId,
 	}

@@ -107,6 +107,11 @@ export async function loadAccountPortalBookingDetail(
 
 	const b = booking as AccountPortalBookingDetailRow
 
+	/** Portal: ops may save a draft before confirm — customers see quote only after confirmation. */
+	if (String(b.status ?? '').trim() === 'pending_confirmation') {
+		return { booking: b, quote: null }
+	}
+
 	let quote: OpsBookingQuoteDetailRow | null = null
 	try {
 		quote = await loadResolvedBookingQuoteForOps(supabase, b.id, b.current_quote_id)

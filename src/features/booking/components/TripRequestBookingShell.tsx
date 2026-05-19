@@ -154,6 +154,8 @@ export type TripRequestBookingShellProps = {
   bookingSearchHref?: string;
   /** Leave the trip-request funnel (e.g. after success “Submit another request”). */
   onExit?: () => void;
+  /** After a successful server submit (e.g. account portal list should refetch via `router.refresh()`). */
+  onSubmitSuccess?: () => void;
 };
 
 export function TripRequestBookingShell(props: TripRequestBookingShellProps) {
@@ -163,6 +165,7 @@ export function TripRequestBookingShell(props: TripRequestBookingShellProps) {
     phoneCountryIso2Hint = null,
     bookingSearchHref = '/book/search',
     onExit,
+    onSubmitSuccess,
   } = props;
   const reduceMotion = useReducedMotion();
   const [funnelStep, setFunnelStep] = React.useState<FunnelStep>(0);
@@ -266,7 +269,13 @@ export function TripRequestBookingShell(props: TripRequestBookingShellProps) {
         setRideDetailsDraft(embeddedRidePrefill);
         if (result.ok) {
           setRideDetailsFieldErrors({});
-          setValidatedSlide1(null);
+          // Marketing / parent form already captured trip details — go straight to vehicle (slide 2).
+          prevTripPlacesJson.current = JSON.stringify({
+            pu: result.data.pickup.placeId,
+            de: result.data.destination.placeId,
+          });
+          setValidatedSlide1(result.data);
+          setFunnelStep(1);
           setBootstrap({ status: 'ready' });
         } else {
           setBootstrap({ status: 'invalid_prefill', errors: result.errors });
@@ -486,22 +495,22 @@ export function TripRequestBookingShell(props: TripRequestBookingShellProps) {
 
   const goNextFromVehicle = () => {
     if (vehicleLoading) {
-      setSlide2Error('Please wait for vehicle options to load.');
+      setSlide2Error('Please wait for vehicle classes to load.');
       return;
     }
     if (vehicleFetchError) {
-      setSlide2Error('Load vehicle options or retry before continuing.');
+      setSlide2Error('Load vehicle classes or retry before continuing.');
       return;
     }
     const list = vehicleOffers ?? [];
     if (list.length === 0) {
       setSlide2Error(
-        'No vehicles are available for your selections. Adjust trip details or passengers and try again.',
+        'No vehicle classes are available for your selections. Adjust trip details or passengers and try again.',
       );
       return;
     }
     if (!selectedVehicleId) {
-      setSlide2Error('Please select a vehicle to continue.');
+      setSlide2Error('Please select a vehicle class to continue.');
       return;
     }
     const chosen = list.find((v) => v.id === selectedVehicleId);
@@ -557,6 +566,7 @@ export function TripRequestBookingShell(props: TripRequestBookingShellProps) {
       if (result.success) {
         setSubmitState('success');
         setBookingRefSuccess(result.bookingReference);
+        onSubmitSuccess?.();
         trackBookingFunnelSlideComplete({ slide_index: 3, ...funnelAnalyticsBase() });
         const anchor = funnelInteractivePerfRef.current;
         const timeToSubmitMs =
@@ -601,16 +611,16 @@ export function TripRequestBookingShell(props: TripRequestBookingShellProps) {
       return `Continue from ${title}`;
     }
     if (vehicleLoading) {
-      return 'Continue — wait for vehicle options to load';
+      return 'Continue — wait for vehicle classes to load';
     }
     if (vehicleFetchError) {
-      return 'Continue — resolve vehicle options or retry first';
+      return 'Continue — resolve vehicle classes or retry first';
     }
     if ((vehicleOffers?.length ?? 0) === 0) {
-      return 'Continue — no vehicles match your trip; adjust trip details first';
+      return 'Continue — no classes match your trip; adjust trip details first';
     }
     if (!selectedVehicleId) {
-      return 'Continue — select a vehicle below first';
+      return 'Continue — select a class below first';
     }
     return `Continue from ${title}`;
   })();
@@ -826,7 +836,7 @@ export function TripRequestBookingShell(props: TripRequestBookingShellProps) {
                   <>
                     {validatedSlide2Vehicle && (
                       <p className="sr-only">
-                        Selected vehicle: {validatedSlide2Vehicle.name},{' '}
+                        Selected class: {validatedSlide2Vehicle.name},{' '}
                         {validatedSlide2Vehicle.classification}.
                       </p>
                     )}

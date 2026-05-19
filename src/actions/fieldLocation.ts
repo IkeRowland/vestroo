@@ -73,7 +73,7 @@ export async function publishChauffeurLocationAction(raw: z.infer<typeof publish
 
 	const { data: trip, error: tErr } = await supabase
 		.from('trips')
-		.select('id, chauffeur_id, vehicle_id, service_run_id')
+		.select('id, chauffeur_id, vehicle_id')
 		.eq('id', tripId)
 		.maybeSingle()
 
@@ -85,15 +85,13 @@ export async function publishChauffeurLocationAction(raw: z.infer<typeof publish
 	}
 
 	const assignmentId = await resolveChauffeurAssignmentIdForTrip(supabase, {
-		chauffeur_id: trip.chauffeur_id as string,
-		vehicle_id: trip.vehicle_id as string,
-		service_run_id: (trip.service_run_id as string | null) ?? null,
+		tripId,
 	})
 
 	if (!assignmentId) {
 		return {
 			ok: false as const,
-			message: 'Live tracking requires a dispatched run link on this trip',
+			message: 'Live tracking requires a chauffeur assignment for this trip',
 		}
 	}
 
@@ -138,12 +136,10 @@ export async function publishChauffeurLocationAction(raw: z.infer<typeof publish
 		currentLocation.accuracy_m = accuracyM
 	}
 
-	const serviceRunId = trip.service_run_id as string
 	const vehicleId = trip.vehicle_id as string
 
 	const row = {
 		chauffeur_assignment_id: assignmentId,
-		service_run_id: serviceRunId,
 		vehicle_id: vehicleId,
 		current_location: currentLocation,
 		estimated_arrival: estimatedArrival,

@@ -43,7 +43,7 @@ const TRIP_TYPE_CHIPS: { key: AccountBookingsTripTypeKey; label: string }[] = [
 	{ key: 'p2p', label: accountBookingsCopy.filtersTripP2p },
 	{ key: 'hourly', label: accountBookingsCopy.filtersTripHourly },
 	{ key: 'tour', label: accountBookingsCopy.filtersTripTour },
-	{ key: 'cp', label: accountBookingsCopy.filtersTripCp },
+	{ key: 'cp', label: accountBookingsCopy.filtersTripCorporatePattern },
 ]
 
 const TIME_WINDOWS: { value: AccountBookingsTimeWindow; label: string }[] = [
@@ -54,6 +54,7 @@ const TIME_WINDOWS: { value: AccountBookingsTimeWindow; label: string }[] = [
 ]
 
 const STATUS_SAMPLES: OpsBookingsQueueStatusValue[] = [
+	'pending_confirmation',
 	'submitted',
 	'quote_sent',
 	'assigned',

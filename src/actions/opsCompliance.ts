@@ -593,28 +593,6 @@ export async function exportDataSubjectAction(raw: z.infer<typeof dsrExportReque
 		return { ...buildOpsActionFailure('DATABASE', tErr.message, correlationId), export: null }
 	}
 
-	let engagements: Record<string, unknown>[] = []
-	if (bookingIds.length > 0) {
-		const { data: eng, error: eErr } = await supabase
-			.from('close_protection_engagements')
-			.select('id, booking_id, trip_id, status, created_at, updated_at')
-			.in('booking_id', bookingIds)
-
-		if (eErr) {
-			logOpsAction({
-				action: 'exportDataSubjectAction',
-				outcome: 'failure',
-				level: 'error',
-				correlationId,
-				code: 'DATABASE',
-				entityId: profileId,
-				hint: eErr.message,
-			})
-			return { ...buildOpsActionFailure('DATABASE', eErr.message, correlationId), export: null }
-		}
-		engagements = (eng ?? []) as Record<string, unknown>[]
-	}
-
 	const exportedAt = new Date().toISOString()
 	const payload: DsrExportPayloadDb = {
 		version: 'vst12_dsr_minimal_v1',
@@ -636,7 +614,6 @@ export async function exportDataSubjectAction(raw: z.infer<typeof dsrExportReque
 		},
 		bookings,
 		trips: (trips ?? []) as Record<string, unknown>[],
-		close_protection_engagements: engagements,
 	}
 
 	await appendOpsAuditLog(supabase, {
@@ -649,7 +626,6 @@ export async function exportDataSubjectAction(raw: z.infer<typeof dsrExportReque
 			version: payload.version,
 			booking_count: bookings.length,
 			trip_count: (trips ?? []).length,
-			engagement_count: engagements.length,
 		},
 	})
 
@@ -662,7 +638,6 @@ export async function exportDataSubjectAction(raw: z.infer<typeof dsrExportReque
 		meta: {
 			booking_count: bookings.length,
 			trip_count: (trips ?? []).length,
-			engagement_count: engagements.length,
 		},
 	})
 	return { ok: true as const, export: payload }
@@ -822,23 +797,6 @@ export async function anonymiseDataSubjectAction(raw: z.infer<typeof dsrAnonymis
 			return buildOpsActionFailure('DATABASE', bookErr.message, correlationId)
 		}
 
-		const { error: engErr } = await supabase
-			.from('close_protection_engagements')
-			.update({ coordination_notes: null })
-			.in('booking_id', bookingIds)
-
-		if (engErr) {
-			logOpsAction({
-				action: 'anonymiseDataSubjectAction',
-				outcome: 'failure',
-				level: 'error',
-				correlationId,
-				code: 'DATABASE',
-				entityId: profileId,
-				hint: engErr.message,
-			})
-			return buildOpsActionFailure('DATABASE', engErr.message, correlationId)
-		}
 	}
 
 	const { error: tripErr } = await supabase.from('trips').update({ customer_id: null }).eq('customer_id', profileId)

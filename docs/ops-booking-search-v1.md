@@ -46,7 +46,6 @@ Known DB values (from migrations): `point_to_point`, `hourly_hire`, `corporate_p
 ## Row actions (existing routes only)
 
 - **View confirmation:** `/confirmation?id={booking_uuid}`
-- **Close protection:** `/ops/close-protection?bookingId={booking_uuid}`
 - **Customer lookup:** `/book/search?tab=login` — staff copy **reference** or **phone** from the row before opening the customer flow.
 
 ## Legacy flow

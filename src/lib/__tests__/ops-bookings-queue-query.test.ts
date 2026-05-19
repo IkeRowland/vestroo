@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+	isCancelledQueuePreset,
+	isCompletedQueuePreset,
+	isNeedsAttentionPreset,
 	isReadyToAssignPreset,
+	OPS_BOOKINGS_NEEDS_ATTENTION_HREF,
 	OPS_BOOKINGS_QUEUE_STATUS_ORDER,
 	OPS_BOOKINGS_READY_TO_ASSIGN_HREF,
 	OPS_BOOKINGS_READY_TO_ASSIGN_STATUS,
@@ -84,5 +88,35 @@ describe('ready_to_assign preset (14.8)', () => {
 		expect(u.searchParams.get('status')).toBe('cancelled')
 		expect(u.searchParams.get('page')).toBeNull()
 		expect(u.searchParams.get('per')).toBe('10')
+	})
+
+	it('isNeedsAttentionPreset matches the five-status triage slice (12.2)', () => {
+		const href = new URL(OPS_BOOKINGS_NEEDS_ATTENTION_HREF, 'https://example.com')
+		expect(href.searchParams.getAll('status').sort()).toEqual(
+			['awaiting_payment', 'pending_confirmation', 'quote_sent', 'submitted', 'triaged'].sort(),
+		)
+		const p = parseOpsBookingsQueueSearchParams({
+			status: ['submitted', 'triaged', 'quote_sent', 'awaiting_payment', 'pending_confirmation'],
+		})
+		expect(isNeedsAttentionPreset(p)).toBe(true)
+		expect(
+			isNeedsAttentionPreset(
+				parseOpsBookingsQueueSearchParams({ status: 'submitted' }),
+			),
+		).toBe(false)
+	})
+
+	it('isCompletedQueuePreset / isCancelledQueuePreset are single-status only', () => {
+		expect(
+			isCompletedQueuePreset(parseOpsBookingsQueueSearchParams({ status: 'completed' })),
+		).toBe(true)
+		expect(
+			isCancelledQueuePreset(parseOpsBookingsQueueSearchParams({ status: 'cancelled' })),
+		).toBe(true)
+		expect(
+			isCompletedQueuePreset(
+				parseOpsBookingsQueueSearchParams({ status: 'completed', payment: 'paid' }),
+			),
+		).toBe(false)
 	})
 })

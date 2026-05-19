@@ -164,13 +164,22 @@ export const BookingAccountDomainGate = forwardRef<
 	)
 
 	useEffect(() => {
+		// When the gate is disabled (e.g. `TripRequestBookingShell` + verified portal session —
+		// `enabled={!portalHandoffActive}`), do **not** push `null` into `onClientTypeResolutionChange`.
+		// The first line used to always `applyResolutionWithRows(null)`, which wiped
+		// `portal_active_account_session` set from the booking store before submit (Q6 error).
+		if (!enabled) {
+			setProbe('idle')
+			return
+		}
+
 		applyResolutionWithRows(null, [])
 		setCandidates([])
 		setModalOpen(false)
 		setSelectedAccountId(null)
 		setProbeError(null)
 
-		if (!enabled || !emailLooksValidForProbe(email)) {
+		if (!emailLooksValidForProbe(email)) {
 			setProbe('idle')
 			return
 		}

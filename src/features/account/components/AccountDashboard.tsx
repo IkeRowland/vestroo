@@ -11,10 +11,11 @@ import { portalRoleLabel } from '@/lib/account-portal-auth'
 import { ACCOUNT_DASHBOARD_HREFS, type AccountDashboardSnapshot } from '@/lib/account-dashboard-query'
 import { accountDashboardRailStatusPill } from '@/lib/account-dashboard-rail-status'
 import {
+	accountBillingQuoteViewerPath,
 	formatInvoiceArchiveQuoteStatus,
 	type AccountInvoiceArchiveRow,
 } from '@/lib/account-invoices-archive-query'
-import { formatQueueStatusLabel } from '@/lib/account-bookings-list-query'
+import { ACCOUNT_BILLING_INVOICES_LIST_PATH } from '@/lib/account-invoices-list-query'
 import type { AccountBookingsListRow } from '@/lib/account-bookings-list-query'
 import type { AccountBookingFormLoad } from '@/lib/account-booking-form-load'
 import type { CustomerAccountMemberRoleDb } from '@/types/database.types'
@@ -274,7 +275,7 @@ export function AccountDashboard({
 							{accountDashboardCopy.sectionInvoices}
 						</h2>
 						<Link
-							href="/account/invoices"
+							href={ACCOUNT_BILLING_INVOICES_LIST_PATH}
 							className="text-sm font-medium text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 						>
 							{accountDashboardCopy.invoiceViewAll} →
@@ -325,7 +326,7 @@ export function AccountDashboard({
 														<div className="flex flex-wrap gap-2">
 															{inv.quote_id && inv.has_rendered_html ? (
 																<Link
-																	href={`/account/invoices/${inv.quote_id}`}
+																	href={accountBillingQuoteViewerPath(inv.quote_id)}
 																	className="text-xs font-medium text-primary underline-offset-2 hover:underline"
 																>
 																	{accountDashboardCopy.invoiceDownload}
@@ -371,7 +372,7 @@ export function AccountDashboard({
 													<div className="flex flex-wrap gap-2 pt-1">
 														{inv.quote_id && inv.has_rendered_html ? (
 															<Link
-																href={`/account/invoices/${inv.quote_id}`}
+																href={accountBillingQuoteViewerPath(inv.quote_id)}
 																className="inline-flex min-h-10 items-center text-xs font-medium text-primary underline-offset-2 hover:underline"
 															>
 																{accountDashboardCopy.invoiceDownload}

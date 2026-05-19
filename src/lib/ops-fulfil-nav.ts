@@ -1,35 +1,59 @@
 import { isUuidShaped } from '@/lib/ops-booking-grid-query'
 import type { FulfilQueueBucket } from '@/lib/fulfil-queue-buckets'
-import { OPS_TRIPS_PATH } from '@/lib/ops-trips-url'
+import {
+	OPS_BOOKINGS_DEFAULT_HREF,
+	OPS_BOOKINGS_PATH,
+	OPS_BOOKING_ASSIGN_HREF_SUFFIX,
+} from '@/features/ops/ops-bookings-url'
+import {
+	OPS_BOOKINGS_NEEDS_ATTENTION_HREF,
+	OPS_BOOKINGS_READY_TO_ASSIGN_HREF,
+} from '@/lib/ops-bookings-queue-query'
 
 type OpsFulfilQueueHrefOptions = {
 	/**
-	 * Optional booking to pre-select on the assignment panel (paid queue);
-	 * ignored if not a UUID shape.
+	 * Optional booking to open from the queue (paid → assign anchor on detail;
+	 * other queues → booking detail without assign hash).
 	 */
 	focusBookingId?: string | null
+	/** Retained for URL compatibility; assignment UI is on booking detail, so this is not applied. */
+	focusDriverProfileId?: string | null
 }
 
 /**
- * Assignment queues live on **`/ops/trips`** — tabs, bookings row deep-link (Story 14.8), etc.
+ * Legacy fulfil queue entry points now land on **`/ops/bookings`** filtered views
+ * (or booking detail with assign anchor when **`focusBookingId`** is set on the paid queue).
  */
 export function opsFulfilQueueHref(
 	queue: FulfilQueueBucket,
 	options?: OpsFulfilQueueHrefOptions,
 ): string {
-	const p = new URLSearchParams()
-	p.set('queue', queue)
 	const id = (options?.focusBookingId ?? '').trim()
 	if (id.length > 0 && isUuidShaped(id)) {
-		p.set('bookingId', id)
+		if (queue === 'paid') {
+			return opsFulfilAssignBookingHref(id)
+		}
+		return `${OPS_BOOKINGS_PATH}/${encodeURIComponent(id)}`
 	}
-	const qs = p.toString()
-	return qs ? `${OPS_TRIPS_PATH}?${qs}` : OPS_TRIPS_PATH
+
+	switch (queue) {
+		case 'pending':
+			return OPS_BOOKINGS_NEEDS_ATTENTION_HREF
+		case 'trip_request':
+			return OPS_BOOKINGS_DEFAULT_HREF
+		case 'paid':
+		default:
+			return OPS_BOOKINGS_READY_TO_ASSIGN_HREF
+	}
 }
 
 /**
- * Fulfil **Assignment (paid)** — same surface as the paid-queue dispatch form in `AssignBookingPanel` (story 14.8 row parity).
+ * **Assign trip** — booking detail with in-page assign panel (`/ops/bookings/[id]#ops-booking-assign`).
  */
 export function opsFulfilAssignBookingHref(bookingId: string): string {
-	return opsFulfilQueueHref('paid', { focusBookingId: bookingId })
+	const id = bookingId.trim()
+	if (id.length > 0 && isUuidShaped(id)) {
+		return `${OPS_BOOKINGS_PATH}/${encodeURIComponent(id)}${OPS_BOOKING_ASSIGN_HREF_SUFFIX}`
+	}
+	return OPS_BOOKINGS_PATH
 }

@@ -2,7 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 
 import { formatQueueStatusLabel } from '@/lib/account-bookings-list-query'
 import { parseBookingQuoteLineItems, type BookingQuoteLineItem } from '@/types/booking-quote'
-import type { BookingQuoteStatusDb } from '@/types/database.types'
+import type { BookingPipelineStatusDb, BookingQuoteStatusDb } from '@/types/database.types'
 
 /** (A) Quote lifecycle rows shown in the account archive (excludes `draft`). */
 export const ACCOUNT_INVOICES_ARCHIVE_QUOTE_STATUSES: readonly BookingQuoteStatusDb[] = [
@@ -19,6 +19,36 @@ export const ACCOUNT_INVOICES_ARCHIVE_BOOKING_PIPELINE_STATUSES: readonly Bookin
 	'invoiced',
 	'paid_invoice',
 ] as const
+
+/** Immutable quote HTML viewer under **`/account/billing/quotes/[quoteId]`** (legacy **`/account/invoices/[quoteId]`** redirects). */
+export const ACCOUNT_BILLING_QUOTE_VIEWER_BASE_PATH = '/account/billing/quotes' as const
+
+export function accountBillingQuoteViewerPath(quoteId: string): string {
+	return `${ACCOUNT_BILLING_QUOTE_VIEWER_BASE_PATH}/${quoteId}`
+}
+
+const PIPELINE_SET: ReadonlySet<string> = new Set(ACCOUNT_INVOICES_ARCHIVE_BOOKING_PIPELINE_STATUSES)
+
+/** Rows in Epic **13** invoice / payment pipeline states (`ready_to_invoice`, `invoiced`, `paid_invoice`). */
+export function isAccountInvoicePipelineArchiveRow(row: AccountInvoiceArchiveRow): boolean {
+	const s = row.booking_status
+	return s != null && PIPELINE_SET.has(s)
+}
+
+/** Split combined archive (**15A.7**) into **Invoices** vs **Quotes** workspace lists. */
+export function filterAccountArchiveRowsForBillingSection(
+	rows: AccountInvoiceArchiveRow[],
+	section: 'invoices' | 'quotes',
+): AccountInvoiceArchiveRow[] {
+	return rows.filter((r) =>
+		section === 'invoices' ? isAccountInvoicePipelineArchiveRow(r) : !isAccountInvoicePipelineArchiveRow(r),
+	)
+}
+
+/** Stable row key for list selection / pagination (**`quote_id`** when present, else **`booking_id`**). */
+export function accountInvoiceArchiveListRowKey(row: AccountInvoiceArchiveRow): string {
+	return row.quote_id ?? row.booking_id
+}
 
 /**
  * Embed **`bookings`** via **`booking_quotes.booking_id`** only.
@@ -673,9 +703,9 @@ function buildRailDetailFromSyntheticRow(
 		row.booking_payment_status !== 'paid'
 
 	const canPay = row.booking_status === 'ready_to_invoice' || row.booking_status === 'invoiced'
-	const listRowKey = row.quote_id ?? row.booking_id
+	const listRowKey = accountInvoiceArchiveListRowKey(row)
 	const fullQuoteHref =
-		row.quote_id && row.has_rendered_html ? `/account/invoices/${row.quote_id}` : null
+		row.quote_id && row.has_rendered_html ? accountBillingQuoteViewerPath(row.quote_id) : null
 
 	return {
 		listRowKey,

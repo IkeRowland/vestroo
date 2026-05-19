@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest'
 import { Route } from 'lucide-react'
 
 import { OpsKpiCard } from '@/features/ops/components/OpsKpiCard'
+import { OPS_BOOKINGS_NEEDS_ATTENTION_HREF } from '@/lib/ops-bookings-queue-query'
 
 describe('OpsKpiCard (FE.17.4)', () => {
 	it('renders Link overlay when drillHref is set', () => {
@@ -56,7 +57,7 @@ describe('OpsKpiCard (FE.17.4)', () => {
 				value={3}
 				deltaPercent={4}
 				deltaPolarity="upBad"
-				drillHref="/ops/trips?queue=pending"
+				drillHref={OPS_BOOKINGS_NEEDS_ATTENTION_HREF}
 			/>,
 		)
 		expect(container.querySelector('.text-ops-danger')).toBeTruthy()

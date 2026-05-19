@@ -35,8 +35,11 @@ import {
 } from '@/lib/operational-notifications'
 import {
 	appendBookingStatusHistoryEntry,
+	BOOKING_STATUSES_TERMINAL_FOR_TRIP_COMPLETE_HOOK,
 	shouldSetBookingReadyToInvoiceOnTripCompleted,
 } from '@/lib/ops-trip-complete-booking-invoice-hook'
+import { extractOpsBookingVehicleCategoryNameForDetail } from '@/lib/ops-booking-detail'
+import { fleetVehicleMatchesBookingVehicleClass } from '@/lib/ops-booking-vehicle-class-match'
 import { suggestVehiclesForBooking, type Suggestion } from '@/lib/dispatch-suggestions'
 import { createDispatchSuggestionsDeps } from '@/lib/dispatch-suggestions-supabase-deps'
 import { isDispatchSuggestionsEnabled } from '@/lib/dispatch-suggestions-env'
@@ -59,10 +62,10 @@ const fromSuggestionSchema = z.object({
 
 const assignSchema = z.object({
 	bookingId: z.string().uuid(),
-	serviceRunId: z.string().uuid(),
 	/** Profile id for the assigned driver (DB `trips.chauffeur_id` until Epic 17). */
 	driverProfileId: z.string().uuid(),
-	vehicleId: z.string().uuid(),
+	/** When omitted, server uses `profiles.default_vehicle_id` for the driver (Fleet → Drivers). */
+	vehicleId: z.string().uuid().optional(),
 	overrideToken: z.string().min(1).optional(),
 	fromSuggestion: fromSuggestionSchema.optional(),
 })
@@ -159,18 +162,85 @@ export async function assignBookingToRun(raw: z.infer<typeof assignSchema>) {
 	const supabase = await createUserServerClient()
 	const {
 		bookingId,
-		serviceRunId,
 		driverProfileId,
-		vehicleId,
+		vehicleId: vehicleIdRaw,
 		overrideToken: rawOverrideToken,
 		fromSuggestion: fromSuggestionRaw,
 	} = parsed.data
 	const overrideToken = rawOverrideToken?.trim() || undefined
 
+	const { data: driverRow, error: dRowErr } = await supabase
+		.from('profiles')
+		.select('default_vehicle_id, role, status')
+		.eq('id', driverProfileId)
+		.maybeSingle()
+
+	if (dRowErr) {
+		logOpsAction({
+			action: 'assignBookingToRun',
+			outcome: 'failure',
+			level: 'error',
+			correlationId,
+			code: 'DATABASE',
+			hint: dRowErr.message,
+		})
+		return buildOpsActionFailure('DATABASE', dRowErr.message, correlationId)
+	}
+
+	if (!driverRow || driverRow.role !== PROFILE_ROLE_OPS_DRIVER_DB) {
+		logOpsAction({
+			action: 'assignBookingToRun',
+			outcome: 'failure',
+			level: 'warn',
+			correlationId,
+			code: 'INVALID_CHAUFFEUR',
+		})
+		return buildOpsActionFailure('INVALID_CHAUFFEUR', 'Select an active driver profile', correlationId)
+	}
+
+	const driverStatusKey = String(driverRow.status ?? '')
+		.trim()
+		.toLowerCase()
+	if (driverStatusKey === 'inactive' || driverStatusKey === 'unavailable') {
+		logOpsAction({
+			action: 'assignBookingToRun',
+			outcome: 'failure',
+			level: 'warn',
+			correlationId,
+			code: 'INVALID_CHAUFFEUR',
+		})
+		return buildOpsActionFailure(
+			'INVALID_CHAUFFEUR',
+			'This driver is marked unavailable and cannot be assigned.',
+			correlationId,
+		)
+	}
+
+	let resolvedVehicleId: string | undefined =
+		vehicleIdRaw && vehicleIdRaw.length > 0 ? vehicleIdRaw : undefined
+	if (!resolvedVehicleId) {
+		const dv = driverRow.default_vehicle_id as string | null | undefined
+		resolvedVehicleId = dv && dv.length > 0 ? dv : undefined
+	}
+	if (!resolvedVehicleId) {
+		logOpsAction({
+			action: 'assignBookingToRun',
+			outcome: 'failure',
+			level: 'warn',
+			correlationId,
+			code: 'VALIDATION',
+		})
+		return buildOpsActionFailure(
+			'VALIDATION',
+			'Choose a vehicle for this assignment, or set a default vehicle on the driver in Fleet → Drivers.',
+			correlationId,
+		)
+	}
+
 	const { data: booking, error: bErr } = await supabase
 		.from('bookings')
 		.select(
-			'id, customer_id, client_type, status, payment_status, total_amount, booking_intent, pickup_datetime, trip_date, estimated_duration, customer_account_id, account_snapshot',
+			'id, customer_id, client_type, status, status_history, payment_status, total_amount, booking_intent, pickup_datetime, trip_date, estimated_duration, customer_account_id, account_snapshot, booking_metadata, booking_trips(sort_order,trips(vehicles(vehicle_categories(name)))))',
 		)
 		.eq('id', bookingId)
 		.maybeSingle()
@@ -186,6 +256,60 @@ export async function assignBookingToRun(raw: z.infer<typeof assignSchema>) {
 			hint: bErr?.message,
 		})
 		return buildOpsActionFailure('NOT_FOUND', 'Booking not found', correlationId)
+	}
+
+	const { data: assignVehicleRow, error: assignVehErr } = await supabase
+		.from('vehicles')
+		.select('id, seats, vehicle_categories(name)')
+		.eq('id', resolvedVehicleId)
+		.maybeSingle()
+
+	if (assignVehErr || !assignVehicleRow) {
+		logOpsAction({
+			action: 'assignBookingToRun',
+			outcome: 'failure',
+			level: 'error',
+			correlationId,
+			code: 'DATABASE',
+			hint: assignVehErr?.message,
+		})
+		return buildOpsActionFailure(
+			'DATABASE',
+			assignVehErr?.message ?? 'Could not load vehicle for assignment',
+			correlationId,
+		)
+	}
+
+	const catRaw = assignVehicleRow.vehicle_categories as unknown
+	const cat = Array.isArray(catRaw) ? catRaw[0] : catRaw
+	const vehicleCategoryName =
+		cat && typeof cat === 'object' && 'name' in cat
+			? String((cat as { name: unknown }).name ?? '').trim() || null
+			: null
+	const vehicleSeats =
+		typeof assignVehicleRow.seats === 'number' ? assignVehicleRow.seats : null
+
+	const requestedClass = extractOpsBookingVehicleCategoryNameForDetail({
+		booking_trips: booking.booking_trips,
+		booking_metadata: booking.booking_metadata,
+	})
+
+	if (
+		!fleetVehicleMatchesBookingVehicleClass(requestedClass, vehicleCategoryName, vehicleSeats)
+	) {
+		logOpsAction({
+			action: 'assignBookingToRun',
+			outcome: 'failure',
+			level: 'warn',
+			correlationId,
+			code: 'VALIDATION',
+			bookingId,
+		})
+		return buildOpsActionFailure(
+			'VALIDATION',
+			"The selected driver's default vehicle does not match this booking's requested vehicle class. Update the driver's default vehicle in Fleet → Drivers.",
+			correlationId,
+		)
 	}
 
 	if (overrideToken && !getDispatchOverrideSecret()) {
@@ -387,33 +511,32 @@ export async function assignBookingToRun(raw: z.infer<typeof assignSchema>) {
 		return buildOpsActionFailure('CONFLICT', 'Booking already has a trip', correlationId)
 	}
 
-	const { data: run, error: rErr } = await supabase
-		.from('service_runs')
-		.select('id, service_route_id, scheduled_start, scheduled_end, trip_number, service_date')
-		.eq('id', serviceRunId)
-		.maybeSingle()
-
-	if (rErr || !run) {
+	const pickupIso = (booking.pickup_datetime as string | null)?.trim() ?? ''
+	if (!pickupIso) {
 		logOpsAction({
 			action: 'assignBookingToRun',
-			outcome: 'not_found',
+			outcome: 'failure',
 			level: 'warn',
 			correlationId,
-			code: 'NOT_FOUND',
-			hint: rErr?.message,
+			code: 'VALIDATION',
+			bookingId,
 		})
-		return buildOpsActionFailure('NOT_FOUND', 'Service run not found', correlationId)
+		return buildOpsActionFailure(
+			'VALIDATION',
+			'Booking must have a pickup time before assigning a trip.',
+			correlationId,
+		)
 	}
 
-	const timeStartEst =
-		(booking.pickup_datetime as string | null) ?? (run.scheduled_start as string)
-	const timeEndEst =
-		booking.estimated_duration && booking.pickup_datetime
-			? new Date(
-					new Date(booking.pickup_datetime as string).getTime() +
-						Number(booking.estimated_duration) * 60_000,
-				).toISOString()
-			: (run.scheduled_end as string)
+	const timeStartEst = pickupIso
+	const estMinutesRaw = booking.estimated_duration as number | null | undefined
+	const estMinutes =
+		typeof estMinutesRaw === 'number' && Number.isFinite(estMinutesRaw) && estMinutesRaw > 0
+			? estMinutesRaw
+			: 240
+	const timeEndEst = new Date(
+		new Date(pickupIso).getTime() + estMinutes * 60_000,
+	).toISOString()
 
 	const candidate = tripTimeWindow({
 		time_start_estimate: timeStartEst,
@@ -423,7 +546,7 @@ export async function assignBookingToRun(raw: z.infer<typeof assignSchema>) {
 	const { data: vehicleTrips, error: vtErr } = await supabase
 		.from('trips')
 		.select('id, vehicle_id, time_start_estimate, time_end_estimate, status')
-		.eq('vehicle_id', vehicleId)
+		.eq('vehicle_id', resolvedVehicleId)
 
 	if (vtErr) {
 		logOpsAction({
@@ -437,7 +560,7 @@ export async function assignBookingToRun(raw: z.infer<typeof assignSchema>) {
 		return buildOpsActionFailure('DATABASE', vtErr.message, correlationId)
 	}
 
-	const conflicts = findVehicleWindowConflicts(vehicleTrips ?? [], vehicleId, candidate)
+	const conflicts = findVehicleWindowConflicts(vehicleTrips ?? [], resolvedVehicleId, candidate)
 	if (conflicts.length > 0) {
 		const conflictTripId = conflicts[0].id as string
 		logOpsAction({
@@ -500,29 +623,8 @@ export async function assignBookingToRun(raw: z.infer<typeof assignSchema>) {
 		}
 	}
 
-	const { data: assignedDriverProfile } = await supabase
-		.from('profiles')
-		.select('role, status')
-		.eq('id', driverProfileId)
-		.maybeSingle()
-
-	if (
-		!assignedDriverProfile ||
-		assignedDriverProfile.role !== PROFILE_ROLE_OPS_DRIVER_DB ||
-		assignedDriverProfile.status !== 'active'
-	) {
-		logOpsAction({
-			action: 'assignBookingToRun',
-			outcome: 'failure',
-			level: 'warn',
-			correlationId,
-			code: 'INVALID_CHAUFFEUR',
-		})
-		return buildOpsActionFailure('INVALID_CHAUFFEUR', 'Select an active driver profile', correlationId)
-	}
-
-	const workDate = String(run.service_date)
-	const sched = await resolveChauffeurScheduleId(supabase, driverProfileId, vehicleId, workDate)
+	const workDate = pickupIso.slice(0, 10)
+	const sched = await resolveChauffeurScheduleId(supabase, driverProfileId, resolvedVehicleId, workDate)
 	if (!sched.ok) {
 		logOpsAction({
 			action: 'assignBookingToRun',
@@ -538,12 +640,12 @@ export async function assignBookingToRun(raw: z.infer<typeof assignSchema>) {
 	const tripInsert = {
 		customer_id: (booking.customer_id as string | null) ?? null,
 		chauffeur_id: driverProfileId,
+		schedule_id: sched.scheduleId,
 		time_start: null,
 		time_end: null,
 		time_start_estimate: timeStartEst,
 		time_end_estimate: timeEndEst,
-		vehicle_id: vehicleId,
-		schedule_id: sched.scheduleId,
+		vehicle_id: resolvedVehicleId,
 		service_type: 'charter',
 		trip_coordinates: [] as unknown[],
 		service_payload: {
@@ -551,7 +653,6 @@ export async function assignBookingToRun(raw: z.infer<typeof assignSchema>) {
 		},
 		amount: (booking.total_amount as number) ?? null,
 		status: 'assigned',
-		service_run_id: serviceRunId,
 	}
 
 	const { data: trip, error: tErr } = await supabase.from('trips').insert(tripInsert).select('id').single()
@@ -587,20 +688,15 @@ export async function assignBookingToRun(raw: z.infer<typeof assignSchema>) {
 		return buildOpsActionFailure('DATABASE', btErr.message, correlationId)
 	}
 
-	await supabase
-		.from('close_protection_engagements')
-		.update({ trip_id: trip.id as string })
-		.eq('booking_id', bookingId)
-		.is('trip_id', null)
-
 	const { error: caErr } = await supabase.from('chauffeur_assignments').insert({
 		chauffeur_id: driverProfileId,
-		service_route_id: run.service_route_id,
-		vehicle_id: vehicleId,
-		start_time: run.scheduled_start,
-		end_time: run.scheduled_end,
-		trip_number: run.trip_number,
+		service_route_id: null,
+		vehicle_id: resolvedVehicleId,
+		start_time: timeStartEst,
+		end_time: timeEndEst,
+		trip_number: 1,
 		status: 'active',
+		trip_id: trip.id as string,
 	})
 
 	if (caErr) {
@@ -631,12 +727,7 @@ export async function assignBookingToRun(raw: z.infer<typeof assignSchema>) {
 			},
 		})
 		if (!overrideAudit.ok) {
-			await supabase
-				.from('chauffeur_assignments')
-				.delete()
-				.eq('chauffeur_id', driverProfileId)
-				.eq('service_route_id', run.service_route_id as string)
-				.eq('trip_number', run.trip_number as number)
+			await supabase.from('chauffeur_assignments').delete().eq('trip_id', trip.id as string)
 			await supabase.from('booking_trips').delete().eq('booking_id', bookingId).eq('trip_id', trip.id)
 			await supabase.from('trips').delete().eq('id', trip.id)
 			logOpsAction({
@@ -654,7 +745,7 @@ export async function assignBookingToRun(raw: z.infer<typeof assignSchema>) {
 
 	const hintsEnabled = isDispatchSuggestionsEnabled()
 	let suggestionsAtAssign: Suggestion[] = []
-	if (hintsEnabled && fromSuggestionRaw && fromSuggestionRaw.vehicleId === vehicleId) {
+	if (hintsEnabled && fromSuggestionRaw && fromSuggestionRaw.vehicleId === resolvedVehicleId) {
 		try {
 			const suggestionDeps = createDispatchSuggestionsDeps(supabase)
 			suggestionsAtAssign = await suggestVehiclesForBooking(bookingId, suggestionDeps)
@@ -670,19 +761,16 @@ export async function assignBookingToRun(raw: z.infer<typeof assignSchema>) {
 		entityId: trip.id as string,
 		payload: {
 			booking_id: bookingId,
-			service_run_id: serviceRunId,
-			vehicle_id: vehicleId,
-			chauffeur_id: driverProfileId,
+			vehicle_id: resolvedVehicleId,
 		},
 	})
 
 	const calibration = resolveAssignmentCalibrationAudit({
 		dispatchSuggestionsEnabled: hintsEnabled,
 		fromSuggestion: hintsEnabled ? fromSuggestionRaw : undefined,
-		assignedVehicleId: vehicleId,
+		assignedVehicleId: resolvedVehicleId,
 		bookingId,
 		tripId: trip.id as string,
-		serviceRunId,
 		driverProfileId,
 		suggestionsAtAssign,
 	})
@@ -693,6 +781,41 @@ export async function assignBookingToRun(raw: z.infer<typeof assignSchema>) {
 		entityId: trip.id as string,
 		payload: calibration.payload,
 	})
+
+	const prevBookingStatus = (booking.status as string) ?? ''
+	if (prevBookingStatus === 'ready_to_assign') {
+		const nextHistory = appendBookingStatusHistoryEntry(
+			(booking as { status_history?: unknown }).status_history,
+			prevBookingStatus,
+			'assigned',
+			'ops_assign_booking_to_run',
+		)
+		const { error: bumpBookErr } = await supabase
+			.from('bookings')
+			.update({
+				status: 'assigned',
+				status_history: nextHistory,
+			})
+			.eq('id', bookingId)
+			.eq('status', 'ready_to_assign')
+
+		if (bumpBookErr) {
+			logOpsAction({
+				action: 'assignBookingToRun',
+				outcome: 'failure',
+				level: 'error',
+				correlationId,
+				code: 'DATABASE',
+				bookingId,
+				hint: bumpBookErr.message,
+			})
+			return buildOpsActionFailure(
+				'DATABASE',
+				`Trip created but booking status could not move to assigned: ${bumpBookErr.message}`,
+				correlationId,
+			)
+		}
+	}
 
 	const assignNotes = buildAssignmentNotifications({
 		tripId: trip.id as string,
@@ -706,7 +829,9 @@ export async function assignBookingToRun(raw: z.infer<typeof assignSchema>) {
 
 	revalidatePath('/ops/trips')
 	revalidatePath('/ops/calendar')
-	revalidatePath('/ops/vehicles')
+	revalidatePath('/ops/fleet')
+	revalidatePath('/ops/fleet/vehicles')
+	revalidatePath('/ops/bookings')
 
 	logOpsAction({
 		action: 'assignBookingToRun',
@@ -716,7 +841,7 @@ export async function assignBookingToRun(raw: z.infer<typeof assignSchema>) {
 		entityId: trip.id as string,
 		bookingId,
 		tripId: trip.id as string,
-		meta: { vehicle_id: vehicleId, service_run_id: serviceRunId },
+		meta: { vehicle_id: resolvedVehicleId },
 	})
 	return { ok: true as const, tripId: trip.id as string }
 }
@@ -856,7 +981,7 @@ export async function updateTripStatusAction(raw: z.infer<typeof tripStatusSchem
 		return buildOpsActionFailure('DATABASE', uErr.message, correlationId)
 	}
 
-	if (status === 'completed') {
+	if (status === 'completed' || status === 'cancelled') {
 		const { data: links, error: linkErr } = await supabase
 			.from('booking_trips')
 			.select('booking_id')
@@ -875,47 +1000,125 @@ export async function updateTripStatusAction(raw: z.infer<typeof tripStatusSchem
 					continue
 				}
 
-				if (
-					!shouldSetBookingReadyToInvoiceOnTripCompleted({
-						clientType: bookingRow.client_type as string | null,
-						bookingStatus: bookingRow.status as string | null,
-					})
-				) {
+				const clientType = bookingRow.client_type as string | null
+				const bs = ((bookingRow.status as string | null) ?? '').trim()
+
+				if (status === 'completed') {
+					if (
+						shouldSetBookingReadyToInvoiceOnTripCompleted({
+							clientType,
+							bookingStatus: bookingRow.status as string | null,
+						})
+					) {
+						const prevBookingStatus = bs
+						const nextHistory = appendBookingStatusHistoryEntry(
+							bookingRow.status_history,
+							prevBookingStatus,
+							'ready_to_invoice',
+							'ops_trip_completed',
+						)
+
+						const { error: bookErr } = await supabase
+							.from('bookings')
+							.update({
+								status: 'ready_to_invoice',
+								status_history: nextHistory,
+							})
+							.eq('id', bookingId)
+
+						if (bookErr) {
+							logOpsAction({
+								action: 'updateTripStatusAction',
+								outcome: 'failure',
+								level: 'error',
+								correlationId,
+								code: 'DATABASE',
+								tripId,
+								bookingId,
+								hint: bookErr.message,
+							})
+							return buildOpsActionFailure(
+								'DATABASE',
+								`Trip updated but booking invoicing hook failed: ${bookErr.message}`,
+								correlationId,
+							)
+						}
+						continue
+					}
+
+					if (clientType === 'walk_in') {
+						const skipWalkInBump =
+							BOOKING_STATUSES_TERMINAL_FOR_TRIP_COMPLETE_HOOK.has(bs) ||
+							bs === 'completed' ||
+							bs === 'ready_to_invoice'
+						if (!skipWalkInBump) {
+							const nextHistory = appendBookingStatusHistoryEntry(
+								bookingRow.status_history,
+								bs,
+								'completed',
+								'ops_trip_completed',
+							)
+							const { error: bookErr } = await supabase
+								.from('bookings')
+								.update({
+									status: 'completed',
+									status_history: nextHistory,
+								})
+								.eq('id', bookingId)
+							if (bookErr) {
+								logOpsAction({
+									action: 'updateTripStatusAction',
+									outcome: 'failure',
+									level: 'error',
+									correlationId,
+									code: 'DATABASE',
+									tripId,
+									bookingId,
+									hint: bookErr.message,
+								})
+								return buildOpsActionFailure(
+									'DATABASE',
+									`Trip updated but walk-in booking completion sync failed: ${bookErr.message}`,
+									correlationId,
+								)
+							}
+						}
+					}
 					continue
 				}
 
-				const prevBookingStatus = bookingRow.status as string
-				const nextHistory = appendBookingStatusHistoryEntry(
-					bookingRow.status_history,
-					prevBookingStatus,
-					'ready_to_invoice',
-					'ops_trip_completed',
-				)
-
-				const { error: bookErr } = await supabase
-					.from('bookings')
-					.update({
-						status: 'ready_to_invoice',
-						status_history: nextHistory,
-					})
-					.eq('id', bookingId)
-
-				if (bookErr) {
-					logOpsAction({
-						action: 'updateTripStatusAction',
-						outcome: 'failure',
-						level: 'error',
-						correlationId,
-						code: 'DATABASE',
-						tripId,
-						bookingId,
-						hint: bookErr.message,
-					})
-					return buildOpsActionFailure(
-						'DATABASE',
-						`Trip updated but booking invoicing hook failed: ${bookErr.message}`,
-						correlationId,
+				// status === 'cancelled'
+				if (clientType === 'walk_in' && bs !== 'cancelled' && bs !== 'expired') {
+					const nextHistory = appendBookingStatusHistoryEntry(
+						bookingRow.status_history,
+						bs,
+						'cancelled',
+						'ops_trip_cancelled',
 					)
+					const { error: bookErr } = await supabase
+						.from('bookings')
+						.update({
+							status: 'cancelled',
+							status_history: nextHistory,
+						})
+						.eq('id', bookingId)
+					if (bookErr) {
+						logOpsAction({
+							action: 'updateTripStatusAction',
+							outcome: 'failure',
+							level: 'error',
+							correlationId,
+							code: 'DATABASE',
+							tripId,
+							bookingId,
+							hint: bookErr.message,
+						})
+						return buildOpsActionFailure(
+							'DATABASE',
+							`Trip cancelled but booking cancellation sync failed: ${bookErr.message}`,
+							correlationId,
+						)
+					}
 				}
 			}
 		}
@@ -944,8 +1147,8 @@ export async function updateTripStatusAction(raw: z.infer<typeof tripStatusSchem
 	}
 
 	revalidatePath('/ops/trips')
-	revalidatePath('/ops/trips')
 	revalidatePath('/ops/calendar')
+	revalidatePath('/ops/bookings')
 
 	logOpsAction({
 		action: 'updateTripStatusAction',
@@ -1233,7 +1436,8 @@ export async function swapTripVehicleAction(raw: z.infer<typeof swapVehicleSchem
 	revalidatePath('/ops/trips')
 	revalidatePath('/ops/trips')
 	revalidatePath('/ops/calendar')
-	revalidatePath('/ops/vehicles')
+	revalidatePath('/ops/fleet')
+	revalidatePath('/ops/fleet/vehicles')
 
 	logOpsAction({
 		action: 'swapTripVehicleAction',

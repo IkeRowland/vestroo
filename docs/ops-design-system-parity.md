@@ -200,7 +200,7 @@ Jump links use **`id`s** embedded before each subsection heading (works in GitHu
 | **17.14** | `OpsCalendarWeek`, `/ops/calendar` | [`#parity-17-14`](#parity-17-14) |
 | **17.15** | `OpsCalendarMonth`, `/ops/roster` | [`#parity-17-15`](#parity-17-15) |
 | **17.16** | `/ops/invoicing` | [`#parity-17-16`](#parity-17-16) |
-| **17.17** | Comms, compliance, close-protection, experiences | [`#parity-17-17`](#parity-17-17) |
+| **17.17** | Comms, compliance, experiences | [`#parity-17-17`](#parity-17-17) |
 | **17.18** | `/ops/settings` | [`#parity-17-18`](#parity-17-18) |
 | **17.19** | `/ops/login` | [`#parity-17-19`](#parity-17-19) |
 
@@ -767,7 +767,7 @@ Same substitute as **§ 17.9** / **§ 17.11** when **`ops-console.md`** is absen
 |-------|-----------|
 | **URL** | **`?id=`** only (no **`/ops/trips/[id]`** segment). **`buildOpsTripsHref`** / **`parseOpsTripsPageSelectedId`** in **`src/lib/ops-trips-url.ts`**. **Invalid `id`** (unknown UUID or not in current list) → **`redirect('/ops/trips')`** — same posture as **17.11** / **17.12**. |
 | **`page` / `per`** | **Deferred** — list remains **`.limit(40)`** until **Story 17.8** wires **`OpsPagination`** here; **`id`** is the only query param today (**no collisions**). |
-| **`TripOpsForms`** | **Pattern A:** forms **only** in **`OpsDetailRail`** **`footer`** (**`OpsTripsSplitBrowser`**). List rows are select-only + **Close protection** link. |
+| **`TripOpsForms`** | **Pattern A:** forms **only** in **`OpsDetailRail`** **`footer`** (**`OpsTripsSplitBrowser`**). List rows are select-only. |
 | **Trip **`status`** → pill** | **`getOpsStatusPillTone`** extended with **`booking` → `warning`**; **`assigned`**, **`en_route`**, **`completed`**, **`cancelled`** unchanged. Display label via **`tripStatusDisplayLabel`** in **`ops-trips-copy.ts`**. |
 | **Comms / activity** | **Stub** — empty-state copy only (**NFR.17.6**, no fake thread). |
 | **Map** | **Non-interactive** placeholder: **`aspect-[16/10]`** container, **`role="img"`** + **`aria-label`**, token **`bg-ops-surface-active`** / border — **no** map SDK (**NFR.17.2**). |
@@ -789,7 +789,7 @@ Same substitute as **§ 17.9** / **§ 17.11** when **`ops-console.md`** is absen
 
 ### Copy (**NFR.17.8**)
 
-**`src/features/ops/copy/ops-trips-copy.ts`** — page strings, table caption, row **`aria-label`**, map/comms labels, close-protection link text, **`tripStatusDisplayLabel`**.
+**`src/features/ops/copy/ops-trips-copy.ts`** — page strings, table caption, row **`aria-label`**, map/comms labels, **`tripStatusDisplayLabel`**.
 
 ### Tests
 
@@ -967,7 +967,7 @@ Use **[`docs/ops-console.md`](ops-console.md)** checklist for **`/ops/invoicing`
 
 <span id="parity-17-17"></span>
 
-## FE.17.12 / Story 17.17 — `/ops/comms`, `/ops/compliance`, `/ops/close-protection`, `/ops/experiences` (chrome polish)
+## FE.17.12 / Story 17.17 — `/ops/comms`, `/ops/compliance`, `/ops/experiences` (chrome polish)
 
 **Sources:** [`docs/stories/17.17.story.md`](stories/17.17.story.md); **FE.17.12** rollout **items 10–11**; Wheelzie **#1** (dense tables + status), **#10** (recent activity feed pattern for comms — **not** duplicated on `/ops` dashboard per visual-redesign mapping) via [`docs/design/visual-redesign-references.md`](design/visual-redesign-references.md).
 
@@ -976,9 +976,8 @@ Use **[`docs/ops-console.md`](ops-console.md)** checklist for **`/ops/invoicing`
 | Topic | Decision |
 |-------|-----------|
 | **Comms activity timeline** | **Read-only** vertical timeline built from **`buildCommsRegistryActivityFeed(rules, templates)`** — merges **`updated_at`** from loaded dispatch rules + template metadata, sorted newest-first, capped (**24**). **No** fabricated events (**NFR.17.6**). |
-| **`OpsPagination`** | **Deferred** on all four routes — no new **`page`/`per`** in this story. |
-| **Copy** | One export per route: **`ops-comms-copy.ts`**, **`ops-compliance-copy.ts`**, **`ops-close-protection-copy.ts`**, **`ops-experiences-copy.ts`**. |
-| **Close protection header** | **`OpsPageHeader`** + **`OpsFilterRow`** replace raw **`h1`** / intro paragraph; filter summary + **Clear** link live in the filter row. |
+| **`OpsPagination`** | **Deferred** on these routes — no new **`page`/`per`** in this story. |
+| **Copy** | One export per route: **`ops-comms-copy.ts`**, **`ops-compliance-copy.ts`**, **`ops-experiences-copy.ts`**. |
 
 ### Route matrix
 
@@ -986,7 +985,6 @@ Use **[`docs/ops-console.md`](ops-console.md)** checklist for **`/ops/invoicing`
 |-------|----------------------|
 | **`/ops/comms`** | **`OpsCommsRegistryClient`**: activity timeline section; **`OpsTableShell`** tables with **`hover:bg-ops-accent-soft`**; **`OpsStatusPill`** for active + channel; token error alert; **`ops-comms-copy`**. |
 | **`/ops/compliance`** | Incidents list: **`OpsStatusPill`** (category); doc tables: **`OpsStatusPill`** for document type; row/list **`hover:bg-ops-accent-soft`**; **`ops-compliance-copy`**; **`ComplianceDsrPanel`** token border (**amber** / ops). |
-| **`/ops/close-protection`** | **`OpsPageHeader`**, **`OpsFilterRow`**, engagement cards **`OpsStatusPill`** via **`getOpsStatusPillTone`**, hover soft accent; **`ops-close-protection-copy`**. |
 | **`/ops/experiences`** | **`OpsFilterRow`**; bookings table **`OpsAvatarCell`** + **`OpsStatusPill`** (intent); package grid **`OpsStatusPill`** Active/Inactive; row hover; **`ops-experiences-copy`**. |
 
 ### RSC / client boundaries
@@ -995,7 +993,6 @@ Use **[`docs/ops-console.md`](ops-console.md)** checklist for **`/ops/invoicing`
 |------|--------|--------|
 | **Comms** | **`page.tsx`** — load registry | **`OpsCommsRegistryClient`** — rules/templates/timeline |
 | **Compliance** | **RSC** full page | **`ComplianceDsrPanel`** |
-| **Close protection** | **RSC** list + URL parse | **`CloseProtectionCreateForm`** |
 | **Experiences** | **RSC** packages + bookings | **`OpsExperiencePackagesPanel`** |
 
 ### Tests
@@ -1004,7 +1001,7 @@ Use **[`docs/ops-console.md`](ops-console.md)** checklist for **`/ops/invoicing`
 
 ### Tablet / **FE.5.7**
 
-Spot-check all four routes per **[`docs/ops-console.md`](ops-console.md)** (sidebar drawer **768px**, desktop **≥1024px**).
+Spot-check these routes per **[`docs/ops-console.md`](ops-console.md)** (sidebar drawer **768px**, desktop **≥1024px**).
 
 ---
 

@@ -19,7 +19,6 @@ export type OpsActionLogEntry = {
 	entityId?: string
 	bookingId?: string
 	tripId?: string
-	engagementId?: string
 	/** High-level error code for failures */
 	code?: string
 	/** Redacted internal hint for operators (never raw Postgres text in production-facing sinks) */
@@ -60,7 +59,6 @@ export function logOpsAction(entry: OpsActionLogEntry): void {
 		...(entry.entityId ? { entityId: entry.entityId } : {}),
 		...(entry.bookingId ? { bookingId: entry.bookingId } : {}),
 		...(entry.tripId ? { tripId: entry.tripId } : {}),
-		...(entry.engagementId ? { engagementId: entry.engagementId } : {}),
 		...(entry.code ? { code: entry.code } : {}),
 		...(entry.hint ? { hint: entry.hint } : {}),
 		...(entry.meta ? { meta: redactMeta(entry.meta) } : {}),

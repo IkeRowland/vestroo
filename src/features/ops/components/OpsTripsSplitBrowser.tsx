@@ -1,17 +1,18 @@
 'use client'
 
 import Image from 'next/image'
-import Link from 'next/link'
 import { MapPin } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import * as React from 'react'
 
+import { OpsAvatarCell } from '@/features/ops/components/OpsAvatarCell'
 import { TripOpsForms } from '@/features/ops/components/TripOpsForms'
 import { OpsDetailRail } from '@/features/ops/components/OpsDetailRail'
 import { OpsSplitView } from '@/features/ops/components/OpsSplitView'
 import { OpsStatusPill } from '@/features/ops/components/OpsStatusPill'
 import { OpsTableShell } from '@/features/ops/components/ops-primitives'
 import { opsTripsCopy, tripStatusDisplayLabel } from '@/features/ops/copy/ops-trips-copy'
+import { formatQueueStatusLabel } from '@/lib/ops-bookings-queue-query'
 import { getOpsStatusPillTone } from '@/features/ops/ops-status-pill-tones'
 import { buildOpsTripsHref } from '@/lib/ops-trips-url'
 import { cn } from '@/lib/utils'
@@ -23,9 +24,17 @@ export type OpsTripsSplitBrowserTripRow = {
 	time_end_estimate: string
 	vehicle_id: string
 	chauffeur_id: string
-	service_run_id: string | null
 	ops_delay_note: string | null
 	ops_revised_time_end_estimate: string | null
+	/** Booking payment ref or short id — same rules as Bookings queue Reference column. */
+	ref_label: string
+	pickup_datetime: string | null
+	customer_name: string | null
+	customer_email: string | null
+	linked_account_name: string | null
+	client_type: string | null
+	origin_name: string | null
+	destination_name: string | null
 }
 
 export type OpsTripsSplitBrowserVehicleOption = {
@@ -46,6 +55,26 @@ function formatSchedule(startIso: string, endIso: string) {
 		new Date(startIso).toLocaleString(),
 		new Date(endIso).toLocaleString(),
 	)
+}
+
+function truncateText(value: string | null | undefined, max: number): string {
+	const v = value?.trim()
+	if (!v) {
+		return '—'
+	}
+	if (v.length <= max) {
+		return v
+	}
+	return `${v.slice(0, max - 1)}…`
+}
+
+function formatRouteSummary(origin: string | null, dest: string | null): string {
+	const o = truncateText(origin, 22)
+	const d = truncateText(dest, 22)
+	if (o === '—' && d === '—') {
+		return '—'
+	}
+	return `${o} → ${d}`
 }
 
 export function OpsTripsSplitBrowser({
@@ -90,22 +119,28 @@ export function OpsTripsSplitBrowser({
 
 	const tableBody = (
 		<OpsTableShell caption={opsTripsCopy.tableCaption} tableClassName="text-sm">
-			<thead>
-				<tr className="border-b border-ops-border text-ops-table-header text-ops-muted">
-					<th scope="col" className="py-2 pr-4 font-semibold">
-						Trip
+			<thead className="border-b border-ops-border bg-ops-surface/60 text-ops-table-head text-xs uppercase tracking-wide text-ops-muted">
+				<tr>
+					<th scope="col" className="px-3 py-2 font-medium">
+						Reference
 					</th>
-					<th scope="col" className="py-2 pr-4 font-semibold">
+					<th scope="col" className="px-3 py-2 font-medium">
+						Customer
+					</th>
+					<th scope="col" className="px-3 py-2 font-medium">
+						Pickup
+					</th>
+					<th scope="col" className="px-3 py-2 font-medium">
 						Status
 					</th>
-					<th scope="col" className="py-2 pr-4 font-semibold">
-						Schedule
+					<th scope="col" className="px-3 py-2 font-medium">
+						Client
 					</th>
-					<th scope="col" className="py-2 pr-4 font-semibold">
+					<th scope="col" className="px-3 py-2 font-medium">
+						Route
+					</th>
+					<th scope="col" className="px-3 py-2 font-medium">
 						Vehicle / driver
-					</th>
-					<th scope="col" className="py-2 pr-4 font-semibold">
-						Links
 					</th>
 				</tr>
 			</thead>
@@ -123,7 +158,7 @@ export function OpsTripsSplitBrowser({
 							data-ops-trip-row={t.id}
 							data-testid="ops-trips-row"
 							tabIndex={0}
-							aria-label={opsTripsCopy.rowOpenDetailAria(t.id.slice(0, 8))}
+							aria-label={opsTripsCopy.rowOpenDetailAria(t.ref_label.slice(0, 12))}
 							className={cn(
 								'cursor-pointer border-b border-ops-border/80 outline-none transition-colors hover:bg-ops-accent-soft focus-visible:ring-2 focus-visible:ring-ops focus-visible:ring-offset-2 focus-visible:ring-offset-ops-canvas',
 								selected ? 'bg-ops-accent-soft' : null,
@@ -140,23 +175,45 @@ export function OpsTripsSplitBrowser({
 								}
 							}}
 						>
-							<td className="py-3 pr-4 font-mono text-xs text-ops-muted">{t.id}</td>
-							<td className="py-3 pr-4">
+							<td className="px-3 py-2 font-mono text-xs text-ops-foreground">{t.ref_label}</td>
+							<td className="max-w-[14rem] px-3 py-2">
+								<OpsAvatarCell
+									src={null}
+									name={
+										t.customer_name?.trim()
+											? truncateText(t.customer_name, 48)
+											: 'Unknown'
+									}
+									secondary={
+										t.customer_email?.trim()
+											? truncateText(t.customer_email, 40)
+											: t.linked_account_name?.trim() || null
+									}
+								/>
+							</td>
+							<td className="whitespace-nowrap px-3 py-2 text-sm text-ops-muted">
+								{t.pickup_datetime
+									? new Date(t.pickup_datetime).toLocaleString('en-ZA', {
+											timeZone: 'UTC',
+										})
+									: '—'}
+							</td>
+							<td className="px-3 py-2 text-sm">
 								<OpsStatusPill tone={getOpsStatusPillTone(statusKey)}>
 									{tripStatusDisplayLabel(statusKey)}
 								</OpsStatusPill>
 							</td>
-							<td className="max-w-[14rem] py-3 pr-4 text-ops-foreground/90">
-								{formatSchedule(t.time_start_estimate, t.time_end_estimate)}
+							<td className="px-3 py-2 text-sm capitalize text-ops-muted">
+								<OpsStatusPill tone="neutral" dot={false}>
+									{t.client_type ? formatQueueStatusLabel(t.client_type) : '—'}
+								</OpsStatusPill>
 							</td>
-							<td className="max-w-[12rem] py-3 pr-4 text-xs text-ops-muted">
+							<td className="max-w-[14rem] px-3 py-2 text-sm text-ops-muted">
+								{formatRouteSummary(t.origin_name, t.destination_name)}
+							</td>
+							<td className="max-w-[12rem] px-3 py-2 text-xs text-ops-muted">
 								<div className="truncate text-ops-foreground/90">{vehicleLabel}</div>
 								<div className="truncate">{driverLabel}</div>
-								{t.service_run_id ? (
-									<div className="truncate text-ops-dense">
-										{opsTripsCopy.metaRun}: {opsTripsCopy.runValueShort(String(t.service_run_id).slice(0, 8))}
-									</div>
-								) : null}
 								{t.ops_delay_note ? (
 									<div className="mt-1 rounded-md bg-ops-warning/10 px-2 py-1 text-ops-warning">
 										<span className="font-medium">{opsTripsCopy.delayLabel}:</span>{' '}
@@ -169,14 +226,6 @@ export function OpsTripsSplitBrowser({
 										) : null}
 									</div>
 								) : null}
-							</td>
-							<td className="py-3 pr-4" onClick={(e) => e.stopPropagation()}>
-								<Link
-									href={`/ops/close-protection?tripId=${encodeURIComponent(t.id)}`}
-									className="text-sm text-ops-info underline-offset-2 hover:underline"
-								>
-									{opsTripsCopy.closeProtectionLink}
-								</Link>
 							</td>
 						</tr>
 					)
@@ -228,12 +277,6 @@ export function OpsTripsSplitBrowser({
 									{formatSchedule(selectedTrip.time_start_estimate, selectedTrip.time_end_estimate)}
 								</dd>
 							</div>
-							{selectedTrip.service_run_id ? (
-								<div className="flex justify-between gap-2">
-									<dt className="text-ops-muted">{opsTripsCopy.metaRun}</dt>
-									<dd className="font-mono text-xs text-ops-foreground">{selectedTrip.service_run_id}</dd>
-								</div>
-							) : null}
 						</dl>
 						{selectedTrip.ops_delay_note ? (
 							<div
@@ -250,14 +293,6 @@ export function OpsTripsSplitBrowser({
 								) : null}
 							</div>
 						) : null}
-						<p className="mt-3 text-xs">
-							<Link
-								href={`/ops/close-protection?tripId=${encodeURIComponent(selectedTrip.id)}`}
-								className="text-ops-info underline-offset-2 hover:underline"
-							>
-								{opsTripsCopy.closeProtectionLink}
-							</Link>
-						</p>
 					</section>
 
 					<section aria-labelledby="ops-trip-vehicle-visual">

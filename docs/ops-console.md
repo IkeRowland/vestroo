@@ -33,8 +33,6 @@ Authenticated **`/ops/*`** pages (except public **`/ops/login`** and **`/ops/una
 | `/ops/trips` | Trip detail, status transitions, delay capture, vehicle swap. |
 | `/ops/vehicles` | Fleet list + active trip counts + overlap sanity notes. |
 | `/ops/roster` | **`profiles`** (`role = chauffeur`) + upcoming **`chauffeur_schedules`**. |
-| `/ops/close-protection` | List/filter close protection **engagements**; create from **`bookingId`** query; link to **[close-protection-engagements.md](close-protection-engagements.md)**. |
-| `/ops/close-protection/[id]` | Edit **`status`**, **`coordination_notes`**, optional **`trip_id`** (must match **`booking_trips`**). |
 | `/ops/compliance` | **VST-12:** recent **`compliance_incidents`**, compliance documents nearing expiry (default **30**-day horizon, includes overdue), **admin-only** DSR export / anonymise panel (`exportDataSubjectAction`, `anonymiseDataSubjectAction`). |
 | `/ops/invoicing` | **VST-13:** staff form to set **`invoice_requested`**, **`purchase_order_ref`**, **`billing_entity_ref`** on a booking (`updateBookingInvoicingHooksAction`); MVP — no PDF. |
 | `/ops/bookings` | **Epic 12** unified **bookings** list; **Epic 14 (14.8 / Q18):** **“Ready to assign”** filter chip — **`bookings.status = 'ready_to_assign'`** (live count next to the label) — same predicate as [`/ops/fulfil?queue=paid`](fulfil-queue-buckets.md#paid-assignment-queue) (see that doc for the full `paid` bucket). **Walk-in** booking **detail** (`client_type = 'walk_in'`) includes **“Send quote”** so staff can run **`sendWalkInQuote`** and email the customer `/q/...` links (**14.6** / **14.8**). |
@@ -62,7 +60,7 @@ Authenticated **`/ops/*`** pages (except public **`/ops/login`** and **`/ops/una
 - **Allowed:** `profiles.role` ∈ **`dispatcher`**, **`admin`** (matches **`public.is_staff(uid)`**).
 - **Layout gate:** `src/app/(ops)/ops/layout.tsx` calls **`requireOpsStaffPage()`** for all `/ops/*` except **`/ops/login`** and **`/ops/unauthorized`**. **`middleware.ts`** continues to set **`x-pathname`** for **`/ops`** and **`/field`** where consumers rely on it.
 - **Server Actions:** `src/actions/opsDispatch.ts` and **`src/actions/opsCompliance.ts`** use **`getOpsStaffForAction()`** for dispatcher/admin — returns **`Forbidden`** / **`Not authenticated`** instead of redirecting. **DSR** actions use **`getOpsAdminForAction()`** (**`admin`** only).
-- **Marketing (`(marketing)`) and booking (`(app)`):** No ops Server Actions or dispatcher chrome are imported there; mutations stay in **`opsDispatch`**, **`opsCloseProtection`**, and ops pages only.
+- **Marketing (`(marketing)`) and booking (`(app)`):** No ops Server Actions or dispatcher chrome are imported there; mutations stay in **`opsDispatch`**, **`opsCompliance`**, and other ops-scoped modules only.
 - **Chauffeurs:** Use the separate field app **`/field/*`** (**`src/app/(field)/`**, **`src/lib/field-auth.ts`**, **`src/actions/fieldChauffeur.ts`**) — see **[field-tools.md](field-tools.md)**.
 
 ## Supabase client strategy (JWT vs service role)
@@ -144,7 +142,7 @@ No deferral for these two; richer agendas (week grid, run-centric timelines) can
 ## Audit
 
 - **Table:** **`public.ops_audit_log`** (see **`docs/data-models.md`**).
-- **Actions logged:** assign booking to run, trip status change, delay, vehicle swap, close protection engagement create/update (VST-11), compliance incident / document creates (VST-12), **`dsr_export`** / **`dsr_anonymise`** (admin, VST-12).
+- **Actions logged:** assign booking to run, trip status change, delay, vehicle swap, compliance incident / document creates (VST-12), **`dsr_export`** / **`dsr_anonymise`** (admin, VST-12).
 
 ## Related
 

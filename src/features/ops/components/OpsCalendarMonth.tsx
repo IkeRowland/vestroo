@@ -2,11 +2,10 @@
 
 import * as React from 'react'
 
-import { opsRosterCopy } from '@/features/ops/copy/ops-roster-copy'
+import { opsFleetDriversCopy } from '@/features/ops/copy/ops-fleet-drivers-copy'
 import type { OpsCalendarWeekEvent } from '@/features/ops/lib/map-ops-calendar-trips'
 import type { OpsStatusPillTone } from '@/features/ops/ops-status-pill-tones'
-import { addDaysLocal, formatYmdLocal } from '@/lib/ops-calendar-url'
-import { parseYmToFirstDay } from '@/lib/ops-roster-url'
+import { addDaysLocal, formatYmdLocal, monthGridStartMondayLocal, parseYmToFirstDay } from '@/lib/ops-calendar-url'
 import { cn } from '@/lib/utils'
 
 const CHIP: Record<OpsStatusPillTone, string> = {
@@ -23,20 +22,14 @@ function eventDayYmdLocal(iso: string): string {
 	return formatYmdLocal(new Date(iso))
 }
 
-function monthGridStart(monthFirst: Date): Date {
-	const offset = (monthFirst.getDay() + 6) % 7
-	const d = new Date(monthFirst.getFullYear(), monthFirst.getMonth(), monthFirst.getDate())
-	d.setDate(d.getDate() - offset)
-	d.setHours(0, 0, 0, 0)
-	return d
-}
-
 export type OpsCalendarMonthProps = {
 	/** **`YYYY-MM`** */
 	monthYm: string
 	events: OpsCalendarWeekEvent[]
 	selectedEventId: string | null
 	onActivateEvent: (ev: OpsCalendarWeekEvent) => void
+	/** Defaults to fleet drivers copy (shifts); pass calendar copy on **`/ops/calendar`**. */
+	regionAriaLabel?: string
 	className?: string
 }
 
@@ -48,11 +41,12 @@ export function OpsCalendarMonth({
 	events,
 	selectedEventId,
 	onActivateEvent,
+	regionAriaLabel = opsFleetDriversCopy.gridMonthAria,
 	className,
 }: OpsCalendarMonthProps) {
 	const [expandedYmd, setExpandedYmd] = React.useState<Record<string, boolean>>({})
 	const monthFirst = React.useMemo(() => parseYmToFirstDay(monthYm), [monthYm])
-	const gridStart = React.useMemo(() => monthGridStart(monthFirst), [monthFirst])
+	const gridStart = React.useMemo(() => monthGridStartMondayLocal(monthFirst), [monthFirst])
 	const todayYmd = formatYmdLocal(new Date())
 
 	const eventsByYmd = React.useMemo(() => {
@@ -88,7 +82,7 @@ export function OpsCalendarMonth({
 		<div
 			className={cn('min-h-[720px] min-w-0', className)}
 			role="region"
-			aria-label={opsRosterCopy.gridMonthAria}
+			aria-label={regionAriaLabel}
 		>
 			<div className="rounded-ops-card border border-ops-border bg-ops-surface p-2">
 				<div
@@ -181,7 +175,7 @@ export function OpsCalendarMonth({
 											type="button"
 											className="mt-auto text-left text-[9px] font-medium text-ops-info underline-offset-2 hover:underline"
 											aria-expanded={expanded}
-											aria-label={opsRosterCopy.expandDayShiftsAria(ymd, hidden.length)}
+											aria-label={opsFleetDriversCopy.expandDayShiftsAria(ymd, hidden.length)}
 											onClick={() =>
 												setExpandedYmd((prev) => ({
 													...prev,
@@ -189,7 +183,7 @@ export function OpsCalendarMonth({
 												}))
 											}
 										>
-											{expanded ? opsRosterCopy.showLess : opsRosterCopy.moreShiftsLabel(hidden.length)}
+											{expanded ? opsFleetDriversCopy.showLess : opsFleetDriversCopy.moreShiftsLabel(hidden.length)}
 										</button>
 									) : null}
 								</div>

@@ -124,7 +124,7 @@ export async function fetchVehicleTypeById(id: string): Promise<VehicleTypeRow |
       return mapVehicleCategoryRow(cat as Record<string, unknown>)
     }
 
-    /** Trip-request Slide 2 stores `public.vehicles.id`; resolve pricing tier via category. */
+    /** Trip-request Slide 2 stores `vehicle_categories.id` (or legacy `vehicles.id` in older metadata). */
     const { data: veh, error: vehErr } = await supabase
       .from('vehicles')
       .select('category_id')

@@ -1,7 +1,8 @@
 import { formatBookingIntentLabel } from '@/features/ops/booking-intent-labels'
 import {
-	extractOpsBookingVehicleCategoryName,
-	extractOpsBookingVehicleName,
+	effectiveBookingStatusKeyForOps,
+	extractOpsBookingVehicleCategoryNameForDetail,
+	extractOpsBookingVehicleNameForDetail,
 	linkedAccountNameFromOpsBooking,
 	type OpsBookingDetailRow,
 	opsBookingServiceTypeLabel,
@@ -42,18 +43,29 @@ function formatCreated(iso: string): string {
 
 type OpsBookingImmutableSummaryProps = {
 	booking: OpsBookingDetailRow
+	/**
+	 * Shown for **Booking total (if any)**. Use the resolved current quote total when a quote has been
+	 * sent or revised (`bookings.current_quote_id` / `v_booking_current_quote`); otherwise falls back to
+	 * `booking.total_amount`.
+	 */
+	displayBookingTotalZar?: number | null
 }
 
 /**
  * Read-only booking facts for ops — same conceptual fields as account portal summary,
  * plus account / walk-in customer identifiers staff need when quoting.
  */
-export function OpsBookingImmutableSummary({ booking }: OpsBookingImmutableSummaryProps) {
+export function OpsBookingImmutableSummary({
+	booking,
+	displayBookingTotalZar,
+}: OpsBookingImmutableSummaryProps) {
+	const bookingTotalForDisplay = displayBookingTotalZar ?? booking.total_amount
 	const serviceType = opsBookingServiceTypeLabel(booking)
-	const vehicleName = extractOpsBookingVehicleName(booking.booking_trips)
-	const vehicleCategory = extractOpsBookingVehicleCategoryName(booking.booking_trips)
+	const vehicleName = extractOpsBookingVehicleNameForDetail(booking)
+	const vehicleCategory = extractOpsBookingVehicleCategoryNameForDetail(booking)
 	const accountName = linkedAccountNameFromOpsBooking(booking)
 	const intentLabel = formatBookingIntentLabel(booking.booking_intent)
+	const statusLabelKey = effectiveBookingStatusKeyForOps(booking.status, booking.booking_trips)
 
 	return (
 		<section
@@ -84,7 +96,7 @@ export function OpsBookingImmutableSummary({ booking }: OpsBookingImmutableSumma
 				<div>
 					<dt className="text-xs font-medium uppercase tracking-wide text-ops-muted">Status</dt>
 					<dd className="mt-1 text-sm text-ops-foreground">
-						{booking.status ? formatQueueStatusLabel(booking.status) : '—'}
+						{statusLabelKey ? formatQueueStatusLabel(statusLabelKey) : '—'}
 					</dd>
 				</div>
 				<div>
@@ -111,7 +123,7 @@ export function OpsBookingImmutableSummary({ booking }: OpsBookingImmutableSumma
 					<dt className="text-xs font-medium uppercase tracking-wide text-ops-muted">
 						Booking total (if any)
 					</dt>
-					<dd className="mt-1 text-sm text-ops-foreground">{formatZar(booking.total_amount)}</dd>
+					<dd className="mt-1 text-sm text-ops-foreground">{formatZar(bookingTotalForDisplay)}</dd>
 				</div>
 				<div>
 					<dt className="text-xs font-medium uppercase tracking-wide text-ops-muted">Pickup</dt>

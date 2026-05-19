@@ -5,12 +5,18 @@ function utcMidnight(d: Date): number {
 	return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())
 }
 
+export type BookingsQueueOverviewChartRow = {
+	status: string
+	/** UTC instant for day bucketing — use `updated_at` as completion/cancellation proxy. */
+	bucket_date: string
+}
+
 /**
  * Last 7 **UTC** calendar days (inclusive of today), stacked as **completed** (up) vs **cancelled** (down) for {@link OpsBarChart}.
  * @param referenceDate — optional “today” (e.g. tests); defaults to runtime `Date`.
  */
 export function buildBookingsQueueOverviewBarSeries(
-	rows: { status: string; created_at: string }[],
+	rows: BookingsQueueOverviewChartRow[],
 	referenceDate?: Date,
 ): OpsBarChartSeries {
 	const now = referenceDate ?? new Date()
@@ -34,7 +40,7 @@ export function buildBookingsQueueOverviewBarSeries(
 		if (row.status !== 'completed' && row.status !== 'cancelled') {
 			continue
 		}
-		const t = new Date(row.created_at)
+		const t = new Date(row.bucket_date)
 		if (Number.isNaN(t.getTime())) {
 			continue
 		}
@@ -57,20 +63,23 @@ export function buildBookingsQueueOverviewBarSeries(
 
 export async function fetchBookingsQueueOverviewChartRows(
 	supabase: SupabaseClient,
-): Promise<{ status: string; created_at: string }[]> {
+): Promise<BookingsQueueOverviewChartRow[]> {
 	const now = new Date()
 	const from = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 6))
 	const to = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1))
 
 	const { data, error } = await supabase
 		.from('bookings')
-		.select('status, created_at')
+		.select('status, updated_at')
 		.in('status', ['completed', 'cancelled'])
-		.gte('created_at', from.toISOString())
-		.lt('created_at', to.toISOString())
+		.gte('updated_at', from.toISOString())
+		.lt('updated_at', to.toISOString())
 
 	if (error || !data) {
 		return []
 	}
-	return data as { status: string; created_at: string }[]
+	return (data as { status: string; updated_at: string }[]).map((row) => ({
+		status: row.status,
+		bucket_date: row.updated_at,
+	}))
 }

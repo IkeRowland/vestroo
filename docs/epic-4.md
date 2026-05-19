@@ -2,7 +2,7 @@
 
 ## Description
 
-This epic defines the **company-aligned** product roadmap for **Vestroo Pty Ltd** (South Africa): premium shuttle, corporate transport, VIP transfers, curated tours, and close protection—delivered as a **Next.js + Supabase** application. Scope runs from **marketing and conversion** through **booking, fulfilment, and compliance** in one coherent system. Planning and naming **supersede** bus-centric capstone narratives; not every historical path in the repo must be renamed in one pass.
+This epic defines the **company-aligned** product roadmap for **Vestroo Pty Ltd** (South Africa): premium shuttle, corporate transport, VIP transfers, and curated tours—delivered as a **Next.js + Supabase** application. Scope runs from **marketing and conversion** through **booking, fulfilment, and compliance** in one coherent system. Planning and naming **supersede** bus-centric capstone narratives; not every historical path in the repo must be renamed in one pass.
 
 Authoritative positioning: [`docs/Overview Vestroo-Pty-Ltd.pdf`](Overview%20Vestroo-Pty-Ltd.pdf). Older epics in this repo ([`epic-1.md`](epic-1.md), [`epic-2.md`](epic-2.md), [`epic-3.md`](epic-3.md)) remain **historical slices**; confirm implementation against the live stack (`package.json`, `supabase/`).
 
@@ -10,7 +10,7 @@ Authoritative positioning: [`docs/Overview Vestroo-Pty-Ltd.pdf`](Overview%20Vest
 
 * Present a **credible, high-trust brand** (discretion, punctuality, safety, fleet quality).
 * Support **on-demand and pre-booked** movement: point-to-point, scheduled patterns, multi-stop itineraries, **hourly/dedicated hire**, and **packaged tours/experiences**.
-* Enable **operations** to assign **chauffeurs**, **vehicles**, and (where applicable) **protection details** without treating the business as public mass transit.
+* Enable **operations** to assign **chauffeurs**, **vehicles**, and (where applicable) **VIP / executive handling notes** without treating the business as public mass transit.
 * Provide **one clear path** for local, staging, and production: documented environments, Supabase alignment, repeatable **lint/test/build** gates, migrations, and **no secrets in git**.
 * Order delivery so **schema and auth** precede **operations consoles and field tools**; **compliance** has hooks from day one with fuller UI later.
 
@@ -34,11 +34,11 @@ The system MUST provide a **private security disclosure** path in root **`SECURI
 
 ### VST-4: Marketing site — brand, services, trust, SEO, lead capture
 
-The platform MUST ship **dedicated marketing routes** under **`src/app/(marketing)/`** (or equivalent) for **premium shuttle**, **corporate**, **VIP**, **tours**, **close protection** (teaser where appropriate), plus **fleet** (vehicle classes), **safety / standards** teaser, **contact** with lead capture, and **about**—aligned with **Overview Vestroo-Pty-Ltd.pdf** and **`docs/epic-4.md`** domain vocabulary (no misleading mass-transit framing). **Header/Footer** navigation MUST surface these areas. **SEO:** unique **`generateMetadata()`** (or Metadata API) per primary corridor, **`sitemap.ts`** / **`robots.ts`**, canonical/Open Graph via **`NEXT_PUBLIC_APP_URL`** / **`metadataBase`**. **Performance:** **`next/font`**, sensible **LCP** treatment for hero images, documented **ISR/revalidate** for static content modules. Core Web Vitals posture MUST avoid obvious regressions; visible copy MUST NOT use legacy demo naming. Track detail in [`docs/stories/vst-4.story.md`](stories/vst-4.story.md).
+The platform MUST ship **dedicated marketing routes** under **`src/app/(marketing)/`** (or equivalent) for **premium shuttle**, **corporate**, **VIP**, **tours**, plus **fleet** (vehicle classes), **safety / standards** teaser, **contact** with lead capture, and **about**—aligned with **Overview Vestroo-Pty-Ltd.pdf** and **`docs/epic-4.md`** domain vocabulary (no misleading mass-transit framing). **Header/Footer** navigation MUST surface these areas. **SEO:** unique **`generateMetadata()`** (or Metadata API) per primary corridor, **`sitemap.ts`** / **`robots.ts`**, canonical/Open Graph via **`NEXT_PUBLIC_APP_URL`** / **`metadataBase`**. **Performance:** **`next/font`**, sensible **LCP** treatment for hero images, documented **ISR/revalidate** for static content modules. Core Web Vitals posture MUST avoid obvious regressions; visible copy MUST NOT use legacy demo naming. Track detail in [`docs/stories/vst-4.story.md`](stories/vst-4.story.md).
 
 ### VST-5: Data model, migrations, RLS, and Vestroo domain naming
 
-The platform MUST express core data in **Vestroo language** (organisations/clients, **service routes**, **patterns**, **runs**, **service points**, **vehicles**, **chauffeurs**, **bookings**/**trips**, optional tour packages, close protection engagements, documents, audit fields) in `supabase/migrations/` with **RLS by role** (customer, chauffeur, dispatcher, admin). Migrations MUST apply cleanly; RLS MUST be smoke-tested. The system MUST **eliminate misleading public-transit naming** in schema, APIs, and user-facing strings where it misrepresents the operator (e.g. inventory/rename tables and columns per domain vocabulary, update RLS/FKs and app types in coordinated changes). **Canonical delivery detail:** [`docs/stories/vst-5.story.md`](stories/vst-5.story.md) and [`docs/data-models.md`](data-models.md).
+The platform MUST express core data in **Vestroo language** (organisations/clients, **service routes**, **patterns**, **runs**, **service points**, **vehicles**, **chauffeurs**, **bookings**/**trips**, optional tour packages, documents, audit fields) in `supabase/migrations/` with **RLS by role** (customer, chauffeur, dispatcher, admin). Migrations MUST apply cleanly; RLS MUST be smoke-tested. The system MUST **eliminate misleading public-transit naming** in schema, APIs, and user-facing strings where it misrepresents the operator (e.g. inventory/rename tables and columns per domain vocabulary, update RLS/FKs and app types in coordinated changes). **Canonical delivery detail:** [`docs/stories/vst-5.story.md`](stories/vst-5.story.md) and [`docs/data-models.md`](data-models.md).
 
 ### VST-6: Booking and quotes
 
@@ -60,9 +60,9 @@ The platform MUST provide live **vehicle location** and **ETA** for authorised v
 
 The platform MUST support publishing **tour/experience packages**, itineraries, and booking attachments (dates, group size, add-ons) from an agreed content source (markdown, DB, or headless), tied to **bookings**. At least one package MUST be bookable end-to-end (**delivered:** Postgres **`experience_packages`**, marketing **`/tours`**, **`calculateExperienceQuote`**, **`booking_metadata`** — see [`docs/tours-and-experiences.md`](tours-and-experiences.md)). Track detail in [`docs/stories/vst-10.story.md`](stories/vst-10.story.md).
 
-### VST-11: Close protection (phased)
+### VST-11: Retired numbered slot
 
-The platform MUST support a high-level **close protection engagement** workflow linked to **bookings**/**trips**, with restricted roles and coordination notes, without over-building tactical security tooling in MVP. Engagements MUST be visible only to cleared roles; PII minimisation MUST be documented. **Delivered in-repo:** **`public.close_protection_engagements`**, staff RLS, **`src/actions/opsCloseProtection.ts`**, **`/ops/close-protection`**, audit events, **`docs/close-protection-engagements.md`**. Track detail in [`docs/stories/vst-11.story.md`](stories/vst-11.story.md).
+This story ID is intentionally **unused** on the active roadmap; see [`docs/stories/vst-11.story.md`](stories/vst-11.story.md).
 
 ### VST-12: Compliance and safety
 
@@ -88,7 +88,7 @@ The platform MUST have **documented** E2E for **booking** (Playwright; **fixture
 * **Framework:** Next.js (App Router), deployment on **Vercel** or equivalent.
 * **Data:** **Supabase** (PostgreSQL, Auth, Realtime, Storage as needed); migrations in `supabase/migrations/`.
 * **APIs:** Prefer **Server Actions** for App Router mutations; **Route Handlers** for webhooks and non-Next HTTP clients.
-* **Delivery grouping (themes, not story IDs):** Foundation **VST-1–VST-3** → Marketing **VST-4** → Data/RLS **VST-5** → Booking **VST-6** → Ops **VST-7** → Field **VST-8** → Realtime **VST-9** → Tours **VST-10** → Close protection **VST-11** → Compliance **VST-12** → Integrations/payments **VST-13** → Hardening **VST-14**.
+* **Delivery grouping (themes, not story IDs):** Foundation **VST-1–VST-3** → Marketing **VST-4** → Data/RLS **VST-5** → Booking **VST-6** → Ops **VST-7** → Field **VST-8** → Realtime **VST-9** → Tours **VST-10** → *(retired VST-11 slot)* → Compliance **VST-12** → Integrations/payments **VST-13** → Hardening **VST-14**.
 
 ## Domain vocabulary (schema, UI, APIs)
 
@@ -101,7 +101,7 @@ The platform MUST have **documented** E2E for **booking** (Playwright; **fixture
 | Customer commitment | **Booking**; **trip** / **leg** / **segment** | “Ticket” unless sold as tickets |
 | Corporate / recurring | **Corporate pattern**, **contracted service**, **standing booking** | — |
 | Leisure / packaged | **Tour** / **experience package**, **itinerary** | — |
-| High-risk / executive | **Close protection engagement** | — |
+| High-risk / executive | **VIP detail** (enquiry-led, ops-coordinated) | — |
 | Live status | **Trip status**, **vehicle location**, **ETA** | “Bus tracking” as product name |
 
 **Runs** = operational instances. **Patterns** = templates (dow, times, default service points). **Service routes** = marketed or logical corridors.

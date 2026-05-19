@@ -11,6 +11,7 @@ import {
   tripRequestSubmitPayloadSchema,
 } from '@/features/booking/components/trip-request/trip-request-submit-schema';
 import { isQuoteFirstForNonTrivialIntentsEnabled } from '@/lib/quote-first-non-trivial-intents';
+import { isPortalActiveAccountBookingInsert } from '@/lib/account-portal-booking-insert';
 
 /**
  * Public trip-request funnel (FE.10.4 / FE.10.5): persists Slides 1–3 to `bookings` with
@@ -85,6 +86,10 @@ export async function submitTripRequest(raw: unknown) {
     const useQuoteFirst = isQuoteFirstForNonTrivialIntentsEnabled();
     const riderCols = tripRequestRiderToDbColumns(parsed.data.rider, slide3.countryIso2);
 
+    const portalAccountBooking =
+      clientTyped.client_type === 'account_client' &&
+      isPortalActiveAccountBookingInsert(clientTyped.booking_metadata as Record<string, unknown>);
+
     const bookingData = {
       origin_place_id: slide1.pickup.placeId,
       origin_address: slide1.pickup.formattedAddress,
@@ -100,7 +105,8 @@ export async function submitTripRequest(raw: unknown) {
       trip_date: pickupDatetime.toISOString(),
       passenger_count: slide1.passengers,
       flight_number: slide1.flightNumber?.trim() ? slide1.flightNumber.trim() : null,
-      vehicle_id: slide2.id,
+      // Trip-request slide 2 selects a vehicle **category** id, not a fleet vehicle row.
+      vehicle_id: null,
       total_amount: 0,
       estimated_duration: null as number | null,
       distance_km: null as number | null,
@@ -110,7 +116,11 @@ export async function submitTripRequest(raw: unknown) {
       rider_name: riderCols.rider_name,
       rider_email: riderCols.rider_email,
       rider_phone: riderCols.rider_phone,
-      status: useQuoteFirst ? 'submitted' : 'pending',
+      status: portalAccountBooking
+        ? 'pending_confirmation'
+        : useQuoteFirst
+          ? 'submitted'
+          : 'pending',
       payment_status: 'pending',
       payment_reference: bookingReference,
       booking_intent: 'trip_request',

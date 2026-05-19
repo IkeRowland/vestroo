@@ -16,18 +16,32 @@ describe('getOpsBreadcrumbs', () => {
 		])
 	})
 
-	it('labels close protection engagement segment', () => {
-		expect(
-			getOpsBreadcrumbs('/ops/close-protection/eng-123'),
-		).toEqual([
+	it('labels experiences segment', () => {
+		expect(getOpsBreadcrumbs('/ops/experiences')).toEqual([
 			{ href: '/ops', label: 'Operations' },
-			{ href: '/ops/close-protection', label: 'Close protection' },
-			{ href: '/ops/close-protection/eng-123', label: 'Engagement' },
+			{ href: '/ops/experiences', label: 'Experiences' },
 		])
 	})
 
 	it('returns empty for non-ops paths', () => {
 		expect(getOpsBreadcrumbs('/book/search')).toEqual([])
+	})
+
+	it('labels fleet hub and categories segment', () => {
+		expect(getOpsBreadcrumbs('/ops/fleet')).toEqual([
+			{ href: '/ops', label: 'Operations' },
+			{ href: '/ops/fleet', label: 'Fleet' },
+		])
+		expect(getOpsBreadcrumbs('/ops/fleet/vehicles')).toEqual([
+			{ href: '/ops', label: 'Operations' },
+			{ href: '/ops/fleet', label: 'Fleet' },
+			{ href: '/ops/fleet/vehicles', label: 'Vehicles' },
+		])
+		expect(getOpsBreadcrumbs('/ops/fleet/categories')).toEqual([
+			{ href: '/ops', label: 'Operations' },
+			{ href: '/ops/fleet', label: 'Fleet' },
+			{ href: '/ops/fleet/categories', label: 'Categories' },
+		])
 	})
 
 	it('labels comms registry segment', () => {
@@ -119,6 +133,15 @@ describe('OPS_NAV_GROUPS / filterOpsNavGroups (Story 16.22)', () => {
 		expect(bookingsIdx).toBeGreaterThan(hrefs.indexOf('/ops'))
 	})
 
+	it('lists Clients and Fleet in fulfilment after Trips', () => {
+		const g = fulfilment()
+		const hrefs = g!.items.map((i) => i.href)
+		expect(hrefs).toContain('/ops/clients')
+		expect(hrefs).toContain('/ops/fleet/drivers')
+		expect(hrefs.indexOf('/ops/clients')).toBeGreaterThan(hrefs.indexOf('/ops/trips'))
+		expect(hrefs.indexOf('/ops/fleet/drivers')).toBeGreaterThan(hrefs.indexOf('/ops/clients'))
+	})
+
 	it('exposes fulfilment primary items without legacy shortcuts', () => {
 		const g = fulfilment()
 		expect(g?.legacyItems).toBeUndefined()
@@ -149,21 +172,12 @@ describe('OPS_NAV_GROUPS / filterOpsNavGroups (Story 16.22)', () => {
 })
 
 describe('OPS_NAV_GROUPS (Story 17.3 — FE.17.3)', () => {
-	it('uses Fleet & People and Finance titles (Configuration optional)', () => {
-		expect(OPS_NAV_GROUPS.map((g) => g.title)).toEqual([
-			'Fulfilment',
-			'Fleet & People',
-			'Finance',
-		])
+	it('uses Fulfilment and Finance titles (Configuration optional)', () => {
+		expect(OPS_NAV_GROUPS.map((g) => g.title)).toEqual(['Fulfilment', 'Finance'])
 	})
 
-	it('merges vehicles, clients, and roster under fleet_people', () => {
-		const g = OPS_NAV_GROUPS.find((x) => x.id === 'fleet_people')
-		expect(g?.items.map((i) => i.href)).toEqual([
-			'/ops/vehicles',
-			'/ops/clients',
-			'/ops/roster',
-		])
+	it('does not ship a separate Fleet & People group', () => {
+		expect(OPS_NAV_GROUPS.some((g) => g.id === 'fleet_people')).toBe(false)
 	})
 
 	it('preserves optional badgeCount on items through filterOpsNavGroups', () => {

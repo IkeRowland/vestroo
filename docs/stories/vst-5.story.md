@@ -12,7 +12,7 @@
 
 ## Epic traceability (source)
 
-**From `docs/epic-4.md` — VST-5:** The platform MUST express core data in **Vestroo language** (organisations/clients, **service routes**, **patterns**, **runs**, **service points**, **vehicles**, **chauffeurs**, **bookings**/**trips**, optional tour packages, close protection engagements, documents, audit fields) in `supabase/migrations/` with **RLS by role** (customer, chauffeur, dispatcher, admin). Migrations MUST apply cleanly; RLS MUST be smoke-tested. The system MUST **eliminate misleading public-transit naming** in schema, APIs, and user-facing strings where it misrepresents the operator (e.g. inventory/rename tables and columns per domain vocabulary, update RLS/FKs and app types in coordinated changes).
+**From `docs/epic-4.md` — VST-5:** The platform MUST express core data in **Vestroo language** (organisations/clients, **service routes**, **patterns**, **runs**, **service points**, **vehicles**, **chauffeurs**, **bookings**/**trips**, optional tour packages, documents, audit fields) in `supabase/migrations/` with **RLS by role** (customer, chauffeur, dispatcher, admin). Migrations MUST apply cleanly; RLS MUST be smoke-tested. The system MUST **eliminate misleading public-transit naming** in schema, APIs, and user-facing strings where it misrepresents the operator (e.g. inventory/rename tables and columns per domain vocabulary, update RLS/FKs and app types in coordinated changes).
 
 **Terminology alignment (folded from epic § VST-5):**
 
@@ -25,7 +25,7 @@
 
 ## Acceptance Criteria (ACs)
 
-1. **Domain entity coverage (phased allowed):** The schema plan MUST account for epic entities: **organisations/clients**, **service routes**, **service patterns**, **service runs**, **service points**, **vehicles**, **chauffeurs** (staff in fulfilment context), **bookings**/**trips**, optional **tour / experience packages**, **close protection engagements**, **documents**, and **audit fields**. Where tables or columns are **not yet implemented**, the story deliverable MUST **document gaps** (what exists vs what is stubbed/missing) in **`docs/data-models.md`** (or the agreed equivalent) and optionally in **Story Progress Notes** — no silent omission.
+1. **Domain entity coverage (phased allowed):** The schema plan MUST account for epic entities: **organisations/clients**, **service routes**, **service patterns**, **service runs**, **service points**, **vehicles**, **chauffeurs** (staff in fulfilment context), **bookings**/**trips**, optional **tour / experience packages**, **documents**, and **audit fields**. Where tables or columns are **not yet implemented**, the story deliverable MUST **document gaps** (what exists vs what is stubbed/missing) in **`docs/data-models.md`** (or the agreed equivalent) and optionally in **Story Progress Notes** — no silent omission.
 
 2. **Gap analysis — legacy tables vs epic:** Perform an explicit **inventory and gap analysis** for objects that may still carry **legacy or mixed vocabulary**, including at minimum **`public.tickets`**, **`trip_seats`**, and **`driver_schedules`** (if present). Map each to epic concepts (**booking**/**trip**, **chauffeur**, **passenger/seat** as applicable). The outcome MUST be **documented** (rename plan, deferral with rationale, or “aligned”) so **VST-6+** does not rediscover ambiguity.
 

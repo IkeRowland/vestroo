@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
+import { OPS_BOOKINGS_DEFAULT_HREF } from '@/features/ops/ops-bookings-url'
+import { OPS_BOOKINGS_NEEDS_ATTENTION_HREF } from '@/lib/ops-bookings-queue-query'
 import { OPS_DASHBOARD_KPI_ORDER, opsDashboardKpiDrillHref } from '@/lib/ops-dashboard-kpis'
 
 describe('ops-dashboard-kpis', () => {
@@ -8,13 +10,9 @@ describe('ops-dashboard-kpis', () => {
 		expect(new Set(OPS_DASHBOARD_KPI_ORDER).size).toBe(6)
 	})
 
-	it('routes booking KPIs to trips assignment queues', () => {
-		expect(opsDashboardKpiDrillHref('bookings_pending_payment')).toBe(
-			'/ops/trips?queue=pending',
-		)
-		expect(opsDashboardKpiDrillHref('bookings_trip_request')).toBe(
-			'/ops/trips?queue=trip_request',
-		)
+	it('routes booking KPIs to bookings queue views', () => {
+		expect(opsDashboardKpiDrillHref('bookings_pending_payment')).toBe(OPS_BOOKINGS_NEEDS_ATTENTION_HREF)
+		expect(opsDashboardKpiDrillHref('bookings_trip_request')).toBe(OPS_BOOKINGS_DEFAULT_HREF)
 	})
 
 	it('routes trip KPIs to trips', () => {

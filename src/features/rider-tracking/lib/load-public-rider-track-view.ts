@@ -35,7 +35,7 @@ export async function loadPublicRiderTrackView(rawToken: string): Promise<LoadPu
 	const { data: trip, error: tripErr } = await supabase
 		.from('trips')
 		.select(
-			'id, status, time_start_estimate, time_end_estimate, created_at, chauffeur_id, vehicle_id, service_run_id, service_type',
+			'id, status, time_start_estimate, time_end_estimate, created_at, chauffeur_id, vehicle_id, service_type',
 		)
 		.eq('id', tripId)
 		.maybeSingle()
@@ -81,9 +81,9 @@ export async function loadPublicRiderTrackView(rawToken: string): Promise<LoadPu
 	let livePosition: RiderTrackLivePositionDto | null = null
 	if (fetchLive) {
 		livePosition = await fetchLatestRiderTrackLivePosition(supabase, {
+			id: tripId,
 			chauffeur_id: trip.chauffeur_id as string | null,
 			vehicle_id: trip.vehicle_id as string | null,
-			service_run_id: (trip.service_run_id as string | null) ?? null,
 		})
 	}
 

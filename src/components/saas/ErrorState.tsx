@@ -22,7 +22,9 @@ export type ErrorStateProps = {
 	onRetry?: () => void
 	retryLabel?: string
 	secondaryAction?: SecondaryNavAction
+	/** @deprecated Prefer `onRetry`; if both are set, only `onRetry` runs. */
 	onRefresh?: () => void
+	/** @deprecated Ignored when a single primary action is shown; use `retryLabel`. */
 	refreshLabel?: string
 	correlationId?: string
 	className?: string
@@ -41,10 +43,10 @@ export function ErrorState({
 	retryLabel = 'Try again',
 	secondaryAction,
 	onRefresh,
-	refreshLabel = 'Refresh page',
 	correlationId,
 	className,
 }: ErrorStateProps) {
+	const primaryAction = onRetry ?? onRefresh
 	const safeMessage = sanitizeMessage ? mapOpsActionErrorToMessage(message) : message
 	const isSubscription = variant === 'subscription'
 	const displayTitle = isSubscription ? 'Live updates interrupted' : title
@@ -87,14 +89,9 @@ export function ErrorState({
 					{opsDataRetryHint()}
 				</p>
 				<div className="mt-3 flex flex-wrap gap-2">
-					{onRetry ? (
-						<Button type="button" variant="outline" size="sm" className={btnClass} onClick={onRetry}>
+					{primaryAction ? (
+						<Button type="button" variant="outline" size="sm" className={btnClass} onClick={primaryAction}>
 							{retryLabel}
-						</Button>
-					) : null}
-					{onRefresh ? (
-						<Button type="button" variant="outline" size="sm" className={btnClass} onClick={onRefresh}>
-							{refreshLabel}
 						</Button>
 					) : null}
 					{secondaryAction ? (

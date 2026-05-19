@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { AddressAutocomplete } from '@/components/ui/AddressAutocomplete';
@@ -31,6 +31,7 @@ import {
   type RideDetailsFormValues,
 } from '@/features/booking/components/trip-request/ride-details-validate';
 import { TripRequestBookingShell } from '@/features/booking/components/TripRequestBookingShell';
+import { TripRequestPassengerStepper } from '@/features/booking/components/trip-request/TripRequestPassengerStepper';
 import { clearBookAgainPortalHandoffCookieAction } from '@/actions/bookAgainPortalHandoff';
 import type { WebClientTypeResolution } from '@/actions/booking-schemas';
 
@@ -250,7 +251,8 @@ export function BookingSearchForm({
     }
   }, [modifyPrefillRef, accountBookingsEmbed]);
 
-  useEffect(() => {
+  /** Layout effect: hydrate portal session before embedded trip-request / children paint (avoids submit without `portal_active_account_session`). */
+  useLayoutEffect(() => {
     if (!portalRebookBootstrap || portalBootstrapAppliedRef.current) return;
     portalBootstrapAppliedRef.current = true;
     const b = portalRebookBootstrap;
@@ -489,30 +491,9 @@ export function BookingSearchForm({
     setErrors((prev) => ({ ...prev, returnTime: '' }));
   };
 
-  const handlePassengerChange = (value: string) => {
-    const count = parseInt(value, 10);
-    if (!isNaN(count) && count >= 1 && count <= 20) {
-      setPassengerCount(count);
-      setTripDetails({ passengers: count });
-      setErrors((prev) => ({ ...prev, passengers: '' }));
-    }
-  };
-
   const handleFlightNumberChange = (value: string) => {
     setFlightNum(value);
     setTripDetails({ flightNumber: value || null });
-  };
-
-  const incrementPassengers = () => {
-    if (passengerCount < 20) {
-      handlePassengerChange((passengerCount + 1).toString());
-    }
-  };
-
-  const decrementPassengers = () => {
-    if (passengerCount > 1) {
-      handlePassengerChange((passengerCount - 1).toString());
-    }
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -597,52 +578,31 @@ export function BookingSearchForm({
       const currentOrigin = storeState.origin;
       const currentDestination = storeState.destination;
 
-      // Validate all required fields
-      console.log('Form submission - checking validation:', {
-        originAddress,
-        origin,
-        currentOrigin,
-        destinationAddress,
-        destination,
-        currentDestination,
-        originExists: !!origin,
-        currentOriginExists: !!currentOrigin,
-        destinationExists: !!destination,
-        currentDestinationExists: !!currentDestination,
-      });
-      
-      // Use current store values for validation
       const originToValidate = currentOrigin || origin;
       const destinationToValidate = currentDestination || destination;
-      
+
       // Check if address is typed but not selected from dropdown
       if (originAddress && !originToValidate) {
-        console.log('Origin address typed but not selected from dropdown');
         setErrors((prev) => ({ ...prev, origin: 'Please select a pickup location from the dropdown suggestions' }));
         setIsLoading(false);
         return;
       }
       if (!originToValidate) {
-        console.log('No origin selected');
         setErrors((prev) => ({ ...prev, origin: 'Please select a pickup location from the dropdown' }));
         setIsLoading(false);
         return;
       }
 
       if (destinationAddress && !destinationToValidate) {
-        console.log('Destination address typed but not selected from dropdown');
         setErrors((prev) => ({ ...prev, destination: 'Please select a drop-off location from the dropdown suggestions' }));
         setIsLoading(false);
         return;
       }
       if (!destinationToValidate) {
-        console.log('No destination selected');
         setErrors((prev) => ({ ...prev, destination: 'Please select a drop-off location from the dropdown' }));
         setIsLoading(false);
         return;
       }
-      
-      console.log('Validation passed, proceeding with quote calculation');
 
     if (!selectedDate) {
       setErrors((prev) => ({ ...prev, date: 'Please select a date' }));
@@ -1014,6 +974,7 @@ export function BookingSearchForm({
             embeddedRidePrefill={tripRequestEmbeddedPrefill}
             phoneCountryIso2Hint={tripRequestPhoneCountryIso2Hint}
             bookingSearchHref={tripRequestBookingSearchHref}
+            onSubmitSuccess={accountBookingsEmbed ? () => router.refresh() : undefined}
             onExit={() => {
               setTripRequestFunnelOpen(false);
               setTripRequestEmbeddedPrefill(null);
@@ -1150,12 +1111,6 @@ export function BookingSearchForm({
               </button>
             </div>
             )}
-            {errors.origin && (
-              <p className="text-xs text-red-500" role="alert">{errors.origin}</p>
-            )}
-            {bookingFlowMode === 'p2p' && errors.destination && (
-              <p className="text-xs text-red-500" role="alert">{errors.destination}</p>
-            )}
           </div>
         </div>
 
@@ -1281,46 +1236,23 @@ export function BookingSearchForm({
           </div>
         </div>
 
-        {/* No. of Passengers */}
+        {/* No. of Passengers — shared stepper (avoids native number input + custom arrows clash). */}
         <div className="space-y-3 w-full">
           <h2 className="text-xs font-semibold text-gray-800 font-Poppins uppercase tracking-wider">No. of Passengers</h2>
-          <div className="relative max-w-xs">
-            <Input
-              type="number"
-              min="1"
-              max="20"
-              value={passengerCount}
-              onChange={(e) => handlePassengerChange(e.target.value)}
-              required
-              className="pr-12 h-12 text-xs font-bold w-full"
-              placeholder="No. Of Passengers"
-            />
-            <div className="absolute right-3 top-1/2 -translate-y-1/2 flex flex-col gap-0">
-              <button
-                type="button"
-                onClick={incrementPassengers}
-                className="h-4 w-4 flex items-center justify-center text-gray-500 hover:text-gray-700 transition-colors"
-                aria-label="Increase passengers"
-              >
-                <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" />
-                </svg>
-              </button>
-              <button
-                type="button"
-                onClick={decrementPassengers}
-                className="h-4 w-4 flex items-center justify-center text-gray-500 hover:text-gray-700 transition-colors"
-                aria-label="Decrease passengers"
-              >
-                <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
-                </svg>
-              </button>
-            </div>
-          </div>
-          {errors.passengers && (
-            <p className="text-xs text-red-500" role="alert">{errors.passengers}</p>
-          )}
+          <TripRequestPassengerStepper
+            id="quick-book-passengers"
+            value={passengerCount}
+            onChange={(n) => {
+              setPassengerCount(n);
+              setTripDetails({ passengers: n });
+              setErrors((prev) => {
+                const next = { ...prev };
+                delete next.passengers;
+                return next;
+              });
+            }}
+            error={errors.passengers}
+          />
         </div>
 
         {/* Special Instruction */}

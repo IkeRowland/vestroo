@@ -11,7 +11,7 @@ describe('ops-list-state-copy', () => {
 		expect(OPS_EMPTY_COPY.trips.description.length).toBeGreaterThan(20)
 	})
 
-	it('retry hint mentions refresh', () => {
-		expect(opsDataRetryHint().toLowerCase()).toContain('refresh')
+	it('retry hint mentions try again', () => {
+		expect(opsDataRetryHint().toLowerCase()).toContain('try again')
 	})
 })

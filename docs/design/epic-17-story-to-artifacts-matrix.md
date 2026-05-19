@@ -22,7 +22,7 @@
 | **17.14** | **`/ops/calendar`** | **#5** (calendar week) | [`#parity-17-14`](../ops-design-system-parity.md#parity-17-14) | |
 | **17.15** | **`/ops/roster`** | **#5** (week/month) | [`#parity-17-15`](../ops-design-system-parity.md#parity-17-15) | `OpsCalendarMonth` consumer |
 | **17.16** | **`/ops/invoicing`** | **#2** (Payments KPI + table) | [`#parity-17-16`](../ops-design-system-parity.md#parity-17-16) | |
-| **17.17** | **`/ops/comms`**, **`/ops/compliance`**, **`/ops/close-protection`**, **`/ops/experiences`** | **#1**, **#10** (where cited in story) | [`#parity-17-17`](../ops-design-system-parity.md#parity-17-17) | Chrome polish bundle |
+| **17.17** | **`/ops/comms`**, **`/ops/compliance`**, **`/ops/experiences`** | **#1**, **#10** (where cited in story) | [`#parity-17-17`](../ops-design-system-parity.md#parity-17-17) | Chrome polish bundle |
 | **17.18** | **`/ops/settings`**, **`/ops/settings/bank-account`**, **`/ops/settings/service-runs`** | **#6**, **#7** (density) | [`#parity-17-18`](../ops-design-system-parity.md#parity-17-18) | |
 | **17.19** | **`/ops/login`**, **`/ops/unauthorized`** (shared theme layout) | SaaS sign-in density (see **FE.17.11** in epic) | [`#parity-17-19`](../ops-design-system-parity.md#parity-17-19) | Public **`data-ops-theme="light"`** |
 | **17.20** | _Documentation_ (this file, § 17, UI/UX spec) | — | [`#epic-17-parity`](../ops-design-system-parity.md#epic-17-parity) | Meta; no app routes |

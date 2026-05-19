@@ -207,7 +207,7 @@ It builds on booking and ops foundations described in [`docs/epic-1.md`](epic-1.
 - **RLS & smoke:** `supabase/migrations/`, `supabase/smoke_rls.sql`, policies touching `bookings`, `booking_trips`, `trips`, experience-related tables
 - **Ops app shell & pages:** `src/app/(ops)/ops/`
 - **Ops features:** `src/features/ops/components/` (e.g. `OpsErrorState.tsx`, `OpsBoardRealtimeBridge.tsx`, `ops-primitives`), `src/features/ops/ops-nav-config.ts`
-- **Ops server actions:** `src/actions/opsDispatch.ts`, `src/actions/opsCloseProtection.ts`, other `src/actions/ops*.ts`
+- **Ops server actions:** `src/actions/opsDispatch.ts`, other `src/actions/ops*.ts`
 - **Fulfil:** `src/app/(ops)/ops/fulfil/page.tsx`
 - **Staff search:** `src/app/(ops)/ops/search/page.tsx`
 - **Dashboard / Board:** `src/app/(ops)/ops/board/page.tsx`, `src/app/(ops)/ops/page.tsx`

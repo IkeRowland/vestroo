@@ -1,7 +1,7 @@
 import Link from 'next/link'
 
 import { formatBookingIntentLabel } from '@/features/ops/booking-intent-labels'
-import { OpsDataFreshnessBar } from '@/features/ops/components/OpsDataFreshnessBar'
+import { OpsAdvancedBookingSearchFiltersCollapsible } from '@/features/ops/components/OpsAdvancedBookingSearchFiltersCollapsible'
 import { OpsFetchErrorIsland } from '@/features/ops/components/OpsFetchErrorIsland'
 import {
 	OpsEmptyState,
@@ -96,15 +96,13 @@ const SORT_LINKS: { sort: OpsBookingGridSort; label: string }[] = [
 
 type Props = {
 	rawSearchParams: Record<string, string | string[] | undefined>
-	fetchedAtIso: string
-	/** When false, omit the in-card freshness bar (parent page already shows one). */
-	showFreshnessBar?: boolean
+	/** When false (advanced-only view), empty-state copy omits main-queue filters. */
+	queueFiltersAvailable?: boolean
 }
 
 export async function OpsBookingsAdvancedSearch({
 	rawSearchParams,
-	fetchedAtIso,
-	showFreshnessBar = true,
+	queueFiltersAvailable = true,
 }: Props) {
 	const parsed = parseOpsBookingGridSearchParams(rawSearchParams, { keyPrefix: PREFIX })
 
@@ -209,25 +207,17 @@ export async function OpsBookingsAdvancedSearch({
 	const hasPrev = parsed.shouldQuery && parsed.page > 1
 
 	return (
-		<div
-			id="ops-advanced-booking-search"
-			className="space-y-6 rounded-lg border border-ops-border bg-ops-surface/40 p-4"
-		>
-			<div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-				<div>
-					<h2 className="text-base font-semibold text-ops-foreground">Advanced booking search</h2>
-					<p className="text-sm text-ops-muted">
-						Search by reference, contact, pickup dates, status, payment, or intent. Results replace the main
-						queue until you{' '}
-						<Link href={OPS_BOOKINGS_PATH} className="font-medium text-primary underline-offset-2 hover:underline">
-							clear search
-						</Link>
-						.
-					</p>
-				</div>
-				{showFreshnessBar ? (
-					<OpsDataFreshnessBar className="mt-0 shrink-0 sm:mt-0" fetchedAtIso={fetchedAtIso} />
-				) : null}
+		<OpsAdvancedBookingSearchFiltersCollapsible defaultOpen={parsed.shouldQuery}>
+			<div>
+				<h2 className="text-base font-semibold text-ops-foreground">Advanced booking search</h2>
+				<p className="text-sm text-ops-muted">
+					Search by reference, contact, pickup dates, status, payment, or intent. Results replace the main queue
+					until you{' '}
+					<Link href={OPS_BOOKINGS_PATH} className="font-medium text-primary underline-offset-2 hover:underline">
+						clear search
+					</Link>
+					.
+				</p>
 			</div>
 
 			<OpsFilterRow aria-label="Advanced booking search filters" className="mt-0">
@@ -381,15 +371,12 @@ export async function OpsBookingsAdvancedSearch({
 								<th scope="col" className="px-3 py-2 font-medium">
 									Customer
 								</th>
-								<th scope="col" className="px-3 py-2 font-medium">
-									Actions
-								</th>
 							</tr>
 						</thead>
 						<tbody>
 							{rows.length === 0 ? (
 								<tr>
-									<td colSpan={8} className="px-0 py-0">
+									<td colSpan={7} className="px-0 py-0">
 										<OpsEmptyState
 											className="border-0"
 											title="No bookings match"
@@ -426,34 +413,6 @@ export async function OpsBookingsAdvancedSearch({
 											</td>
 											<td className="max-w-[10rem] truncate px-3 py-2 text-sm text-ops-muted">
 												{truncateText(row.customer_name, 48)}
-											</td>
-											<td className="px-3 py-2">
-												<ul className="flex flex-col gap-1 text-xs">
-													<li>
-														<Link
-															href={`/ops/bookings/${encodeURIComponent(row.id)}`}
-															className="text-primary underline-offset-2 hover:underline"
-														>
-															Open in ops
-														</Link>
-													</li>
-													<li>
-														<Link
-															href={`/confirmation?id=${encodeURIComponent(row.id)}`}
-															className="text-primary underline-offset-2 hover:underline"
-														>
-															View confirmation
-														</Link>
-													</li>
-													<li>
-														<Link
-															href="/book/search?tab=login"
-															className="text-primary underline-offset-2 hover:underline"
-														>
-															Customer lookup
-														</Link>
-													</li>
-												</ul>
 											</td>
 										</tr>
 									)
@@ -505,9 +464,13 @@ export async function OpsBookingsAdvancedSearch({
 			) : (
 				<OpsEmptyState
 					title="Search bookings"
-					description="Set at least one filter above and press Search — or use the main queue filters below when not searching."
+					description={
+						queueFiltersAvailable
+							? 'Set at least one filter and press Search — or use the main queue filters below when you are not searching.'
+							: 'Set at least one filter and press Search.'
+					}
 				/>
 			)}
-		</div>
+		</OpsAdvancedBookingSearchFiltersCollapsible>
 	)
 }

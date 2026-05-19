@@ -1,4 +1,4 @@
--- VST-11: Close protection engagements — staff-only coordination records linked to bookings / trips.
+-- VST-11: Legacy staff-only engagement coordination records linked to bookings / trips (table later dropped).
 -- RLS: no access for anon/authenticated non-staff; dispatcher/admin via is_staff().
 
 create table public.close_protection_engagements (
@@ -14,7 +14,7 @@ create table public.close_protection_engagements (
 );
 
 comment on table public.close_protection_engagements is
-  'VST-11: High-level close protection coordination per booking; staff-only. Does not duplicate protectee identity beyond the booking row.';
+  'VST-11 legacy: staff-only coordination per booking; staff-only. Does not duplicate protectee identity beyond the booking row.';
 
 comment on column public.close_protection_engagements.booking_id is
   'Stable anchor; required for every engagement.';
@@ -26,7 +26,7 @@ comment on column public.close_protection_engagements.status is
   'draft: being prepared; active: coordination in progress; completed: engagement closed successfully; cancelled: engagement voided.';
 
 comment on column public.close_protection_engagements.coordination_notes is
-  'Internal staff handover text only. MUST NOT contain passport/ID numbers, full medical data, or unrelated third-party PII; see docs/close-protection-engagements.md.';
+  'Internal staff handover text only. MUST NOT contain passport/ID numbers, full medical data, or unrelated third-party PII; follow engineering minimisation guidance in docs/compliance-and-safety.md.';
 
 comment on column public.close_protection_engagements.created_by is
   'Staff profile (profiles.id = auth.users.id) who created the row.';

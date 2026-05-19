@@ -31,7 +31,7 @@ export function BookingsQueueTableRow({
 		`/ops/bookings/${encodeURIComponent(bookingId)}`
 
 	const rowAriaLabel = navigateHrefOverride
-		? `Open Fulfil assignment for booking ${bookingId.slice(0, 8)}…`
+		? `Open assign trip for booking ${bookingId.slice(0, 8)}…`
 		: `Open booking ${bookingId.slice(0, 8)}…`
 
 	return (

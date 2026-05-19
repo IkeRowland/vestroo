@@ -34,7 +34,7 @@ export const accountBookingsCopy = {
 	filtersTripP2p: 'Point to point',
 	filtersTripHourly: 'Hourly / as-directed',
 	filtersTripTour: 'Tour / experience',
-	filtersTripCp: 'Close protection (contracted)',
+	filtersTripCorporatePattern: 'Corporate pattern',
 	filtersSearch: 'Search',
 	filtersSearchButton: 'Search',
 	filtersSearchPlaceholder: 'Ref, origin, or destination',
@@ -45,6 +45,10 @@ export const accountBookingsCopy = {
 	filtersIntentClear: 'Clear tags',
 
 	tableCaption: 'Organisation bookings',
+	/** List + rail — account portal submissions awaiting ops (`pending_confirmation`). */
+	listStatusPendingConfirmation: 'Pending Confirmation',
+	/** List + rail — ops confirmed trip + quote (`assigned` / `in_progress`). */
+	listStatusBookingConfirmed: 'Booking Confirmed',
 	tableRef: 'Ref',
 	tablePickup: 'Date & time',
 	tableRoute: 'Route',
@@ -63,6 +67,9 @@ export const accountBookingsCopy = {
 	paginationLabel: 'Bookings list pages',
 
 	detailSheetTitle: 'Trip details',
+	/** Booking detail rail — `pending_confirmation` */
+	detailPendingConfirmationBanner:
+		'This booking is awaiting confirmation from our operations team. Driver and quote details will appear here once confirmed.',
 	detailClose: 'Close details',
 	detailItinerary: 'Itinerary',
 	detailMapAlt: 'Map preview for pickup and drop-off',
@@ -72,6 +79,8 @@ export const accountBookingsCopy = {
 	detailPassengers: 'Passengers',
 	detailSpecialInstructions: 'Special instructions',
 	detailVehicle: 'Vehicle',
+	detailVehicleFleet: 'Assigned vehicle',
+	detailQuote: 'Quote',
 	detailDriver: 'Driver',
 	detailDriverUnassigned: 'Not assigned yet',
 	detailDriverMaskName: 'Assigned driver',

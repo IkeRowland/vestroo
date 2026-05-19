@@ -71,3 +71,19 @@ export async function resolvePortalVerifiedAccountClientInsert(customerAccountId
 		client_type_source: 'portal_active_account_session',
 	}
 }
+
+/** Same verification as {@link resolvePortalVerifiedAccountClientInsert}, but returns `null` on any failure (no session, not a member, etc.). */
+export async function tryResolvePortalVerifiedAccountClientInsert(
+	customerAccountId: string,
+): Promise<{
+	client_type: 'account_client'
+	customer_account_id: string
+	account_snapshot: AccountSnapshotJsonDb
+	client_type_source: 'portal_active_account_session'
+} | null> {
+	try {
+		return await resolvePortalVerifiedAccountClientInsert(customerAccountId)
+	} catch {
+		return null
+	}
+}

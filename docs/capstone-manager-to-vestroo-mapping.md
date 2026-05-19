@@ -93,7 +93,7 @@ Highest-signal gaps versus capstone **manager** expectations:
 
 Cross-checked **2026-04-07** against:
 
-- **`src/app/(ops)/ops/`** — `page.tsx` (redirect to **`/ops/board`**), **`board`**, **`calendar`**, **`fulfil`**, **`trips`**, **`search`**, **`vehicles`**, **`roster`**, **`invoicing`**, **`compliance`**, **`experiences`**, **`close-protection`**, **`close-protection/[id]`**
+- **`src/app/(ops)/ops/`** — `page.tsx` (redirect to **`/ops/board`**), **`board`**, **`calendar`**, **`fulfil`**, **`trips`**, **`search`**, **`vehicles`**, **`roster`**, **`invoicing`**, **`compliance`**, **`experiences`**
 - **`src/app/(field)/field/`** — **`page.tsx`**, **`login`**, **`unauthorized`**, **`trips/[tripId]`**
 - **`src/features/ops/ops-nav-config.ts`** — no per-item `visibleRoles`; **`dispatcher`** + **`admin`** share nav
 

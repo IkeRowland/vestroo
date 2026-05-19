@@ -1,99 +1,65 @@
 'use client'
 
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import { useState, useTransition } from 'react'
+import { useState, type ReactNode } from 'react'
 
-import { triageWalkInBookingAction } from '@/actions/triageWalkInBooking'
 import { MarkPaymentReceivedDialog } from '@/features/ops/components/mark-payment-received-dialog'
 import { Button } from '@/components/ui/button'
-import {
-	isOpsActionFailure,
-	opsActionCorrelationId,
-	opsActionErrorMessage,
-} from '@/lib/ops-action-result'
+import { OPS_BOOKING_ASSIGN_ANCHOR_ID } from '@/features/ops/ops-bookings-url'
 import { opsFulfilAssignBookingHref } from '@/lib/ops-fulfil-nav'
 import type { OpsWalkInStageKey } from '@/lib/ops-walk-in-queue-query'
-
-const B2_DISABLED_TITLE = 'Availability check UI — Theme B2'
 
 type WalkInQueueRowActionsProps = {
 	bookingId: string
 	activeStage: OpsWalkInStageKey
-	hasAvailabilityRoute: boolean
 	totalAmountZar: number | null
 	/**
 	 * **`detail`** — used on `/ops/bookings/[id]`: hide self-navigation CTAs that duplicate the
 	 * current page (e.g. Compose quote) and filler copy for view-only stages.
 	 */
 	surface?: 'queue' | 'detail'
+	/** Booking detail only: embedded assign panel (replaces **Assign trip** link). */
+	detailAssignSlot?: ReactNode | null
 }
 
 export function WalkInQueueRowActions({
 	bookingId,
 	activeStage,
-	hasAvailabilityRoute,
 	totalAmountZar,
 	surface = 'queue',
+	detailAssignSlot = null,
 }: WalkInQueueRowActionsProps) {
-	const router = useRouter()
 	const [payOpen, setPayOpen] = useState(false)
-	const [triageErr, setTriageErr] = useState<string | null>(null)
-	const [triagePending, startTriage] = useTransition()
 
-	const availabilityHref = `/ops/bookings/${encodeURIComponent(bookingId)}/availability`
+	const bookingDetailHref = `/ops/bookings/${encodeURIComponent(bookingId)}`
+	const quoteSectionHref = `${bookingDetailHref}#ops-booking-quote`
 
 	const stopRowNav = (e: React.MouseEvent | React.KeyboardEvent) => {
 		e.stopPropagation()
 	}
 
+	const scrollToQuote = (e: React.MouseEvent) => {
+		e.stopPropagation()
+		document.getElementById('ops-booking-quote')?.scrollIntoView({
+			behavior: 'smooth',
+			block: 'start',
+		})
+	}
+
+	const showSendQuote = activeStage === 'new' || activeStage === 'triaged'
+
 	return (
 		<div className="flex min-w-[10rem] flex-col gap-1.5">
-			{activeStage === 'new' ? (
-				<>
-					{triageErr ? <p className="text-xs text-destructive">{triageErr}</p> : null}
-					<Button
-						type="button"
-						size="sm"
-						variant="secondary"
-						disabled={triagePending}
-						onClick={(e) => {
-							e.stopPropagation()
-							setTriageErr(null)
-							startTriage(async () => {
-								const res = await triageWalkInBookingAction({ bookingId })
-								if (!res.ok && isOpsActionFailure(res)) {
-									const ref = opsActionCorrelationId(res)
-									const suffix = ref ? ` (${ref.slice(0, 8)}…)` : ''
-									setTriageErr(`${opsActionErrorMessage(res)}${suffix}`)
-									return
-								}
-								router.refresh()
-							})
-						}}
-					>
-						{triagePending ? 'Working…' : 'Triage'}
-					</Button>
-				</>
-			) : null}
-
-			{activeStage === 'triaged' ? (
-				hasAvailabilityRoute ? (
-					<Button type="button" size="sm" variant="outline" asChild>
-						<Link href={availabilityHref} onClick={stopRowNav}>
-							Check availability
-						</Link>
+			{showSendQuote ? (
+				surface === 'detail' ? (
+					<Button type="button" size="sm" variant="outline" onClick={scrollToQuote}>
+						Send Quote
 					</Button>
 				) : (
-					<Button
-						type="button"
-						size="sm"
-						variant="outline"
-						disabled
-						title={B2_DISABLED_TITLE}
-						onClick={stopRowNav}
-					>
-						Check availability
+					<Button type="button" size="sm" variant="outline" asChild>
+						<Link href={quoteSectionHref} onClick={stopRowNav}>
+							Send Quote
+						</Link>
 					</Button>
 				)
 			) : null}
@@ -136,11 +102,30 @@ export function WalkInQueueRowActions({
 			) : null}
 
 			{activeStage === 'ready_to_assign' ? (
-				<Button type="button" size="sm" variant="default" asChild>
-					<Link href={opsFulfilAssignBookingHref(bookingId)} onClick={stopRowNav}>
-						Assign trip
-					</Link>
-				</Button>
+				surface === 'detail' && detailAssignSlot != null ? (
+					<div id={OPS_BOOKING_ASSIGN_ANCHOR_ID} className="min-w-0">
+						{detailAssignSlot}
+					</div>
+				) : (
+					<Button type="button" size="sm" variant="default" asChild>
+						<Link href={opsFulfilAssignBookingHref(bookingId)} onClick={stopRowNav}>
+							Assign trip
+						</Link>
+					</Button>
+				)
+			) : null}
+
+			{surface === 'detail' &&
+			(activeStage === 'quote_sent' ||
+				activeStage === 'in_progress' ||
+				activeStage === 'completed') ? (
+				<p className="text-xs leading-relaxed text-ops-muted">
+					{activeStage === 'completed'
+						? 'No further walk-in queue actions — this booking is finished from an ops perspective.'
+						: activeStage === 'in_progress'
+							? 'Trip is assigned or underway — use Trips or Calendar for live field status and updates.'
+							: 'Awaiting customer response to the quote — use the Quote section on this page to follow up or revise.'}
+				</p>
 			) : null}
 
 			{surface === 'queue' &&

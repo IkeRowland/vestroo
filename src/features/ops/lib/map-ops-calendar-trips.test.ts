@@ -34,6 +34,7 @@ describe('mapTripsToCalendarWeekData', () => {
 		expect(events[0]!.title).toBe('Airport → Hotel')
 		expect(events[0]!.tone).toBe('info')
 		expect(railByTripId['trip-1']!.driverName).toBe('Jamie Driver')
+		expect(railByTripId['trip-1']!.chauffeurProfileId).toBe('d1')
 		expect(railByTripId['trip-1']!.vehicleName).toBe('Shuttle A')
 	})
 })

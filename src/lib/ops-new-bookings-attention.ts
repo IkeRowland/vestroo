@@ -8,6 +8,7 @@
  * Predicate: `bookings.status IN (…)` — RLS-respecting staff reads via `createUserServerClient()`.
  */
 export const OPS_NEW_BOOKINGS_ATTENTION_STATUSES = [
+	'pending_confirmation',
 	'submitted',
 	'triaged',
 	'quote_sent',

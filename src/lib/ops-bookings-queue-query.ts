@@ -48,6 +48,7 @@ export const OPS_BOOKINGS_QUEUE_INTENT_CHIP_VALUES = INTENT_URL_WHITELIST
 /** Align with `bookings_status_check` (VST-14 + Epic 13.9 invoicing statuses). */
 export const OPS_BOOKINGS_QUEUE_STATUS_ORDER = [
 	'pending',
+	'pending_confirmation',
 	'submitted',
 	'triaged',
 	'quote_sent',
@@ -374,14 +375,25 @@ export function hasActiveQueueFilters(parsed: OpsBookingsQueueParsed): boolean {
 export const OPS_BOOKINGS_READY_TO_ASSIGN_STATUS: OpsBookingsQueueStatusValue =
 	'ready_to_assign'
 
+/** Ops home “needs attention” slice (Story 12.2) — triage before payment / assignment. */
+export const OPS_BOOKINGS_QUEUE_NEEDS_ATTENTION_STATUSES = [
+	'pending_confirmation',
+	'submitted',
+	'triaged',
+	'quote_sent',
+	'awaiting_payment',
+] as const satisfies readonly OpsBookingsQueueStatusValue[]
+
 /**
- * The **Ready to assign** saved view (US-E1 / Story 14.8): only
- * `status=ready_to_assign` — no extra client/intent/payment filters.
+ * True when **`parsed`** is exactly one **`status`** and no other queue dimensions.
  */
-export function isReadyToAssignPreset(parsed: OpsBookingsQueueParsed): boolean {
+export function isSingleStatusQueuePreset(
+	parsed: OpsBookingsQueueParsed,
+	status: OpsBookingsQueueStatusValue,
+): boolean {
 	return (
 		parsed.statuses.length === 1 &&
-		parsed.statuses[0] === OPS_BOOKINGS_READY_TO_ASSIGN_STATUS &&
+		parsed.statuses[0] === status &&
 		parsed.payments.length === 0 &&
 		parsed.intents.length === 0 &&
 		parsed.clients.length === 0
@@ -389,10 +401,69 @@ export function isReadyToAssignPreset(parsed: OpsBookingsQueueParsed): boolean {
 }
 
 /**
+ * The **Ready to assign** saved view (US-E1 / Story 14.8): only
+ * `status=ready_to_assign` — no extra client/intent/payment filters.
+ */
+export function isReadyToAssignPreset(parsed: OpsBookingsQueueParsed): boolean {
+	return isSingleStatusQueuePreset(parsed, OPS_BOOKINGS_READY_TO_ASSIGN_STATUS)
+}
+
+/** Multi-status triage preset — matches {@link OPS_BOOKINGS_QUEUE_NEEDS_ATTENTION_STATUSES}. */
+export function isNeedsAttentionPreset(parsed: OpsBookingsQueueParsed): boolean {
+	if (
+		parsed.payments.length > 0 ||
+		parsed.intents.length > 0 ||
+		parsed.clients.length > 0
+	) {
+		return false
+	}
+	const set = new Set(parsed.statuses)
+	if (set.size !== OPS_BOOKINGS_QUEUE_NEEDS_ATTENTION_STATUSES.length) {
+		return false
+	}
+	return OPS_BOOKINGS_QUEUE_NEEDS_ATTENTION_STATUSES.every((s) => set.has(s))
+}
+
+export function isCompletedQueuePreset(parsed: OpsBookingsQueueParsed): boolean {
+	return isSingleStatusQueuePreset(parsed, 'completed')
+}
+
+export function isCancelledQueuePreset(parsed: OpsBookingsQueueParsed): boolean {
+	return isSingleStatusQueuePreset(parsed, 'cancelled')
+}
+
+/**
  * Href for the **Ready to assign** chip (replaces all other queue filters with this single status).
  */
 export const OPS_BOOKINGS_READY_TO_ASSIGN_HREF = opsBookingsPathWithQuery({
 	statuses: [OPS_BOOKINGS_READY_TO_ASSIGN_STATUS],
+	payments: [],
+	intents: [],
+	clients: [],
+	page: 1,
+	perPage: OPS_PAGINATION_DEFAULT_PER,
+})
+
+export const OPS_BOOKINGS_NEEDS_ATTENTION_HREF = opsBookingsPathWithQuery({
+	statuses: [...OPS_BOOKINGS_QUEUE_NEEDS_ATTENTION_STATUSES],
+	payments: [],
+	intents: [],
+	clients: [],
+	page: 1,
+	perPage: OPS_PAGINATION_DEFAULT_PER,
+})
+
+export const OPS_BOOKINGS_COMPLETED_HREF = opsBookingsPathWithQuery({
+	statuses: ['completed'],
+	payments: [],
+	intents: [],
+	clients: [],
+	page: 1,
+	perPage: OPS_PAGINATION_DEFAULT_PER,
+})
+
+export const OPS_BOOKINGS_CANCELLED_HREF = opsBookingsPathWithQuery({
+	statuses: ['cancelled'],
 	payments: [],
 	intents: [],
 	clients: [],

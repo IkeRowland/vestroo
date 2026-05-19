@@ -7,7 +7,7 @@ import { buildMarketingMetadata } from '@/lib/marketing-metadata'
 export function generateMetadata(): Metadata {
   return buildMarketingMetadata(
     'Services',
-    'Premium shuttle, corporate transport, VIP transfers, curated tours, and close protection enquiries — South Africa.',
+    'Premium shuttle, corporate transport, VIP transfers, and curated tours — South Africa.',
     '/services'
   )
 }

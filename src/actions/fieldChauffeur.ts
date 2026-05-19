@@ -1,5 +1,4 @@
 'use server'
-// VST-11: Chauffeur/field flows must not read close_protection_engagements (RLS + product policy).
 
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'

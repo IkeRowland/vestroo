@@ -16,8 +16,8 @@
  *
  * **Capacity:** When `remainingSeats` is a number on a candidate, strict mode
  * excludes the vehicle if `remainingSeats < booking.passengerCount` (aligned
- * with “no remaining seats” on a run snapshot). `null` / `undefined` means
- * unknown — no hard exclusion (see **Progress Notes** vs `reserve_service_run_capacity` RPC).
+ * with “no remaining seats” on a capacity snapshot). `null` / `undefined` means
+ * unknown — no hard exclusion (see story Progress Notes).
  */
 
 import {

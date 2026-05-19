@@ -17,6 +17,11 @@
 /** Base path for the unified bookings queue (nav + Story 12.2 home card use this without query). */
 export const OPS_BOOKINGS_PATH = '/ops/bookings' as const
 
+/** In-page anchor for assign-trip UI on **`/ops/bookings/[id]`** (queue CTAs + legacy `/assign` redirect). */
+export const OPS_BOOKING_ASSIGN_ANCHOR_ID = 'ops-booking-assign' as const
+
+export const OPS_BOOKING_ASSIGN_HREF_SUFFIX = `#${OPS_BOOKING_ASSIGN_ANCHOR_ID}` as const
+
 /** Default query string for optional triage deep links (not the 12.2 primary CTA). */
 export const OPS_BOOKINGS_DEFAULT_SEARCH = '?intent=trip_request' as const
 

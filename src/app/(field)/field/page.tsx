@@ -23,7 +23,7 @@ export default async function FieldHomePage() {
 	const { data: trips, error } = await supabase
 		.from('trips')
 		.select(
-			'id, status, time_start_estimate, time_end_estimate, service_type, service_run_id',
+			'id, status, time_start_estimate, time_end_estimate, service_type',
 		)
 		.eq(TRIP_DRIVER_PROFILE_FK_COLUMN, session.userId)
 		.order('time_start_estimate', { ascending: true })

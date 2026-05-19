@@ -38,6 +38,7 @@ describe('ops-calendar-url (Story 17.14)', () => {
 		expect(
 			buildOpsCalendarHref({
 				weekStartYmd: '2026-04-20',
+				monthYm: '2026-04',
 				view: 'week',
 				eventId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
 			}),
@@ -47,10 +48,19 @@ describe('ops-calendar-url (Story 17.14)', () => {
 		expect(
 			buildOpsCalendarHref({
 				weekStartYmd: '2026-04-20',
+				monthYm: '2026-04',
 				view: 'list',
 				eventId: null,
 			}),
 		).toBe(`${OPS_CALENDAR_PATH}?week=2026-04-20&view=list`)
+		expect(
+			buildOpsCalendarHref({
+				weekStartYmd: '2026-04-20',
+				monthYm: '2026-05',
+				view: 'month',
+				eventId: null,
+			}),
+		).toBe(`${OPS_CALENDAR_PATH}?view=month&month=2026-05`)
 	})
 
 	it('parseOpsCalendarSelectedEventId', () => {
@@ -61,6 +71,7 @@ describe('ops-calendar-url (Story 17.14)', () => {
 
 	it('parseOpsCalendarPageView', () => {
 		expect(parseOpsCalendarPageView({ view: 'list' })).toBe('list')
+		expect(parseOpsCalendarPageView({ view: 'month' })).toBe('month')
 		expect(parseOpsCalendarPageView({})).toBe('week')
 	})
 

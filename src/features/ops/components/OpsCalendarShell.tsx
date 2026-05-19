@@ -9,6 +9,7 @@ import { OpsDetailRail } from '@/features/ops/components/OpsDetailRail'
 import { OpsEmptyState } from '@/features/ops/components/OpsEmptyState'
 import { OpsSplitView } from '@/features/ops/components/OpsSplitView'
 import { OpsStatusPill } from '@/features/ops/components/OpsStatusPill'
+import { OpsCalendarMonth } from '@/features/ops/components/OpsCalendarMonth'
 import { OpsCalendarWeek } from '@/features/ops/components/OpsCalendarWeek'
 import { opsCalendarCopy } from '@/features/ops/copy/ops-calendar-copy'
 import { tripStatusDisplayLabel } from '@/features/ops/copy/ops-trips-copy'
@@ -25,11 +26,13 @@ import {
 	startOfWeekMondayLocal,
 	type OpsCalendarPageView,
 } from '@/lib/ops-calendar-url'
+import { addMonthsYm, formatMonthYmFromDate } from '@/lib/ops-fleet-drivers-url'
 import { buildOpsTripsHref } from '@/lib/ops-trips-url'
 import { cn } from '@/lib/utils'
 
 export type OpsCalendarShellProps = {
 	weekStartYmd: string
+	monthYm: string
 	view: OpsCalendarPageView
 	selectedEventId: string | null
 	events: OpsCalendarWeekEvent[]
@@ -38,6 +41,7 @@ export type OpsCalendarShellProps = {
 
 export function OpsCalendarShell({
 	weekStartYmd,
+	monthYm,
 	view,
 	selectedEventId,
 	events,
@@ -50,7 +54,7 @@ export function OpsCalendarShell({
 
 	const handleCloseDetail = React.useCallback(() => {
 		const returnId = selectedEventId
-		router.push(buildOpsCalendarHref({ weekStartYmd, eventId: null, view }), { scroll: false })
+		router.push(buildOpsCalendarHref({ weekStartYmd, monthYm, eventId: null, view }), { scroll: false })
 		queueMicrotask(() => {
 			const el =
 				listFocusReturnRef.current ??
@@ -59,7 +63,7 @@ export function OpsCalendarShell({
 					: null)
 			el?.focus()
 		})
-	}, [router, weekStartYmd, view, selectedEventId])
+	}, [router, weekStartYmd, monthYm, view, selectedEventId])
 
 	React.useEffect(() => {
 		if (!detailOpen) return
@@ -84,21 +88,30 @@ export function OpsCalendarShell({
 			router.push(
 				buildOpsCalendarHref({
 					weekStartYmd,
+					monthYm,
 					eventId: selectedEventId === ev.id ? null : ev.id,
 					view,
 				}),
 				{ scroll: false },
 			)
 		},
-		[router, weekStartYmd, view, selectedEventId],
+		[router, weekStartYmd, monthYm, view, selectedEventId],
 	)
 
 	const prevWeek = formatYmdLocal(addDaysLocal(parseYmdToLocalDate(weekStartYmd), -7))
 	const nextWeek = formatYmdLocal(addDaysLocal(parseYmdToLocalDate(weekStartYmd), 7))
 	const thisWeek = formatYmdLocal(startOfWeekMondayLocal(new Date()))
+	const prevMonth = addMonthsYm(monthYm, -1)
+	const nextMonth = addMonthsYm(monthYm, 1)
+	const thisMonthYm = formatMonthYmFromDate(new Date())
 
 	const hrefForWeek = (ymd: string) =>
-		buildOpsCalendarHref({ weekStartYmd: ymd, eventId: selectedEventId, view })
+		buildOpsCalendarHref({
+			weekStartYmd: ymd,
+			monthYm: formatMonthYmFromDate(parseYmdToLocalDate(ymd)),
+			eventId: selectedEventId,
+			view,
+		})
 
 	const listBody =
 		events.length === 0 ? (
@@ -151,6 +164,26 @@ export function OpsCalendarShell({
 			/>
 		)
 
+	const monthBody =
+		events.length === 0 ? (
+			<div className="flex min-h-[720px] items-center justify-center rounded-ops-card border border-ops-border bg-ops-surface p-6">
+				<OpsEmptyState
+					title={opsCalendarCopy.emptyMonthTitle}
+					description={opsCalendarCopy.emptyMonthDescription}
+				/>
+			</div>
+		) : (
+			<OpsCalendarMonth
+				monthYm={monthYm}
+				events={events}
+				selectedEventId={selectedEventId}
+				onActivateEvent={activateEvent}
+				regionAriaLabel={opsCalendarCopy.gridMonthAria}
+			/>
+		)
+
+	const calendarBody = view === 'week' ? weekBody : view === 'month' ? monthBody : listBody
+
 	const main = (
 		<div className="min-w-0 space-y-3">
 			<div
@@ -159,21 +192,69 @@ export function OpsCalendarShell({
 				aria-label={opsCalendarCopy.viewToggleGroupAria}
 			>
 				<div className="flex flex-wrap items-center gap-2">
-					<Button type="button" size="sm" variant="outline" className="border-ops-border" asChild>
-						<Link href={hrefForWeek(prevWeek)} scroll={false} aria-label={opsCalendarCopy.prevWeekAria}>
-							<span aria-hidden>←</span>
-						</Link>
-					</Button>
-					<Button type="button" size="sm" variant="outline" className="border-ops-border" asChild>
-						<Link href={hrefForWeek(nextWeek)} scroll={false} aria-label={opsCalendarCopy.nextWeekAria}>
-							<span aria-hidden>→</span>
-						</Link>
-					</Button>
-					<Button type="button" size="sm" variant="secondary" className="border-ops-border" asChild>
-						<Link href={hrefForWeek(thisWeek)} scroll={false}>
-							{opsCalendarCopy.thisWeek}
-						</Link>
-					</Button>
+					{view === 'month' ? (
+						<>
+							<Button type="button" size="sm" variant="outline" className="border-ops-border" asChild>
+								<Link
+									href={buildOpsCalendarHref({
+										weekStartYmd,
+										monthYm: prevMonth,
+										eventId: selectedEventId,
+										view: 'month',
+									})}
+									scroll={false}
+									aria-label={opsCalendarCopy.prevMonthAria}
+								>
+									<span aria-hidden>←</span>
+								</Link>
+							</Button>
+							<Button type="button" size="sm" variant="outline" className="border-ops-border" asChild>
+								<Link
+									href={buildOpsCalendarHref({
+										weekStartYmd,
+										monthYm: nextMonth,
+										eventId: selectedEventId,
+										view: 'month',
+									})}
+									scroll={false}
+									aria-label={opsCalendarCopy.nextMonthAria}
+								>
+									<span aria-hidden>→</span>
+								</Link>
+							</Button>
+							<Button type="button" size="sm" variant="secondary" className="border-ops-border" asChild>
+								<Link
+									href={buildOpsCalendarHref({
+										weekStartYmd,
+										monthYm: thisMonthYm,
+										eventId: selectedEventId,
+										view: 'month',
+									})}
+									scroll={false}
+								>
+									{opsCalendarCopy.thisMonth}
+								</Link>
+							</Button>
+						</>
+					) : (
+						<>
+							<Button type="button" size="sm" variant="outline" className="border-ops-border" asChild>
+								<Link href={hrefForWeek(prevWeek)} scroll={false} aria-label={opsCalendarCopy.prevWeekAria}>
+									<span aria-hidden>←</span>
+								</Link>
+							</Button>
+							<Button type="button" size="sm" variant="outline" className="border-ops-border" asChild>
+								<Link href={hrefForWeek(nextWeek)} scroll={false} aria-label={opsCalendarCopy.nextWeekAria}>
+									<span aria-hidden>→</span>
+								</Link>
+							</Button>
+							<Button type="button" size="sm" variant="secondary" className="border-ops-border" asChild>
+								<Link href={hrefForWeek(thisWeek)} scroll={false}>
+									{opsCalendarCopy.thisWeek}
+								</Link>
+							</Button>
+						</>
+					)}
 				</div>
 				<div className="inline-flex rounded-md border border-ops-border p-0.5">
 					<Button
@@ -184,10 +265,34 @@ export function OpsCalendarShell({
 						asChild
 					>
 						<Link
-							href={buildOpsCalendarHref({ weekStartYmd, eventId: selectedEventId, view: 'week' })}
+							href={buildOpsCalendarHref({
+								weekStartYmd,
+								monthYm,
+								eventId: selectedEventId,
+								view: 'week',
+							})}
 							scroll={false}
 						>
 							{opsCalendarCopy.viewWeek}
+						</Link>
+					</Button>
+					<Button
+						type="button"
+						size="sm"
+						variant={view === 'month' ? 'default' : 'ghost'}
+						className={cn(view === 'month' ? 'shadow-sm' : 'text-ops-muted')}
+						asChild
+					>
+						<Link
+							href={buildOpsCalendarHref({
+								weekStartYmd,
+								monthYm,
+								eventId: selectedEventId,
+								view: 'month',
+							})}
+							scroll={false}
+						>
+							{opsCalendarCopy.viewMonth}
 						</Link>
 					</Button>
 					<Button
@@ -198,7 +303,12 @@ export function OpsCalendarShell({
 						asChild
 					>
 						<Link
-							href={buildOpsCalendarHref({ weekStartYmd, eventId: selectedEventId, view: 'list' })}
+							href={buildOpsCalendarHref({
+								weekStartYmd,
+								monthYm,
+								eventId: selectedEventId,
+								view: 'list',
+							})}
 							scroll={false}
 						>
 							{opsCalendarCopy.viewList}
@@ -206,7 +316,7 @@ export function OpsCalendarShell({
 					</Button>
 				</div>
 			</div>
-			{view === 'week' ? weekBody : listBody}
+			{calendarBody}
 		</div>
 	)
 

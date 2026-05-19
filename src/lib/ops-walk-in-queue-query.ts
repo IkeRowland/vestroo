@@ -1,4 +1,5 @@
 import { OPS_BOOKINGS_PATH } from '@/features/ops/ops-bookings-url'
+import { extractFirstLinkedTripStatus, extractOpsBookingVehicleName } from '@/lib/ops-booking-detail'
 import type { OpsBookingIntentFilterValue } from '@/lib/ops-booking-grid-query'
 import {
 	allParamValues,
@@ -165,6 +166,11 @@ export type OpsWalkInStageDeriveInput = {
 	client_type: string | null
 	status: string | null
 	availability_checked_at: string | null
+	/**
+	 * Optional `booking_trips` embed — when `status` is `ready_to_assign` but a trip/vehicle is already
+	 * linked, queue actions align with **in progress** (fixes stale status / embed visibility issues).
+	 */
+	booking_trips?: unknown
 }
 
 /**
@@ -196,12 +202,39 @@ export function deriveWalkInQueueStageForBookingRow(
 		return 'awaiting_payment'
 	}
 	if (st === 'ready_to_assign') {
+		const ts = extractFirstLinkedTripStatus(row.booking_trips)?.toLowerCase() ?? ''
+		if (ts === 'completed') {
+			return 'completed'
+		}
+		if (ts === 'cancelled') {
+			return 'completed'
+		}
+		if (ts === 'en_route' || ts === 'assigned') {
+			return 'in_progress'
+		}
+		if (row.booking_trips != null && extractOpsBookingVehicleName(row.booking_trips)) {
+			return 'in_progress'
+		}
 		return 'ready_to_assign'
+	}
+	if (st === 'assigned') {
+		return 'in_progress'
 	}
 	if (st === 'in_progress') {
 		return 'in_progress'
 	}
 	if (st === 'completed') {
+		return 'completed'
+	}
+	/** Terminal / post-trip bookkeeping — treat like completed for queue CTAs (view-only). */
+	if (
+		st === 'cancelled' ||
+		st === 'expired' ||
+		st === 'paid' ||
+		st === 'ready_to_invoice' ||
+		st === 'invoiced' ||
+		st === 'paid_invoice'
+	) {
 		return 'completed'
 	}
 	return null

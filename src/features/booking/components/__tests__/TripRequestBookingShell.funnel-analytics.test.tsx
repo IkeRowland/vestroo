@@ -108,28 +108,25 @@ describe('TripRequestBookingShell — FE.19.10 funnel analytics', () => {
     await waitFor(() => {
       expect(events.some((e) => e.name === 'booking_funnel_view')).toBe(true);
     });
-    expect(events.some((e) => e.name === 'booking_funnel_slide_view' && e.properties.slide_index === 1)).toBe(
-      true,
-    );
-
-    fireEvent.click(screen.getByTestId('trip-request-next'));
-
-    await waitFor(() => {
-      expect(events.filter((e) => e.name === 'booking_funnel_slide_complete').length).toBeGreaterThanOrEqual(1);
-    });
-    expect(events.some((e) => e.name === 'booking_funnel_slide_complete' && e.properties.slide_index === 1)).toBe(
-      true,
-    );
-    await waitFor(() => {
-      expect(events.some((e) => e.name === 'booking_funnel_slide_view' && e.properties.slide_index === 2)).toBe(
-        true,
-      );
-    });
+    /** Embedded handoff skips in-shell trip slide — first view is vehicle (`slide_index` 2). */
+    expect(events.some((e) => e.name === 'booking_funnel_slide_view' && e.properties.slide_index === 2)).toBe(true);
 
     await waitFor(() => screen.getByText(/Alpha Shuttle/));
     const vLabel = screen.getByText(/Alpha Shuttle/).closest('label') as HTMLElement;
     fireEvent.click(within(vLabel).getByRole('radio'));
     fireEvent.click(screen.getByTestId('trip-request-next'));
+
+    await waitFor(() => {
+      expect(events.filter((e) => e.name === 'booking_funnel_slide_complete').length).toBeGreaterThanOrEqual(1);
+    });
+    expect(events.some((e) => e.name === 'booking_funnel_slide_complete' && e.properties.slide_index === 2)).toBe(
+      true,
+    );
+    await waitFor(() => {
+      expect(events.some((e) => e.name === 'booking_funnel_slide_view' && e.properties.slide_index === 3)).toBe(
+        true,
+      );
+    });
     await waitFor(() => {
       expect(document.getElementById('trip-request-email')).toBeTruthy();
     });
@@ -175,7 +172,6 @@ describe('TripRequestBookingShell — FE.19.10 funnel analytics', () => {
 
     await waitFor(() => expect(events.some((e) => e.name === 'booking_funnel_view')).toBe(true));
 
-    fireEvent.click(screen.getByTestId('trip-request-next'));
     await waitFor(() => screen.getByText(/Alpha Shuttle/));
     const vLabel = screen.getByText(/Alpha Shuttle/).closest('label') as HTMLElement;
     fireEvent.click(within(vLabel).getByRole('radio'));

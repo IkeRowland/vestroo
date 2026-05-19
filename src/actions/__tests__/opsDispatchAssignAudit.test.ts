@@ -43,11 +43,9 @@ import { assignBookingToRun } from '../opsDispatch'
 
 const staffUserId = 'a1111111-1111-4111-8111-111111111101'
 const bookingId = 'a1111111-1111-4111-8111-111111111102'
-const serviceRunId = 'a1111111-1111-4111-8111-111111111103'
 const driverProfileId = 'a1111111-1111-4111-8111-111111111104'
 const vehicleId = 'a1111111-1111-4111-8111-111111111105'
 const tripId = 'a1111111-1111-4111-8111-111111111106'
-const routeId = 'a1111111-1111-4111-8111-111111111107'
 const otherVehicleId = 'a1111111-1111-4111-8111-111111111108'
 
 function bookingRow() {
@@ -64,17 +62,8 @@ function bookingRow() {
 		estimated_duration: 60,
 		customer_account_id: null,
 		account_snapshot: null,
-	}
-}
-
-function runRow() {
-	return {
-		id: serviceRunId,
-		service_route_id: routeId,
-		scheduled_start: new Date().toISOString(),
-		scheduled_end: new Date(Date.now() + 3_600_000).toISOString(),
-		trip_number: 1,
-		service_date: '2026-04-26',
+		booking_metadata: null,
+		booking_trips: [],
 	}
 }
 
@@ -96,11 +85,18 @@ function buildSupabaseFrom() {
 				delete: vi.fn().mockReturnThis(),
 			}
 		}
-		if (table === 'service_runs') {
+		if (table === 'vehicles') {
 			return {
 				select: vi.fn().mockReturnThis(),
 				eq: vi.fn().mockReturnThis(),
-				maybeSingle: vi.fn().mockResolvedValue({ data: runRow(), error: null }),
+				maybeSingle: vi.fn().mockResolvedValue({
+					data: {
+						id: vehicleId,
+						seats: 4,
+						vehicle_categories: { name: 'Sedan' },
+					},
+					error: null,
+				}),
 			}
 		}
 		if (table === 'trips') {
@@ -119,7 +115,7 @@ function buildSupabaseFrom() {
 				select: vi.fn().mockReturnThis(),
 				eq: vi.fn().mockReturnThis(),
 				maybeSingle: vi.fn().mockResolvedValue({
-					data: { role: 'chauffeur', status: 'active' },
+					data: { role: 'chauffeur', status: 'active', default_vehicle_id: vehicleId },
 					error: null,
 				}),
 			}
@@ -139,13 +135,6 @@ function buildSupabaseFrom() {
 					data: { id: 'a1111111-1111-4111-8111-111111111109' },
 					error: null,
 				}),
-			}
-		}
-		if (table === 'close_protection_engagements') {
-			return {
-				update: vi.fn().mockReturnThis(),
-				eq: vi.fn().mockReturnThis(),
-				is: vi.fn().mockResolvedValue({ error: null }),
 			}
 		}
 		if (table === 'chauffeur_assignments') {
@@ -183,7 +172,6 @@ describe('assignBookingToRun calibration audit (15.29)', () => {
 
 		const res = await assignBookingToRun({
 			bookingId,
-			serviceRunId,
 			driverProfileId,
 			vehicleId,
 			fromSuggestion: { vehicleId, score: 5, rank: 2 },
@@ -210,7 +198,6 @@ describe('assignBookingToRun calibration audit (15.29)', () => {
 
 		const res = await assignBookingToRun({
 			bookingId,
-			serviceRunId,
 			driverProfileId,
 			vehicleId,
 		})
@@ -226,7 +213,6 @@ describe('assignBookingToRun calibration audit (15.29)', () => {
 
 		const res = await assignBookingToRun({
 			bookingId,
-			serviceRunId,
 			driverProfileId,
 			vehicleId,
 			fromSuggestion: { vehicleId, score: 99, rank: 1 },
@@ -251,7 +237,6 @@ describe('assignBookingToRun calibration audit (15.29)', () => {
 
 		const res = await assignBookingToRun({
 			bookingId,
-			serviceRunId,
 			driverProfileId,
 			vehicleId,
 			fromSuggestion: { vehicleId, score: 99, rank: 1 },

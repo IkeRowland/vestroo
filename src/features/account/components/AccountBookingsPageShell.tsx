@@ -19,12 +19,13 @@ import {
 import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { AccountPortalQuoteSection } from '@/features/account/components/AccountPortalQuoteSection'
 import { AccountResponsiveTableShell } from '@/features/account/components/account-responsive-table-shell'
 import { AccountBookingsFilters } from '@/features/account/components/AccountBookingsFilters'
 import { AccountNewBookingSheet } from '@/features/account/components/AccountNewBookingSheet'
 import { BookThisAgainButton } from '@/features/account/components/BookThisAgainButton'
 import { accountBookingsCopy } from '@/features/account/copy/account-bookings-copy'
-import { accountDashboardRailStatusPill } from '@/lib/account-dashboard-rail-status'
+import { accountBookingsTableStatusPill } from '@/lib/account-bookings-table-status'
 import { AvatarCell, DetailRail, Pagination, SplitView, StatusPill } from '@/components/saas'
 import {
 	ACCOUNT_BOOKINGS_LIST_PAGE_SIZE,
@@ -36,7 +37,9 @@ import {
 import type { AccountBookingsListParsed, AccountBookingsListRow } from '@/lib/account-bookings-list-query'
 import type { AccountBookingFormLoad } from '@/lib/account-booking-form-load'
 import { ACCOUNT_BOOKINGS_PATH } from '@/lib/account-portal-booking-path'
+import { accountBillingQuoteViewerPath } from '@/lib/account-invoices-archive-query'
 import { buildBookAgainSearchPrefillHrefFromBooking } from '@/lib/quote-accept-prefill'
+import type { AccountBookingRailDetail, AccountBookingTimelineItem } from '@/lib/account-booking-rail-types'
 import type { CustomerAccountMemberRoleDb } from '@/types/database.types'
 
 const TERMINAL_MODIFY = new Set(['completed', 'cancelled', 'expired', 'paid_invoice', 'invoiced'])
@@ -139,7 +142,7 @@ export function AccountBookingsPageShell({
 	}, [b, d?.trip.serviceType])
 
 	const receiptHref =
-		d?.receiptQuoteId && portalRole === 'admin' ? `/account/invoices/${d.receiptQuoteId}` : null
+		d?.receiptQuoteId && portalRole === 'admin' ? accountBillingQuoteViewerPath(d.receiptQuoteId) : null
 
 	const [newBookingOpen, setNewBookingOpen] = React.useState(
 		() => bookingFormLoad.bookSearchPrefill !== null,
@@ -236,7 +239,7 @@ export function AccountBookingsPageShell({
 									</TableHeader>
 									<TableBody>
 										{rows.map((row) => {
-											const pill = accountDashboardRailStatusPill(row.status)
+											const pill = accountBookingsTableStatusPill(row.status)
 											return (
 												<TableRow
 													key={row.id}
@@ -312,7 +315,7 @@ export function AccountBookingsPageShell({
 									mobileStack={
 										<ul className="divide-y divide-account-border p-3">
 											{rows.map((row) => {
-												const pill = accountDashboardRailStatusPill(row.status)
+												const pill = accountBookingsTableStatusPill(row.status)
 												const routeLabel =
 													[row.origin_name, row.destination_name]
 														.map((s) => (s ?? '').trim())
@@ -510,8 +513,17 @@ function AccountBookingRailBody({
 	onCancelRequest: () => void
 }) {
 	const b = d.booking
+	const awaitingOps = String(b.status ?? '').trim() === 'pending_confirmation'
 	return (
 		<div className="space-y-6 text-account-foreground">
+			{awaitingOps ? (
+				<div
+					className="rounded-lg border border-account-border bg-account-surface-hover px-3 py-2 text-sm text-account-foreground"
+					role="status"
+				>
+					{accountBookingsCopy.detailPendingConfirmationBanner}
+				</div>
+			) : null}
 			<section>
 				<h3 className="text-xs font-semibold uppercase tracking-wide text-account-muted">
 					{accountBookingsCopy.detailItinerary}
@@ -565,7 +577,18 @@ function AccountBookingRailBody({
 					</div>
 					<div className="flex justify-between gap-2">
 						<dt className="text-account-muted">{accountBookingsCopy.detailVehicle}</dt>
-						<dd className="min-w-0 text-right text-account-foreground">{d.trip.vehicleClassLabel ?? '—'}</dd>
+						<dd className="min-w-0 text-right text-account-foreground">
+							{d.trip.assignedFleetVehicleName ? (
+								<span>
+									<span className="font-medium">{d.trip.assignedFleetVehicleName}</span>
+									{d.trip.vehicleClassLabel ? (
+										<span className="text-account-muted"> · {d.trip.vehicleClassLabel}</span>
+									) : null}
+								</span>
+							) : (
+								d.trip.vehicleClassLabel ?? '—'
+							)}
+						</dd>
 					</div>
 					<div className="flex justify-between gap-2 text-account-muted">
 						<dt>Total</dt>
@@ -588,12 +611,20 @@ function AccountBookingRailBody({
 				</div>
 			</section>
 			<section>
+				<h3 className="text-xs font-semibold uppercase tracking-wide text-account-muted">
+					{accountBookingsCopy.detailQuote}
+				</h3>
+				<div className="mt-2">
+					<AccountPortalQuoteSection quote={d.quote} />
+				</div>
+			</section>
+			<section>
 				<h3 className="text-xs font-semibold uppercase tracking-wide text-account-muted">{accountBookingsCopy.detailComms}</h3>
 				{d.timeline.length === 0 ? (
 					<p className="mt-1 text-sm text-account-muted">{accountBookingsCopy.detailCommsEmpty}</p>
 				) : (
 					<ol className="relative mt-3 space-y-3 border-l border-account-border pl-4 text-sm">
-						{d.timeline.map((ev, i) => (
+						{d.timeline.map((ev: AccountBookingTimelineItem, i: number) => (
 							<li key={`${ev.kind}-${i}-${ev.at}`} className="relative -translate-x-px pl-0">
 								<div
 									aria-hidden

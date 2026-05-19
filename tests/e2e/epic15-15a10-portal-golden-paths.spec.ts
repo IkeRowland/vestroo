@@ -77,20 +77,20 @@ test.describe('Epic 15.10 — portal golden paths + axe (serial)', () => {
 		})
 
 		await test.step('invoices list + quote snapshot when data exists', async () => {
-			await page.goto('/account/invoices')
+			await page.goto('/account/billing/invoices')
 			await expect(page.getByRole('heading', { name: /Invoices/ })).toBeVisible({ timeout: 30_000 })
-			await expectNoSeriousAxeViolations(page, 'admin /account/invoices')
+			await expectNoSeriousAxeViolations(page, 'admin /account/billing/invoices')
 
-			const viewHtml = page.getByRole('link', { name: 'View HTML' }).first()
+			const viewHtml = page.getByRole('link', { name: /View full quote/i }).first()
 			const quoteFromEnv = process.env.E2E_PORTAL_INVOICE_QUOTE_ID?.trim()
 			if ((await viewHtml.count()) > 0) {
 				await viewHtml.click()
 				await expect(page.getByRole('heading', { name: 'Quote snapshot' })).toBeVisible({ timeout: 30_000 })
-				await expectNoSeriousAxeViolations(page, 'admin /account/invoices/[quoteId]')
+				await expectNoSeriousAxeViolations(page, 'admin /account/billing/quotes/[quoteId]')
 			} else if (quoteFromEnv) {
-				await page.goto(`/account/invoices/${quoteFromEnv}`)
+				await page.goto(`/account/billing/quotes/${quoteFromEnv}`)
 				await expect(page.getByRole('heading', { name: 'Quote snapshot' })).toBeVisible({ timeout: 30_000 })
-				await expectNoSeriousAxeViolations(page, 'admin /account/invoices/[quoteId] (env id)')
+				await expectNoSeriousAxeViolations(page, 'admin /account/billing/quotes/[quoteId] (env id)')
 			} else {
 				test.info().annotations.push({
 					type: '15.10-note',
@@ -130,6 +130,7 @@ test.describe('Epic 15.10 — portal golden paths + axe (serial)', () => {
 		await expect(page.getByRole('heading', { name: 'Quick links' })).toBeVisible()
 		await expect(page.getByRole('link', { name: /Members/i })).toHaveCount(0)
 		await expect(page.getByRole('link', { name: /Invoices/i })).toHaveCount(0)
+		await expect(page.getByRole('link', { name: /Quotes/i })).toHaveCount(0)
 
 		await page.goto('/account/bookings')
 		await expect(page.getByRole('heading', { name: 'Bookings' })).toBeVisible({ timeout: 30_000 })

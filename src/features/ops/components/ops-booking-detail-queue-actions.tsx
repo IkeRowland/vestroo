@@ -1,5 +1,7 @@
 'use client'
 
+import type { ReactNode } from 'react'
+
 import {
 	AccountQueueRowActions,
 	type AccountDispatchGate,
@@ -12,9 +14,12 @@ type Props = {
 	bookingId: string
 	walkInStage: OpsWalkInStageKey | null
 	accountStage: OpsAccountsStageKey | null
-	hasAvailabilityRoute: boolean
 	totalAmountZar: number | null
 	dispatchGate: AccountDispatchGate
+	/** When set, **Assign trip** on booking detail renders this panel instead of navigating away. */
+	assignTripDetailSlot?: ReactNode | null
+	/** `/ops/bookings/[id]` account rows: a `booking_trips` link exists — hide redundant Assign trip fallback. */
+	accountDetailTripLinked?: boolean
 }
 
 /**
@@ -24,9 +29,10 @@ export function OpsBookingDetailQueueActions({
 	bookingId,
 	walkInStage,
 	accountStage,
-	hasAvailabilityRoute,
 	totalAmountZar,
 	dispatchGate,
+	assignTripDetailSlot = null,
+	accountDetailTripLinked = false,
 }: Props) {
 	if (walkInStage != null) {
 		return (
@@ -39,9 +45,9 @@ export function OpsBookingDetailQueueActions({
 					<WalkInQueueRowActions
 						bookingId={bookingId}
 						activeStage={walkInStage}
-						hasAvailabilityRoute={hasAvailabilityRoute}
 						totalAmountZar={totalAmountZar}
 						surface="detail"
+						detailAssignSlot={assignTripDetailSlot}
 					/>
 				</div>
 			</section>
@@ -58,10 +64,11 @@ export function OpsBookingDetailQueueActions({
 					<AccountQueueRowActions
 						bookingId={bookingId}
 						activeStage={accountStage}
-						hasAvailabilityRoute={hasAvailabilityRoute}
 						totalAmountZar={totalAmountZar}
 						dispatchGate={dispatchGate}
 						surface="detail"
+						detailAssignSlot={assignTripDetailSlot}
+						accountDetailTripLinked={accountDetailTripLinked}
 					/>
 				</div>
 			</section>

@@ -16,6 +16,8 @@ export type AccountBookingRailDetail = {
 		serviceType: string | null
 		chauffeurAssigned: boolean
 		vehicleClassLabel: string | null
+		/** Fleet vehicle name when ops confirmed and RLS allows read. */
+		assignedFleetVehicleName: string | null
 	}
 	driver: {
 		assigned: boolean

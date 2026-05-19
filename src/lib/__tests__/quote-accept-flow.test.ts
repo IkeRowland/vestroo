@@ -204,7 +204,31 @@ describe('runQuoteAcceptCheckout (N6)', () => {
 							eq: () => ({
 								eq: () => ({
 									select: () => ({
-										maybeSingle: vi.fn().mockResolvedValue({ data: { id: bookingId }, error: null }),
+										maybeSingle: vi.fn().mockResolvedValue({
+											data: {
+												id: bookingId,
+												status: bookingStatus,
+												payment_status: 'pending',
+												client_type: 'walk_in',
+												customer_id: null,
+												customer_account_id: null,
+												account_snapshot: null,
+												payment_reference: 'VST-7',
+												quote_accepted_at: quoteAcceptedAt,
+												total_amount: 100,
+												customer_name: 'Test',
+												customer_email: 'a@b.com',
+												customer_phone: null,
+												origin_name: 'A',
+												destination_name: 'B',
+												origin_address: null,
+												destination_address: null,
+												passenger_count: 1,
+												pickup_datetime: null,
+												booking_intent: 'point_to_point',
+											},
+											error: null,
+										}),
 									}),
 								}),
 							}),

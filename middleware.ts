@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from 'next/server'
 
-import { buildOpsFulfilLegacyRedirectToTripsUrl } from '@/lib/ops-fulfil-legacy-redirect'
+import { OPS_BOOKING_ASSIGN_ANCHOR_ID, OPS_BOOKINGS_PATH } from '@/features/ops/ops-bookings-url'
+import { buildOpsFulfilLegacyRedirectToBookingsUrl } from '@/lib/ops-fulfil-legacy-redirect'
 import { remapLegacyOpsSearchToBookingsHref } from '@/lib/ops-booking-grid-query'
 import { refreshSupabaseSessionCookie } from '@/lib/supabase/middleware'
 
@@ -42,7 +43,33 @@ export async function middleware(request: NextRequest) {
 	}
 
 	if (pathname === '/ops/fulfil' || pathname === '/ops/fulfil/') {
-		const dest = buildOpsFulfilLegacyRedirectToTripsUrl(request.nextUrl)
+		const dest = buildOpsFulfilLegacyRedirectToBookingsUrl(request.nextUrl)
+		const response = redirectResponse(request, dest)
+		await refreshSupabaseSessionCookie(request, response)
+		return response
+	}
+
+	const assignLegacyMatch = /^\/ops\/bookings\/([^/]+)\/assign\/?$/.exec(pathname)
+	if (assignLegacyMatch) {
+		const bid = assignLegacyMatch[1] ?? ''
+		const dest = new URL(
+			`/ops/bookings/${encodeURIComponent(bid)}#${OPS_BOOKING_ASSIGN_ANCHOR_ID}`,
+			request.nextUrl.origin,
+		)
+		const response = redirectResponse(request, dest)
+		await refreshSupabaseSessionCookie(request, response)
+		return response
+	}
+
+	if (pathname.startsWith('/ops/close-protection')) {
+		const dest = new URL(OPS_BOOKINGS_PATH, request.nextUrl.origin)
+		const response = redirectResponse(request, dest)
+		await refreshSupabaseSessionCookie(request, response)
+		return response
+	}
+
+	if (pathname === '/services/close-protection' || pathname === '/services/close-protection/') {
+		const dest = new URL('/contact', request.nextUrl.origin)
 		const response = redirectResponse(request, dest)
 		await refreshSupabaseSessionCookie(request, response)
 		return response

@@ -5,7 +5,7 @@ import { AvailabilityCheckPanel } from '@/features/ops/components/AvailabilityCh
 import { OpsErrorState } from '@/features/ops/components/OpsErrorState'
 import { OpsPageHeader } from '@/features/ops/components/ops-primitives'
 import { OPS_BOOKINGS_PATH } from '@/features/ops/ops-bookings-url'
-import type { AvailabilityRouteScope } from '@/actions/opsAvailabilityCheck'
+import type { AvailabilityRouteScope } from '@/lib/ops-availability-check-input'
 import { loadAvailabilityCheckContext } from '@/lib/ops-availability-loader'
 import { createUserServerClient } from '@/lib/supabase/server'
 

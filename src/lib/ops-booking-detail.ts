@@ -24,11 +24,13 @@ export const OPS_BOOKING_DETAIL_SELECT = `
   rider_phone,
   current_quote_id,
   created_at,
+  booking_metadata,
   customer_accounts ( id, name ),
   booking_trips (
     sort_order,
     trips (
       id,
+      status,
       service_type,
       vehicles (
         name,
@@ -59,12 +61,18 @@ export type OpsBookingDetailRow = {
 	rider_phone: string | null
 	current_quote_id: string | null
 	created_at: string
+	/** Trip-request funnel stores selected vehicle in `trip_request.slide2` before a `trips` row exists. */
+	booking_metadata?: unknown
 	customer_accounts?: unknown
 	booking_trips: unknown
 }
 
 type TripLink = { sort_order: number | null; trips: unknown }
-type TripNested = { vehicles?: unknown; service_type?: string | null }
+type TripNested = {
+	vehicles?: unknown
+	service_type?: string | null
+	status?: string | null
+}
 type VehicleNested = { name?: string | null; vehicle_categories?: unknown }
 
 function asArray<T>(v: T | T[] | null | undefined): T[] {
@@ -101,6 +109,58 @@ export function extractOpsBookingVehicleName(booking_trips: unknown): string | n
 	return typeof name === 'string' && name.trim() !== '' ? name.trim() : null
 }
 
+/** First linked trip `status` (Epic fulfil / ops queue display when `bookings.status` lags). */
+export function extractFirstLinkedTripStatus(booking_trips: unknown): string | null {
+	const trip = firstTripFromBookingTrips(booking_trips)
+	const s = trip && typeof trip === 'object' && 'status' in trip ? (trip as { status: unknown }).status : null
+	return typeof s === 'string' && s.trim() !== '' ? s.trim() : null
+}
+
+const BOOKING_STATUS_TERMINAL_FOR_TRIP_TRUTH = new Set([
+	'cancelled',
+	'expired',
+	'invoiced',
+	'paid_invoice',
+])
+
+/**
+ * When a linked trip is ahead of `bookings.status` (e.g. trip `completed` but booking still
+ * `ready_to_assign`), ops UI should reflect trip state. Account **ready_to_invoice** is preserved.
+ */
+export function effectiveBookingStatusKeyForOps(
+	bookingStatus: string | null,
+	booking_trips: unknown,
+): string | null {
+	const b = (bookingStatus ?? '').trim()
+	if (!b) return bookingStatus
+
+	const tripStatus = extractFirstLinkedTripStatus(booking_trips)?.toLowerCase() ?? ''
+	if (!tripStatus) return bookingStatus
+
+	if (tripStatus === 'completed') {
+		if (
+			!BOOKING_STATUS_TERMINAL_FOR_TRIP_TRUTH.has(b) &&
+			b !== 'completed' &&
+			b !== 'ready_to_invoice'
+		) {
+			return 'completed'
+		}
+	}
+
+	if (tripStatus === 'cancelled') {
+		if (!BOOKING_STATUS_TERMINAL_FOR_TRIP_TRUTH.has(b)) {
+			return 'cancelled'
+		}
+	}
+
+	if (b === 'ready_to_assign') {
+		if (tripStatus === 'en_route') return 'in_progress'
+		if (tripStatus === 'assigned') return 'assigned'
+	}
+
+	return bookingStatus
+}
+
 /** Vehicle category label from first linked trip (walk-in quote email parity). */
 export function extractOpsBookingVehicleCategoryName(booking_trips: unknown): string | null {
 	const trip = firstTripFromBookingTrips(booking_trips)
@@ -113,6 +173,58 @@ export function extractOpsBookingVehicleCategoryName(booking_trips: unknown): st
 	if (!c || typeof c !== 'object') return null
 	const n = (c as { name?: string | null }).name
 	return typeof n === 'string' && n.trim() !== '' ? n.trim() : null
+}
+
+/** Slide 2 vehicle selection persisted under `booking_metadata.trip_request` (FE.10.4). */
+export function parseTripRequestSlide2FromBookingMetadata(meta: unknown): {
+	name: string | null
+	classification: string | null
+} | null {
+	if (!meta || typeof meta !== 'object') return null
+	const tr = (meta as Record<string, unknown>).trip_request
+	if (!tr || typeof tr !== 'object') return null
+	const slide2 = (tr as Record<string, unknown>).slide2
+	if (!slide2 || typeof slide2 !== 'object') return null
+	const s = slide2 as Record<string, unknown>
+	const name = typeof s.name === 'string' && s.name.trim() !== '' ? s.name.trim() : null
+	const classification =
+		typeof s.classification === 'string' && s.classification.trim() !== ''
+			? s.classification.trim()
+			: null
+	if (!name && !classification) return null
+	return { name, classification }
+}
+
+function formatServiceTypeForOpsDisplay(code: string): string {
+	const t = code.trim()
+	if (!t) return t
+	return t
+		.split('_')
+		.filter(Boolean)
+		.map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+		.join(' ')
+}
+
+/** Prefer linked trip; otherwise trip-request metadata (no `booking_trips` row until assign). */
+export function extractOpsBookingVehicleNameForDetail(
+	row: Pick<OpsBookingDetailRow, 'booking_trips' | 'booking_metadata'>,
+): string | null {
+	return (
+		extractOpsBookingVehicleName(row.booking_trips) ??
+		parseTripRequestSlide2FromBookingMetadata(row.booking_metadata)?.name ??
+		null
+	)
+}
+
+/** Prefer fleet vehicle category from trip; otherwise Slide 2 classification. */
+export function extractOpsBookingVehicleCategoryNameForDetail(
+	row: Pick<OpsBookingDetailRow, 'booking_trips' | 'booking_metadata'>,
+): string | null {
+	return (
+		extractOpsBookingVehicleCategoryName(row.booking_trips) ??
+		parseTripRequestSlide2FromBookingMetadata(row.booking_metadata)?.classification ??
+		null
+	)
 }
 
 export function linkedAccountNameFromOpsBooking(row: OpsBookingDetailRow): string | null {
@@ -155,6 +267,102 @@ export async function loadOpsBookingDetail(
 	return data as OpsBookingDetailRow
 }
 
+/**
+ * Whether this booking has a **`booking_trips`** row (trip created and linked).
+ * Prefer this over counting embedded `booking_trips` on `bookings` selects — nested
+ * `trips` / `vehicles` RLS can strip children so the embed looks empty even when the
+ * link row exists (ops assign just succeeded).
+ */
+export async function loadBookingLinkedTripId(
+	supabase: SupabaseClient,
+	bookingId: string,
+): Promise<string | null> {
+	const { data, error } = await supabase
+		.from('booking_trips')
+		.select('trip_id')
+		.eq('booking_id', bookingId)
+		.maybeSingle()
+
+	if (error || !data || typeof data !== 'object') return null
+	const raw = (data as { trip_id?: unknown }).trip_id
+	const tid = typeof raw === 'string' ? raw.trim() : ''
+	return tid.length > 0 ? tid : null
+}
+
+/** Driver + vehicle for the trip linked to a booking (flat queries — reliable under nested-embed RLS gaps). */
+export type OpsBookingTripAssignmentSummary = {
+	tripId: string
+	tripStatus: string | null
+	timeStartEstimate: string | null
+	timeEndEstimate: string | null
+	driverFullName: string | null
+	vehicleName: string | null
+}
+
+export async function loadOpsBookingTripAssignmentSummary(
+	supabase: SupabaseClient,
+	bookingId: string,
+): Promise<OpsBookingTripAssignmentSummary | null> {
+	const tripId = await loadBookingLinkedTripId(supabase, bookingId)
+	if (!tripId) return null
+
+	const { data: trip, error: tErr } = await supabase
+		.from('trips')
+		.select('id, status, time_start_estimate, time_end_estimate, chauffeur_id, vehicle_id')
+		.eq('id', tripId)
+		.maybeSingle()
+
+	if (tErr || !trip || typeof trip !== 'object') return null
+
+	const chauffeurId =
+		typeof (trip as { chauffeur_id?: unknown }).chauffeur_id === 'string'
+			? (trip as { chauffeur_id: string }).chauffeur_id.trim()
+			: ''
+	const vehicleId =
+		typeof (trip as { vehicle_id?: unknown }).vehicle_id === 'string'
+			? (trip as { vehicle_id: string }).vehicle_id.trim()
+			: ''
+
+	const [profRes, vehRes] = await Promise.all([
+		chauffeurId
+			? supabase.from('profiles').select('full_name').eq('id', chauffeurId).maybeSingle()
+			: Promise.resolve({ data: null as { full_name?: string | null } | null }),
+		vehicleId
+			? supabase.from('vehicles').select('name').eq('id', vehicleId).maybeSingle()
+			: Promise.resolve({ data: null as { name?: string | null } | null }),
+	])
+
+	const driverFullName =
+		profRes.data && typeof profRes.data.full_name === 'string'
+			? profRes.data.full_name.trim() || null
+			: null
+	const vehicleName =
+		vehRes.data && typeof vehRes.data.name === 'string'
+			? vehRes.data.name.trim() || null
+			: null
+
+	const ts = (trip as { time_start_estimate?: unknown }).time_start_estimate
+	const te = (trip as { time_end_estimate?: unknown }).time_end_estimate
+	const st = (trip as { status?: unknown }).status
+
+	return {
+		tripId,
+		tripStatus: typeof st === 'string' && st.trim() !== '' ? st.trim() : null,
+		timeStartEstimate: typeof ts === 'string' && ts.trim() !== '' ? ts.trim() : null,
+		timeEndEstimate: typeof te === 'string' && te.trim() !== '' ? te.trim() : null,
+		driverFullName,
+		vehicleName,
+	}
+}
+
 export function opsBookingServiceTypeLabel(booking: OpsBookingDetailRow): string | null {
-	return extractTripServiceTypeForDetail(booking.booking_trips)
+	const fromTrip = extractTripServiceTypeForDetail(booking.booking_trips)
+	if (fromTrip) {
+		return formatServiceTypeForOpsDisplay(fromTrip)
+	}
+	/** Trip-request bookings only get a `trips` row after assignment; fulfil uses `charter`. */
+	if ((booking.booking_intent ?? '').trim() === 'trip_request') {
+		return 'Charter'
+	}
+	return null
 }

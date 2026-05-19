@@ -23,7 +23,9 @@ Equivalent intent to epic **US-L1** `rg -n "Chauffeur|chauffeur"` per path layer
 ## Product locks (cite in US-L3)
 
 - **Q21** — UI display label **Driver**; DB enum `chauffeur` unchanged until [Epic 17](../epic-17.md).
-- **Q25** — **Close Protection Officer** wording stays where product requires; flag **Q25** on applicable rows. **US-L3 triage:** review **`docs/close-protection-engagements.md`** (and any UI using that vocabulary) before applying **rename to driver** to “Close Protection” contexts.
+- **Q25** — **Retired** per **[`docs/epic-16.md`](../../epic-16.md)**; treat like any other row unless legal requests a bespoke label (document separately).
+
+- **US-L3 triage:** apply **rename to driver** where product copy is customer- or staff-facing; keep **DB literals** flagged per **Q34**.
 - **Q34** — No DB-level rename in Epic 16; type definitions under src/types and schema-aligned literals → **keep — DB scope deferred to Epic 17** (or **rename to driver** only for pure UI strings in types if any appear later).
 - **Q41** (optional) — [US-L2 in Epic 16 Theme L](../epic-16.md) / `role-display.ts` — not implemented in L1.
 
@@ -85,7 +87,7 @@ _Rationale (AC2): **one row per file** with **match count**; full line-level hit
 | Documentation | `docs/capstone-nest-rest-to-vestroo-mapping.md` | 8 | 23 | quireChauffeurPage` | `Chauffeur` | rename to driver (per-layer default; triage per file in US-L3) |  |
 | Documentation | `docs/capstone-reference-path-map.md` | 2 | 9 | bile chauffeur app  | `chauffeur` | keep — capstone reference | capstone |
 | Documentation | `docs/capstone-reference-stack-integration.md` | 8 | 22 | *, **chauffeurs**,  | `chauffeur` | keep — capstone reference | capstone |
-| Documentation | `docs/close-protection-engagements.md` | 5 | 20 | *, **chauffeur**, * | `chauffeur` | rename to driver (per-layer default; triage per file in US-L3) |  |
+| Documentation | *(retired doc path removed)* | — | — | — | — | **n/a** |  |
 | Documentation | `docs/compliance-and-safety.md` | 8 | 12 | ises chauffeur-visi | `chauffeur` | rename to driver (per-layer default; triage per file in US-L3) |  |
 | Documentation | `docs/data-models.md` | 85 | 9 | , **`chauffeur`**,  | `chauffeur` | rename to driver (per-layer default; triage per file in US-L3) |  |
 | Documentation | `docs/epic-11.md` | 5 | 21 | ** **Chauffeur → Dr | `Chauffeur` | rename to driver (per-layer default; triage per file in US-L3) |  |

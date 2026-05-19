@@ -12,6 +12,9 @@ export type AccountDashboardRailPill = {
  */
 export function accountDashboardRailStatusPill(status: string | null): AccountDashboardRailPill {
 	const s = (status ?? '').trim()
+	if (s === 'pending_confirmation') {
+		return { tone: 'warning', label: accountDashboardCopy.railStatusPendingConfirmation }
+	}
 	if (['quote_sent', 'triaged', 'submitted', 'pending'].includes(s)) {
 		return { tone: 'warning', label: accountDashboardCopy.railStatusPendingQuote }
 	}

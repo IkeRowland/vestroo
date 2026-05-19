@@ -80,7 +80,7 @@ test.describe('Epic 15D.5 — dispatch suggestions E2E (serial, Chromium)', () =
 		})
 	})
 
-	test('15D.2 / AC2 — `/ops/fulfil` paid queue loads (no fetch error) when suggestions flag is on', async ({
+	test('15D.2 / AC2 — `/ops/fulfil` redirects to bookings; ready-to-assign queue loads when suggestions flag is on', async ({
 		page,
 	}) => {
 		test.skip(!core15d5Ready, coreSkipMessage)
@@ -91,9 +91,8 @@ test.describe('Epic 15D.5 — dispatch suggestions E2E (serial, Chromium)', () =
 
 		await opsStaffLogin(page, staffEmail!, staffPassword!)
 		await page.goto('/ops/fulfil?queue=paid')
-		await expect(page.getByRole('heading', { name: 'Fulfil' })).toBeVisible({ timeout: 60_000 })
+		await expect(page.getByRole('heading', { name: 'Bookings' })).toBeVisible({ timeout: 60_000 })
 		await expect(page.getByText('Bookings could not be loaded')).toHaveCount(0)
-		await expect(page.getByText('Service runs could not be loaded')).toHaveCount(0)
 	})
 
 	test('AC6 — thin data: suggestions panel settles (list or documented empty)', async ({ page }) => {
@@ -106,7 +105,7 @@ test.describe('Epic 15D.5 — dispatch suggestions E2E (serial, Chromium)', () =
 
 		await opsStaffLogin(page, staffEmail!, staffPassword!)
 		await page.goto(`/ops/fulfil?queue=paid&bookingId=${encodeURIComponent(thinDataBookingId)}`)
-		await expect(page.getByRole('heading', { name: 'Fulfil' })).toBeVisible({ timeout: 60_000 })
+		await expect(page.getByRole('heading', { name: 'Booking detail' })).toBeVisible({ timeout: 60_000 })
 
 		const panel = page.locator('[aria-label="Suggested vehicles"]')
 		await expect(panel).toBeVisible({ timeout: 30_000 })
@@ -133,7 +132,7 @@ test.describe('Epic 15D.5 — dispatch suggestions E2E (serial, Chromium)', () =
 
 		await opsStaffLogin(page, staffEmail!, staffPassword!)
 		await page.goto(`/ops/fulfil?queue=paid&bookingId=${encodeURIComponent(allBusyBookingId)}`)
-		await expect(page.getByRole('heading', { name: 'Fulfil' })).toBeVisible({ timeout: 60_000 })
+		await expect(page.getByRole('heading', { name: 'Booking detail' })).toBeVisible({ timeout: 60_000 })
 
 		const panel = page.locator('[aria-label="Suggested vehicles"]')
 		await expect(panel.getByText('Loading suggestions…')).toHaveCount(0, { timeout: 60_000 })
@@ -157,7 +156,7 @@ test.describe('Epic 15D.5 — dispatch suggestions E2E (serial, Chromium)', () =
 
 		await opsStaffLogin(page, staffEmail!, staffPassword!)
 		await page.goto(`/ops/fulfil?queue=paid&bookingId=${encodeURIComponent(suggestionBookingId!)}`)
-		await expect(page.getByRole('heading', { name: 'Fulfil' })).toBeVisible({ timeout: 60_000 })
+		await expect(page.getByRole('heading', { name: 'Booking detail' })).toBeVisible({ timeout: 60_000 })
 
 		const panel = page.locator('[aria-label="Suggested vehicles"]')
 		await expect(panel.getByText('Loading suggestions…')).toHaveCount(0, { timeout: 60_000 })
@@ -183,7 +182,7 @@ test.describe('Epic 15D.5 — dispatch suggestions E2E (serial, Chromium)', () =
 		)
 		expect(payload.booking_id).toBe(suggestionBookingId)
 		expect(typeof payload.vehicle_id).toBe('string')
-		expect(typeof payload.service_run_id).toBe('string')
+		expect('service_run_id' in payload).toBe(false)
 		expect(typeof payload.chauffeur_id).toBe('string')
 		expect(typeof payload.trip_id).toBe('string')
 		expect(typeof payload.score).toBe('number')
@@ -198,7 +197,7 @@ test.describe('Epic 15D.5 — dispatch suggestions E2E (serial, Chromium)', () =
 
 		await opsStaffLogin(page, staffEmail!, staffPassword!)
 		await page.goto(`/ops/fulfil?queue=paid&bookingId=${encodeURIComponent(freePickBookingId!)}`)
-		await expect(page.getByRole('heading', { name: 'Fulfil' })).toBeVisible({ timeout: 60_000 })
+		await expect(page.getByRole('heading', { name: 'Booking detail' })).toBeVisible({ timeout: 60_000 })
 
 		const panel = page.locator('[aria-label="Suggested vehicles"]')
 		await expect(panel.getByText('Loading suggestions…')).toHaveCount(0, { timeout: 60_000 })

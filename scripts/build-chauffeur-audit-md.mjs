@@ -196,7 +196,7 @@ Equivalent intent to epic **US-L1** \`rg -n "Chauffeur|chauffeur"\` per path lay
 ## Product locks (cite in US-L3)
 
 - **Q21** — UI display label **Driver**; DB enum \`chauffeur\` unchanged until [Epic 17](../epic-17.md).
-- **Q25** — **Close Protection Officer** wording stays where product requires; flag **Q25** on applicable rows (none identified in this pass; add when found).
+- **Q25** — **Retired** per **`docs/epic-16.md`**; no specialty carve-out rows expected in this audit pass.
 - **Q34** — No DB-level rename in Epic 16; type definitions under src/types and schema-aligned literals → **keep — DB scope deferred to Epic 17** (or **rename to driver** only for pure UI strings in types if any appear later).
 - **Q41** (optional) — [US-L2 in Epic 16 Theme L](../epic-16.md) / \`role-display.ts\` — not implemented in L1.
 

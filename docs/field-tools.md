@@ -67,11 +67,7 @@ If none apply, the UI shows a short notice; seed **service route points** on sta
 
 Helpers: **`appendOpsAuditLog`** in **`src/lib/ops-audit.ts`**.
 
-## Close protection (VST-11)
-
-Chauffeurs **do not** read **`close_protection_engagements`** or **`coordination_notes`**. Field Server Actions (**`fieldChauffeur.ts`**, **`fieldLocation.ts`**) **do not** query that table; RLS denies **`authenticated`** non-staff **SELECT**. Trip execution uses **`trips`**, **`bookings`** (linked), and maps helpers only — see **[close-protection-engagements.md](close-protection-engagements.md)**.
-
-## FE.5.7 / Story 5.7 — Tablet verification (manual)
+Chauffeurs execute **trips** in **`/field/*`** using **`trips`**, **`bookings`** (linked), and maps helpers only. Field Server Actions (**`fieldChauffeur.ts`**, **`fieldLocation.ts`**) query only the tables required for trip execution and location publishing — no staff-only coordination tables beyond normal booking/trip fields.
 
 **Scope:** Authenticated **`/field/*`** ( **`requireChauffeurPage`** unchanged). Builds on **Story 5.6** (**safe-area**, **`min-h-11`** targets, **`FieldTripDetailActions`** **`stickyFooter`**). **Pass** = no **document-level** horizontal scroll needed to use **primary** trip actions (**Confirm assignment**, **Mark completed**, **Open in Google/Apple Maps**, **Call customer** when shown). **Fail** = a primary control clipped or unreachable without zoom.
 

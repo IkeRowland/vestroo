@@ -26,7 +26,11 @@ import { OpsVehiclesFleetBrowser } from '@/features/ops/components/OpsVehiclesFl
 import { opsVehiclesCopy } from '@/features/ops/copy/ops-vehicles-copy'
 import type { OpsVehiclesPageView } from '@/lib/ops-vehicles-url'
 import { createClientClient } from '@/lib/supabase/client'
-import type { OpsFleetCategoryOption, OpsFleetVehicleRow } from '@/features/ops/ops-fleet-types'
+import type {
+	OpsFleetCategoryOption,
+	OpsFleetVehicleDriverOption,
+	OpsFleetVehicleRow,
+} from '@/features/ops/ops-fleet-types'
 
 const VEHICLE_BUCKET = 'vehicles'
 const MAX_PRIMARY_BYTES = 6 * 1024 * 1024
@@ -57,17 +61,18 @@ const STATUS_OPTIONS: ReadonlyArray<{ value: string; label: string }> = [
 
 const SEAT_OPTIONS: ReadonlyArray<number> = [2, 4, 5, 6, 7, 8, 9, 10, 12, 14, 16]
 
-export type { OpsFleetCategoryOption, OpsFleetVehicleRow } from '@/features/ops/ops-fleet-types'
+export type { OpsFleetCategoryOption, OpsFleetVehicleDriverOption, OpsFleetVehicleRow } from '@/features/ops/ops-fleet-types'
 
 type OpsVehiclesFleetPanelProps = {
 	vehicles: OpsFleetVehicleRow[]
 	categories: OpsFleetCategoryOption[]
-	activeTripCountByVehicleId: Record<string, number>
+	driverOptions: OpsFleetVehicleDriverOption[]
 	view: OpsVehiclesPageView
 	selectedVehicleId: string | null
 }
 
 type FormValues = {
+	vehicleName: string
 	make: string
 	model: string
 	modelYear: string
@@ -78,14 +83,17 @@ type FormValues = {
 	transmission: string
 	fuelType: string
 	status: string
+	isFleetActive: boolean
 	description: string
 	licensePlate: string
 	primaryImageUrl: string | null
 	galleryImageUrls: string[]
+	assignedDriverId: string
 }
 
 function emptyFormValues(categories: OpsFleetCategoryOption[]): FormValues {
 	return {
+		vehicleName: '',
 		make: '',
 		model: '',
 		modelYear: String(new Date().getUTCFullYear()),
@@ -96,15 +104,18 @@ function emptyFormValues(categories: OpsFleetCategoryOption[]): FormValues {
 		transmission: 'automatic',
 		fuelType: 'petrol',
 		status: 'available',
+		isFleetActive: true,
 		description: '',
 		licensePlate: '',
 		primaryImageUrl: null,
 		galleryImageUrls: [],
+		assignedDriverId: '',
 	}
 }
 
 function vehicleToFormValues(vehicle: OpsFleetVehicleRow): FormValues {
 	return {
+		vehicleName: vehicle.name ?? '',
 		make: vehicle.make ?? '',
 		model: vehicle.model ?? '',
 		modelYear: vehicle.model_year != null ? String(vehicle.model_year) : '',
@@ -115,14 +126,18 @@ function vehicleToFormValues(vehicle: OpsFleetVehicleRow): FormValues {
 		transmission: vehicle.transmission ?? 'automatic',
 		fuelType: vehicle.fuel_type ?? 'petrol',
 		status: vehicle.vehicle_condition || 'available',
+		isFleetActive: vehicle.is_fleet_active,
 		description: vehicle.description ?? '',
 		licensePlate: vehicle.license_plate,
 		primaryImageUrl: vehicle.primary_image_url,
 		galleryImageUrls: vehicle.gallery_image_urls ?? [],
+		assignedDriverId: vehicle.assigned_driver?.id ?? '',
 	}
 }
 
 function buildVehicleName(values: FormValues): string {
+	const explicit = values.vehicleName.trim()
+	if (explicit) return explicit
 	const make = values.make.trim()
 	const model = values.model.trim()
 	const year = values.modelYear.trim()
@@ -147,7 +162,7 @@ function parseOptionalInt(raw: string): number | null {
 export function OpsVehiclesFleetPanel({
 	vehicles,
 	categories,
-	activeTripCountByVehicleId,
+	driverOptions,
 	view,
 	selectedVehicleId,
 }: OpsVehiclesFleetPanelProps) {
@@ -229,7 +244,6 @@ export function OpsVehiclesFleetPanel({
 			<OpsVehiclesFleetBrowser
 				vehicles={vehicles}
 				categories={categories}
-				activeTripCountByVehicleId={activeTripCountByVehicleId}
 				view={view}
 				selectedVehicleId={selectedVehicleId}
 				onEditVehicle={(v) => setEditingVehicle(v)}
@@ -243,6 +257,7 @@ export function OpsVehiclesFleetPanel({
 					submitLabel="Add vehicle"
 					initialValues={emptyFormValues(categories)}
 					categories={categories}
+					driverOptions={driverOptions}
 					busy={busy}
 					onCancel={() => setShowAdd(false)}
 					onSubmit={async (values) => {
@@ -252,6 +267,7 @@ export function OpsVehiclesFleetPanel({
 							name: computedName,
 							license_plate: values.licensePlate.trim(),
 							category_id: values.categoryId,
+							is_fleet_active: values.isFleetActive,
 							vehicle_condition: values.status,
 							make: values.make.trim() || null,
 							model: values.model.trim() || null,
@@ -277,6 +293,7 @@ export function OpsVehiclesFleetPanel({
 							description: values.description.trim() || null,
 							primary_image_url: values.primaryImageUrl,
 							gallery_image_urls: values.galleryImageUrls,
+							assigned_driver_profile_id: values.assignedDriverId.trim() || null,
 						})
 						setBusy(false)
 						if (res.ok) {
@@ -297,6 +314,7 @@ export function OpsVehiclesFleetPanel({
 					submitLabel="Save changes"
 					initialValues={vehicleToFormValues(editingVehicle)}
 					categories={categories}
+					driverOptions={driverOptions}
 					busy={busy}
 					existingVehicleId={editingVehicle.id}
 					onCancel={() => setEditingVehicle(null)}
@@ -311,6 +329,7 @@ export function OpsVehiclesFleetPanel({
 							name: computedName,
 							license_plate: values.licensePlate.trim(),
 							category_id: values.categoryId,
+							is_fleet_active: values.isFleetActive,
 							vehicle_condition: values.status,
 							make: values.make.trim() || null,
 							model: values.model.trim() || null,
@@ -336,6 +355,7 @@ export function OpsVehiclesFleetPanel({
 							description: values.description.trim() || null,
 							primary_image_url: values.primaryImageUrl,
 							gallery_image_urls: values.galleryImageUrls,
+							assigned_driver_profile_id: values.assignedDriverId.trim() || null,
 						})
 						setBusy(false)
 						if (res.ok) {
@@ -376,6 +396,7 @@ type VehicleFormDialogProps = {
 	submitLabel: string
 	initialValues: FormValues
 	categories: OpsFleetCategoryOption[]
+	driverOptions: OpsFleetVehicleDriverOption[]
 	busy: boolean
 	existingVehicleId?: string
 	onCancel: () => void
@@ -388,6 +409,7 @@ function VehicleFormDialog({
 	submitLabel,
 	initialValues,
 	categories,
+	driverOptions,
 	busy,
 	existingVehicleId,
 	onCancel,
@@ -499,8 +521,13 @@ function VehicleFormDialog({
 		e.preventDefault()
 		setError(null)
 
-		if (!values.make.trim()) return setError('Make is required.')
-		if (!values.model.trim()) return setError('Model is required.')
+		if (!values.vehicleName.trim()) {
+			if (!values.make.trim()) return setError('Make is required when vehicle name is empty.')
+			if (!values.model.trim()) return setError('Model is required when vehicle name is empty.')
+		}
+		if (!buildVehicleName(values).trim() && !values.licensePlate.trim()) {
+			return setError('Enter a vehicle name or year/make/model, and a license plate.')
+		}
 		if (!values.categoryId) return setError('Select a category.')
 		if (!values.licensePlate.trim()) return setError('License plate is required.')
 
@@ -564,6 +591,19 @@ function VehicleFormDialog({
 					) : null}
 
 					<div className="grid gap-4 sm:grid-cols-2">
+						<div className="space-y-1.5 sm:col-span-2">
+							<Label htmlFor="vehicle-display-name">Vehicle name</Label>
+							<Input
+								id="vehicle-display-name"
+								value={values.vehicleName}
+								onChange={(e) => update('vehicleName', e.target.value)}
+								placeholder="e.g. Executive sedan 01"
+								disabled={busy}
+							/>
+							<p className="text-xs text-ops-muted">
+								Shown in ops lists and assignment. If blank, year + make + model is used.
+							</p>
+						</div>
 						<div className="space-y-1.5">
 							<Label htmlFor="vehicle-make">Make</Label>
 							<Input
@@ -616,6 +656,26 @@ function VehicleFormDialog({
 									</option>
 								))}
 							</select>
+						</div>
+						<div className="space-y-1.5 sm:col-span-2">
+							<Label htmlFor="vehicle-assigned-driver">Driver</Label>
+							<select
+								id="vehicle-assigned-driver"
+								value={values.assignedDriverId}
+								onChange={(e) => update('assignedDriverId', e.target.value)}
+								className="flex h-10 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm text-gray-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#25A89B]"
+								disabled={busy}
+							>
+								<option value="">Not assigned</option>
+								{driverOptions.map((d) => (
+									<option key={d.id} value={d.id}>
+										{d.full_name}
+									</option>
+								))}
+							</select>
+							<p className="text-xs text-ops-muted">
+								Sets this vehicle as the driver’s default vehicle for ops dispatch.
+							</p>
 						</div>
 						<div className="space-y-1.5">
 							<Label htmlFor="vehicle-mileage">Mileage (km)</Label>
@@ -703,6 +763,21 @@ function VehicleFormDialog({
 									</option>
 								))}
 							</select>
+						</div>
+						<div className="space-y-1.5 sm:col-span-2">
+							<div className="flex items-center gap-2">
+								<input
+									id="vehicle-fleet-active"
+									type="checkbox"
+									checked={values.isFleetActive}
+									onChange={(e) => update('isFleetActive', e.target.checked)}
+									disabled={busy}
+									className="h-4 w-4 rounded border-gray-300"
+								/>
+								<Label htmlFor="vehicle-fleet-active" className="text-sm font-normal text-ops-muted">
+									Active for assignment and availability (inactive stays on this fleet list)
+								</Label>
+							</div>
 						</div>
 						<div className="space-y-1.5">
 							<Label htmlFor="vehicle-plate">License plate</Label>

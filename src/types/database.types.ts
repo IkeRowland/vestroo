@@ -88,34 +88,6 @@ export type ExperiencePackageRowDb = {
 	updated_at: string
 }
 
-/** `public.close_protection_engagements.status` — migration `20260411120000_vst11_close_protection_engagements.sql` */
-export type CloseProtectionEngagementStatusDb =
-	| 'draft'
-	| 'active'
-	| 'completed'
-	| 'cancelled'
-
-/** `public.close_protection_engagements` — VST-11 */
-export type CloseProtectionEngagementRowDb = {
-	id: string
-	booking_id: string
-	trip_id: string | null
-	status: CloseProtectionEngagementStatusDb
-	coordination_notes: string | null
-	created_at: string
-	updated_at: string
-	created_by: string
-}
-
-/**
- * Optional keys on `bookings.booking_metadata` (jsonb) for close protection (VST-11).
- * Approach B: no `close_protection` `booking_intent`; engagements live in `close_protection_engagements`.
- */
-export type BookingMetadataCloseProtectionKeys = {
-	close_protection_requested?: boolean
-	close_protection_engagement_id?: string
-}
-
 /**
  * `bookings.booking_metadata` for `booking_intent = corporate_pattern` (SH.9.5).
  * Persisted by the patterned-checkout server path after Zod `corporatePatternBookingMetadataSchema`
@@ -187,10 +159,12 @@ export type BookingAvailabilityCheckColumnsDb = {
 
 /**
  * `public.bookings.status` — `bookings_status_check` (VST-14 + Epic 13.9 migration
- * `20260420200000_epic13_story139_bookings_invoicing_statuses_v1.sql`).
+ * `20260420200000_epic13_story139_bookings_invoicing_statuses_v1.sql` + account portal
+ * `pending_confirmation` in `20260518120000_account_portal_pending_confirmation_and_rls_v1.sql`).
  */
 export type BookingPipelineStatusDb =
 	| 'pending'
+	| 'pending_confirmation'
 	| 'submitted'
 	| 'triaged'
 	| 'quote_sent'
@@ -472,7 +446,6 @@ export type RetentionClassDb =
 	| 'operational'
 	| 'financial'
 	| 'compliance_document'
-	| 'cp_engagement_related'
 	| 'marketing'
 
 /** Minimal JSON DSR export shape (admin-only Server Action). */
@@ -496,7 +469,6 @@ export type DsrExportPayloadDb = {
 	}
 	bookings: Record<string, unknown>[]
 	trips: Record<string, unknown>[]
-	close_protection_engagements: Record<string, unknown>[]
 }
 
 /** `public.compliance_incidents` row (subset for UI lists). */

@@ -26,8 +26,7 @@ function parseCostTierFromBookingVehicleId(raw: string | null | undefined): numb
  * (Epic 15 / **15D.1** / **15D.2**). Uses the same cookie **user** Supabase client as other ops actions.
  *
  * **Booking window:** `pickup_datetime` → end = pickup + `estimated_duration` minutes when set and
- * positive; otherwise **+120 minutes** (assign flow often has a service run for end — we do not
- * here; see story Progress Notes).
+ * positive; otherwise **+120 minutes** (see story Progress Notes).
  */
 export function createDispatchSuggestionsDeps(
 	supabase: SupabaseClient,
@@ -77,7 +76,7 @@ export function createDispatchSuggestionsDeps(
 			void bookingId
 			const [{ data: vehicles, error: vErr }, { data: categories, error: cErr }] =
 				await Promise.all([
-					supabase.from('vehicles').select('id, category_id').order('name'),
+					supabase.from('vehicles').select('id, category_id').eq('is_fleet_active', true).order('name'),
 					supabase.from('vehicle_categories').select('id, number_of_seat'),
 				])
 			if (vErr || cErr) {

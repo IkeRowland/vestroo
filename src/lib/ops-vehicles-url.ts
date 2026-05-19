@@ -1,10 +1,11 @@
 /**
- * URL contract for **`/ops/vehicles`** (Story 17.12 / FE.17.6, FE.17.5).
+ * URL contract for fleet **vehicles** tab at **`/ops/fleet/vehicles`** (Story 17.12 / FE.17.6, FE.17.5).
+ * **`/ops/fleet`** redirects to **`/ops/fleet/drivers`** (default hub); vehicles stay at this path.
  * **`view`:** `grid` shows card grid; any other / absent value → **list** (default).
  * **`id`:** optional selected vehicle UUID for the detail rail.
  * Future **`page` / `per`** merge additively — preserve **`view`** + **`id`** when adding pagination.
  */
-export const OPS_VEHICLES_PATH = '/ops/vehicles' as const
+export const OPS_FLEET_PATH = '/ops/fleet/vehicles' as const
 
 export type OpsVehiclesPageView = 'list' | 'grid'
 
@@ -53,5 +54,5 @@ export function buildOpsVehiclesHref(state: {
 		params.set('id', state.id)
 	}
 	const q = params.toString()
-	return q ? `${OPS_VEHICLES_PATH}?${q}` : OPS_VEHICLES_PATH
+	return q ? `${OPS_FLEET_PATH}?${q}` : OPS_FLEET_PATH
 }

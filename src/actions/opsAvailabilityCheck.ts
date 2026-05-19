@@ -2,7 +2,6 @@
 
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
-import { z } from 'zod'
 
 import { buildOpsActionFailure } from '@/features/ops/ops-action-errors'
 import { appendOpsAuditLog } from '@/lib/ops-audit'
@@ -13,6 +12,10 @@ import {
 	findChauffeurWindowConflicts,
 	findVehicleWindowConflicts,
 } from '@/lib/ops-time-windows'
+import {
+	submitAvailabilityCheckInputSchema,
+	type AvailabilityRouteScope,
+} from '@/lib/ops-availability-check-input'
 import { createUserServerClient } from '@/lib/supabase/server'
 import type { ClientTypeDb } from '@/types/database.types'
 import { PROFILE_ROLE_OPS_DRIVER_DB } from '@/types/database.types'
@@ -30,25 +33,7 @@ import { PROFILE_ROLE_OPS_DRIVER_DB } from '@/types/database.types'
  * and **US-B4** (admin override).
  */
 
-export const RATIONALE_MAX_LENGTH = 500
 const ACTION = 'submitAvailabilityCheck' as const
-
-export const AVAILABILITY_SCOPE_VALUES = ['walk_in', 'account_client'] as const
-export type AvailabilityRouteScope = (typeof AVAILABILITY_SCOPE_VALUES)[number]
-
-const inputSchema = z.object({
-	bookingId: z.string().uuid(),
-	scope: z.enum(AVAILABILITY_SCOPE_VALUES),
-	selectedVehicleId: z.string().uuid(),
-	selectedDriverId: z.string().uuid(),
-	rationale: z.string().max(RATIONALE_MAX_LENGTH, 'Rationale must be 500 characters or fewer').optional(),
-	candidatesConsidered: z.object({
-		vehicleIds: z.array(z.string().uuid()),
-		driverIds: z.array(z.string().uuid()),
-	}),
-})
-
-export type SubmitAvailabilityCheckInput = z.infer<typeof inputSchema>
 
 type BookingRow = {
 	id: string
@@ -66,7 +51,7 @@ export async function submitAvailabilityCheckAction(
 	raw: unknown,
 ): Promise<ReturnType<typeof buildOpsActionFailure> | void> {
 	const correlationId = newOpsCorrelationId()
-	const parsed = inputSchema.safeParse(raw)
+	const parsed = submitAvailabilityCheckInputSchema.safeParse(raw)
 	if (!parsed.success) {
 		logOpsAction({
 			action: ACTION,
@@ -307,10 +292,10 @@ export async function submitAvailabilityCheckAction(
 
 	const { data: vehicleProfile, error: vpErr } = await supabase
 		.from('vehicles')
-		.select('id')
+		.select('id, is_fleet_active')
 		.eq('id', selectedVehicleId)
 		.maybeSingle()
-	if (vpErr || !vehicleProfile?.id) {
+	if (vpErr || !vehicleProfile?.id || vehicleProfile.is_fleet_active === false) {
 		logOpsAction({
 			action: ACTION,
 			outcome: 'failure',
@@ -321,7 +306,7 @@ export async function submitAvailabilityCheckAction(
 		})
 		return buildOpsActionFailure(
 			'INVALID_VEHICLE',
-			'Selected vehicle could not be verified.',
+			'Selected vehicle could not be verified or is inactive for assignment.',
 			correlationId,
 		)
 	}

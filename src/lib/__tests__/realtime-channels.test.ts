@@ -2,38 +2,29 @@ import { describe, it, expect } from 'vitest'
 
 import {
 	bookingsOpsRealtimeSubscriptionSpec,
+	bookingsQueueLiveRealtimeSubscriptionSpec,
 	chauffeurAssignmentsRealtimeSubscriptionSpec,
-	serviceRunsRealtimeSubscriptionSpec,
 } from '@/lib/supabase/realtime'
 
-describe('realtime subscription specs (SH.9.4)', () => {
-	it('serviceRunsRealtimeSubscriptionSpec — unscoped channel and no filter', () => {
-		expect(serviceRunsRealtimeSubscriptionSpec()).toEqual({
-			channelName: 'service_runs_changes',
-			filter: undefined,
-			schema: 'public',
-			table: 'service_runs',
-			event: '*',
-		})
-	})
-
-	it('serviceRunsRealtimeSubscriptionSpec — scoped filter for one run', () => {
-		const runId = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee'
-		expect(serviceRunsRealtimeSubscriptionSpec({ serviceRunId: runId })).toEqual({
-			channelName: `service_runs_changes:${runId}`,
-			filter: `id=eq.${runId}`,
-			schema: 'public',
-			table: 'service_runs',
-			event: '*',
-		})
-	})
-
+describe('realtime subscription specs', () => {
 	it('bookingsOpsRealtimeSubscriptionSpec — INSERT + UPDATE on bookings', () => {
 		expect(bookingsOpsRealtimeSubscriptionSpec()).toEqual({
 			channelName: 'bookings_ops_queue_changes',
 			schema: 'public',
 			table: 'bookings',
 			events: ['INSERT', 'UPDATE'],
+		})
+	})
+
+	it('bookingsQueueLiveRealtimeSubscriptionSpec — bookings, trips, booking_trips', () => {
+		expect(bookingsQueueLiveRealtimeSubscriptionSpec()).toEqual({
+			channelName: 'bookings_queue_live_v1',
+			schema: 'public',
+			sources: [
+				{ table: 'bookings', events: 'INSERT,UPDATE' },
+				{ table: 'trips', events: '*' },
+				{ table: 'booking_trips', events: 'INSERT,UPDATE' },
+			],
 		})
 	})
 

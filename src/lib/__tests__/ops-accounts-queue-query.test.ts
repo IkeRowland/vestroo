@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { OPS_BOOKINGS_PATH } from '@/features/ops/ops-bookings-url'
 import {
 	accountsQueueHref,
+	deriveAccountsQueueStageForBookingRow,
 	getIgnoredAccountsQueueParamKeys,
 	OPS_ACCOUNTS_NEW_QUEUE_HREF,
 	OPS_ACCOUNTS_STAGE_ORDER,
@@ -107,6 +108,18 @@ describe('ops-accounts-queue-query (Story 16.21 / US-A2)', () => {
 		})
 	})
 
+	describe('deriveAccountsQueueStageForBookingRow', () => {
+		it('maps portal pending_confirmation stage', () => {
+			expect(
+				deriveAccountsQueueStageForBookingRow({
+					client_type: 'account_client',
+					status: 'pending_confirmation',
+					availability_checked_at: null,
+				}),
+			).toBe('pending_confirmation')
+		})
+	})
+
 	describe('opsAccountsStageLabel', () => {
 		it('produces a human label for every stage token', () => {
 			for (const stage of OPS_ACCOUNTS_STAGE_ORDER) {
@@ -116,8 +129,9 @@ describe('ops-accounts-queue-query (Story 16.21 / US-A2)', () => {
 			}
 		})
 
-		it('matches the US-A2 tab order (8 stages)', () => {
+		it('matches the US-A2 tab order (9 stages)', () => {
 			expect(OPS_ACCOUNTS_STAGE_ORDER).toEqual([
+				'pending_confirmation',
 				'new',
 				'triaged',
 				'availability_checked',

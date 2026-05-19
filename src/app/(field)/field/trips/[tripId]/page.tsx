@@ -81,10 +81,7 @@ export default async function FieldTripDetailPage({ params }: { params: PagePara
 		envEnabled: isRiderLiveLocationEnvEnabled(),
 	})
 
-	const mapsTarget = await resolveFieldMapsTarget(supabase, {
-		serviceRunId: (trip.service_run_id as string | null) ?? null,
-		booking,
-	})
+	const mapsTarget = resolveFieldMapsTarget({ booking })
 
 	const googleMapsUrl = mapsTarget ? buildGoogleMapsUrl(mapsTarget) : null
 	const appleMapsUrl = mapsTarget ? buildAppleMapsUrl(mapsTarget) : null
@@ -140,8 +137,7 @@ export default async function FieldTripDetailPage({ params }: { params: PagePara
 
 			{!mapsTarget ? (
 				<p className="text-xs text-slate-500">
-					No navigation target yet. Add booking addresses or tie the trip to a service run with
-					route points (see docs/field-tools.md).
+					No navigation target yet. Add pickup and destination on the booking so maps can open here.
 				</p>
 			) : null}
 

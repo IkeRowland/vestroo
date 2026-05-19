@@ -9,7 +9,7 @@ import {
 } from '@/lib/email/templates/walk-in-acceptance-confirmation'
 import type { LoadWalkInQuoteBankContextResult } from '@/lib/email/walk-in-quote-bank-context'
 import { appendOpsAuditLog } from '@/lib/ops-audit'
-import { QUOTE_LINK_SYSTEM_AUDIT_ACTOR_ID } from '@/lib/quote-reject-constants'
+import { resolveQuoteLinkOpsAuditActorId } from '@/lib/resolve-quote-link-audit-actor'
 import type { BookingRowForQuoteEmail } from '@/lib/booking-quote-sent-email'
 
 type WalkInAcceptEmailBooking = BookingRowForQuoteEmail & {
@@ -58,9 +58,14 @@ export async function sendWalkInAcceptanceConfirmationForBooking(
 		console.error('[walk-in-accept] no recipient email:', emailRes.message)
 	}
 
-	const actorId = b.customer_id ?? QUOTE_LINK_SYSTEM_AUDIT_ACTOR_ID
+	const actor = await resolveQuoteLinkOpsAuditActorId(supabase)
+	if (!actor.ok) {
+		console.error('[walk-in-accept] resolveQuoteLinkOpsAuditActorId failed:', actor.message)
+		return
+	}
+
 	const audit = await appendOpsAuditLog(supabase, {
-		actorId,
+		actorId: actor.actorId,
 		actorRole: 'customer',
 		action: 'customer_accepted_quote',
 		entity: 'bookings',
@@ -68,6 +73,7 @@ export async function sendWalkInAcceptanceConfirmationForBooking(
 		payload: {
 			booking_id: b.id,
 			quote_id: args.quoteId,
+			...(b.customer_id ? { booking_customer_id: b.customer_id } : {}),
 		},
 	})
 	if (!audit.ok) {

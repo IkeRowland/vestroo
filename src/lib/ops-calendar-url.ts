@@ -1,12 +1,13 @@
 /**
  * URL contract for **`/ops/calendar`** (Story 17.14 / FE.17.9, FE.17.12 rollout item 7).
- * **`week`:** ISO **`YYYY-MM-DD`** for **any** day in the week — normalized server-side to **Monday** (local) week start.
+ * **`week`:** ISO **`YYYY-MM-DD`** for **any** day in the week — normalized server-side to **Monday** (local) week start (**`view=week`** default, **`view=list`**).
+ * **`month`:** **`YYYY-MM`** — calendar month when **`view=month`**.
  * **`id`:** optional selected trip / event UUID (**`trips.id`**).
- * **`view`:** **`list`** shows agenda list; absent / other → **week** grid.
+ * **`view`:** **`list`** agenda · **`month`** month grid · absent / other → **week** grid.
  */
 export const OPS_CALENDAR_PATH = '/ops/calendar' as const
 
-export type OpsCalendarPageView = 'week' | 'list'
+export type OpsCalendarPageView = 'week' | 'list' | 'month'
 
 export function firstSearchParam(
 	raw: Record<string, string | string[] | undefined>,
@@ -71,10 +72,57 @@ export function getWeekStartYmdFromSearchParams(
 	return parseWeekQueryYmd(w)
 }
 
+/** First local day of **`YYYY-MM`** (validated **`monthYm`**). */
+export function parseYmToFirstDay(ym: string): Date {
+	const [ys, ms] = ym.split('-').map(Number)
+	return new Date(ys, ms - 1, 1, 0, 0, 0, 0)
+}
+
+/** Monday on or before **`monthFirst`** (local), for **FE.17.9** month grids. */
+export function monthGridStartMondayLocal(monthFirst: Date): Date {
+	const offset = (monthFirst.getDay() + 6) % 7
+	const d = new Date(monthFirst.getFullYear(), monthFirst.getMonth(), monthFirst.getDate())
+	d.setDate(d.getDate() - offset)
+	d.setHours(0, 0, 0, 0)
+	return d
+}
+
+/** Local **42-day** month grid → UTC **ISO** range for **`time_start_estimate`** windowing. */
+export function opsCalendarMonthGridUtcRange(monthYm: string): { startIso: string; endIso: string } {
+	const monthFirst = parseYmToFirstDay(monthYm)
+	const gridStart = monthGridStartMondayLocal(monthFirst)
+	const gridEndExclusive = addDaysLocal(gridStart, 42)
+	const startIso = new Date(
+		gridStart.getFullYear(),
+		gridStart.getMonth(),
+		gridStart.getDate(),
+		0,
+		0,
+		0,
+		0,
+	).toISOString()
+	const endIso = new Date(
+		gridEndExclusive.getFullYear(),
+		gridEndExclusive.getMonth(),
+		gridEndExclusive.getDate(),
+		0,
+		0,
+		0,
+		0,
+	).toISOString()
+	return { startIso, endIso }
+}
+
 export function getRawCalendarWeekParam(
 	raw: Record<string, string | string[] | undefined>,
 ): string | undefined {
 	return firstSearchParam(raw, 'week')
+}
+
+export function getRawCalendarMonthParam(
+	raw: Record<string, string | string[] | undefined>,
+): string | undefined {
+	return firstSearchParam(raw, 'month')
 }
 
 export function getRawOpsCalendarEventId(
@@ -87,7 +135,10 @@ export function getRawOpsCalendarEventId(
 export function parseOpsCalendarPageView(
 	raw: Record<string, string | string[] | undefined>,
 ): OpsCalendarPageView {
-	return firstSearchParam(raw, 'view') === 'list' ? 'list' : 'week'
+	const v = firstSearchParam(raw, 'view')
+	if (v === 'list') return 'list'
+	if (v === 'month') return 'month'
+	return 'week'
 }
 
 export function parseOpsCalendarSelectedEventId(
@@ -101,13 +152,19 @@ export function parseOpsCalendarSelectedEventId(
 
 export function buildOpsCalendarHref(state: {
 	weekStartYmd: string
+	monthYm: string
 	eventId: string | null
 	view: OpsCalendarPageView
 }): string {
 	const params = new URLSearchParams()
-	params.set('week', state.weekStartYmd)
-	if (state.view === 'list') {
-		params.set('view', 'list')
+	if (state.view === 'month') {
+		params.set('view', 'month')
+		params.set('month', state.monthYm)
+	} else {
+		params.set('week', state.weekStartYmd)
+		if (state.view === 'list') {
+			params.set('view', 'list')
+		}
 	}
 	if (state.eventId) {
 		params.set('id', state.eventId)

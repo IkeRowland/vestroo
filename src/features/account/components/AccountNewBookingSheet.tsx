@@ -20,8 +20,10 @@ export function AccountNewBookingSheet({
 	formKey: number
 	bookingFormLoad: AccountBookingFormLoad
 }) {
+	// `modal={false}`: Google Places `.pac-container` is on `body`; modal Radix dialogs set
+	// `body { pointer-events: none }`, which blocks clicking autocomplete suggestions.
 	return (
-		<Sheet open={open} onOpenChange={onOpenChange}>
+		<Sheet modal={false} open={open} onOpenChange={onOpenChange}>
 			{/*
 				Radix portals to `body`, outside `(portal)/layout`’s `data-account-theme` — without this,
 				`bg-account-*` vars are undefined and the panel renders transparent.

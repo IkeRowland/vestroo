@@ -4,7 +4,7 @@ import {
 	availabilityWindowFromBooking,
 	type AvailabilityWindow,
 } from '@/lib/ops-availability-window'
-import type { AvailabilityRouteScope } from '@/actions/opsAvailabilityCheck'
+import type { AvailabilityRouteScope } from '@/lib/ops-availability-check-input'
 import { PROFILE_ROLE_OPS_DRIVER_DB } from '@/types/database.types'
 
 /**
@@ -79,6 +79,8 @@ type VehicleRow = {
 	name: string
 	license_plate: string | null
 	category_id: string | null
+	vehicle_condition?: string | null
+	is_fleet_active?: boolean | null
 	vehicle_categories?: unknown
 }
 
@@ -176,7 +178,9 @@ export async function loadAvailabilityCheckContext(
 
 	const { data: vehicleRows, error: vErr } = await supabase
 		.from('vehicles')
-		.select('id, name, license_plate, category_id, vehicle_categories ( name, number_of_seat )')
+		.select(
+			'id, name, license_plate, category_id, vehicle_condition, is_fleet_active, vehicle_categories ( name, number_of_seat )',
+		)
 		.order('name', { ascending: true })
 
 	if (vErr) {
@@ -185,6 +189,9 @@ export async function loadAvailabilityCheckContext(
 
 	const vehicleCandidates: AvailabilityVehicleCandidate[] = []
 	for (const raw of (vehicleRows ?? []) as VehicleRow[]) {
+		if (raw.is_fleet_active === false) continue
+		const cond = String(raw.vehicle_condition ?? '').toLowerCase()
+		if (cond === 'archived') continue
 		const cat = categoryFromVehicleRow(raw)
 		if (cat.seats < passengerCount) continue
 		vehicleCandidates.push({

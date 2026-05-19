@@ -51,6 +51,17 @@ describe('ops-status-pill-tones (Story 17.7 / FE.17.8)', () => {
 		expect(getOpsStatusPillTone('totally_unknown_status_xyz')).toBe('neutral')
 	})
 
+	it('maps fleet drivers list pill keys', () => {
+		expect(getOpsStatusPillTone('fleet_drivers_trip_idle')).toBe('neutral')
+		expect(getOpsStatusPillTone('fleet_drivers_trip_busy')).toBe('info')
+		expect(getOpsStatusPillTone('fleet_drivers_trip_unavailable')).toBe('neutral')
+	})
+
+	it('maps fleet drivers shift status pill keys', () => {
+		expect(getOpsStatusPillTone('fleet_drivers_shift_active')).toBe('success')
+		expect(getOpsStatusPillTone('fleet_drivers_shift_inactive')).toBe('neutral')
+	})
+
 	it('normalizeOpsStatusKey', () => {
 		expect(normalizeOpsStatusKey(' Awaiting Payment ')).toBe('awaiting_payment')
 	})

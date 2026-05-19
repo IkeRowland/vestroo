@@ -6,7 +6,7 @@
 
 
 
-**Dependencies:** **[VST-5](vst-5.story.md)** MUST be **complete and stable** for **schema**, **RLS**, **`profiles`**, **`bookings`**, **`vehicles`**, **`chauffeurs`**, and **driver linkage** as described in **`docs/data-models.md`**. **[VST-7](vst-7.story.md)** MUST be **available** for **`/ops/*`**, staff-gated Server Actions (**`src/actions/opsDispatch.ts`**), **`public.ops_audit_log`**, and **`docs/ops-console.md`** patterns. **[VST-8](vst-8.story.md)** establishes **field POPIA boundaries** — this story MUST **align** compliance docs and RLS with **`docs/field-tools.md`** and **`src/lib/field-customer-contact.ts`** (chauffeurs MUST **not** gain **incident** or **compliance document** admin). **[VST-9](vst-9.story.md)** and **`docs/realtime-and-notifications.md`** **defer** full **compliance** UIs and **retention/export** to **VST-12** — this story **implements** those deferred hooks where agreed. **[VST-11](vst-11.story.md)** and **`docs/close-protection-engagements.md`** **defer** **retention** / **export-delete** specifics for **close protection** to **VST-12** — this story MUST **integrate** (cross-link, shared audit/retention classes) and MUST **not duplicate** CP engagement lifecycle rules already owned by VST-11. **[VST-3](vst-3.story.md)** (**`SECURITY.md`**, **`docs/operational-guidelines.md`**) is **awareness-only** baseline — VST-12 **extends** the repo with **compliance artefacts** (tables, ops surfaces, engineering checklist) without replacing coordinated disclosure or dependency hygiene docs.
+**Dependencies:** **[VST-5](vst-5.story.md)** MUST be **complete and stable** for **schema**, **RLS**, **`profiles`**, **`bookings`**, **`vehicles`**, **`chauffeurs`**, and **driver linkage** as described in **`docs/data-models.md`**. **[VST-7](vst-7.story.md)** MUST be **available** for **`/ops/*`**, staff-gated Server Actions (**`src/actions/opsDispatch.ts`**), **`public.ops_audit_log`**, and **`docs/ops-console.md`** patterns. **[VST-8](vst-8.story.md)** establishes **field POPIA boundaries** — this story MUST **align** compliance docs and RLS with **`docs/field-tools.md`** and **`src/lib/field-customer-contact.ts`** (chauffeurs MUST **not** gain **incident** or **compliance document** admin). **[VST-9](vst-9.story.md)** and **`docs/realtime-and-notifications.md`** **defer** full **compliance** UIs and **retention/export** to **VST-12** — this story **implements** those deferred hooks where agreed. **VST-11** is a **retired** numbered slot — this story MUST **not** reference removed product artefacts; keep **compliance** guidance aligned with **`docs/compliance-and-safety.md`** and **`docs/data-models.md`** only. **[VST-3](vst-3.story.md)** (**`SECURITY.md`**, **`docs/operational-guidelines.md`**) is **awareness-only** baseline — VST-12 **extends** the repo with **compliance artefacts** (tables, ops surfaces, engineering checklist) without replacing coordinated disclosure or dependency hygiene docs.
 
 
 
@@ -38,7 +38,7 @@
 
 2. **Vehicle** and **chauffeur** remain **core domain** entities; compliance rows **reference** them via FKs — they do **not** replace **`vehicles`** / **`chauffeurs`** lifecycle tables from VST-5.
 
-3. **Close protection engagement** rules stay **owned by VST-11**; VST-12 adds **retention / export / incident** hooks that **apply** where product policy says so, **without** redefining engagement **status** or **coordination_notes** semantics.
+3. **Retired VST-11 artefacts:** Any legacy **engagement** table referenced in older drafts was **removed** from the active schema; VST-12 **does not** reintroduce parallel coordination stores — **retention / export** guidance applies only to **tables that still exist** (see **`docs/data-models.md`**).
 
 
 
@@ -50,7 +50,7 @@
 
 
 
-1. **Compliance design doc:** Add **`docs/compliance-and-safety.md`** (name fixed unless a rename is explicitly justified in the PR and reflected here) describing: **South Africa / POPIA-oriented** **engineering** practices (minimisation, purpose limitation **as implemented in code**), an **engineering checklist** mappable to POPIA themes (**not** legal sign-off — same **tone** as **`docs/realtime-and-notifications.md`** § *Legal and product boundary* and **`docs/stories/vst-9.story.md`** **out of scope** notes); **incident** logging **purposes** and **who** may create/view; **document** tracking (types, expiry, storage); **retention classes** and **purge** strategy (**documentation-first**); **data subject request (DSR)** **export** / **delete** **boundaries**; cross-links to **`docs/data-models.md`**, **`docs/ops-console.md`**, **`docs/field-tools.md`**, **`docs/close-protection-engagements.md`** (VST-11 **handoff** — **integrate**, do **not** duplicate CP engagement rules), and **`docs/realtime-and-notifications.md`**. State **policy hooks early** even when **UI** is **MVP** or **stubbed**.
+1. **Compliance design doc:** Add **`docs/compliance-and-safety.md`** (name fixed unless a rename is explicitly justified in the PR and reflected here) describing: **South Africa / POPIA-oriented** **engineering** practices (minimisation, purpose limitation **as implemented in code**), an **engineering checklist** mappable to POPIA themes (**not** legal sign-off — same **tone** as **`docs/realtime-and-notifications.md`** § *Legal and product boundary* and **`docs/stories/vst-9.story.md`** **out of scope** notes); **incident** logging **purposes** and **who** may create/view; **document** tracking (types, expiry, storage); **retention classes** and **purge** strategy (**documentation-first**); **data subject request (DSR)** **export** / **delete** **boundaries**; cross-links to **`docs/data-models.md`**, **`docs/ops-console.md`**, **`docs/field-tools.md`**, and **`docs/realtime-and-notifications.md`**. State **policy hooks early** even when **UI** is **MVP** or **stubbed**.
 
 
 
@@ -66,7 +66,7 @@
 
 
 
-5. **Retention:** Document **retention classes** (e.g. **operational**, **financial**, **compliance_document**, **cp_engagement_related**) in **`docs/compliance-and-safety.md`**. Add **schema columns** on **agreed** tables (incidents, document rows, and/or **`bookings`** / **`profiles`** stubs) such as **`retention_class`** and/or **`retention_until`** **where** the design doc specifies — **full scheduled purge automation** (cron, Edge Functions) MAY be **deferred** if explicitly noted as **post-MVP**; MVP MUST still ship **documented policy** + **optional stub** (e.g. SQL view or commented cron sketch) **without** blocking merge.
+5. **Retention:** Document **retention classes** (e.g. **operational**, **financial**, **compliance_document**) in **`docs/compliance-and-safety.md`**. Add **schema columns** on **agreed** tables (incidents, document rows, and/or **`bookings`** / **`profiles`** stubs) such as **`retention_class`** and/or **`retention_until`** **where** the design doc specifies — **full scheduled purge automation** (cron, Edge Functions) MAY be **deferred** if explicitly noted as **post-MVP**; MVP MUST still ship **documented policy** + **optional stub** (e.g. SQL view or commented cron sketch) **without** blocking merge.
 
 
 
@@ -86,7 +86,7 @@
 
 
 
-10. **VST-11 integration:** In **`docs/compliance-and-safety.md`** (and **`docs/data-models.md`**), explicitly state how **close protection engagements** (**`public.close_protection_engagements`**) **inherit** **retention** / **export** rules — **reference** **`docs/close-protection-engagements.md`**; **do not** redefine **engagement** **status** or **coordination_notes** access rules (remain VST-11).
+10. **Retired VST-11 note:** **`docs/compliance-and-safety.md`** and **`docs/data-models.md`** MUST state that **legacy engagement tables** were **removed** from the active schema — do **not** document operational workflows for tables that no longer exist.
 
 
 
@@ -154,7 +154,7 @@
 
 
 
-- [x] **Task 10 — AC10:** Document **VST-11** **CP** linkage in compliance + data-models (**no** duplicate engagement rules). (AC: #10)
+- [x] **Task 10 — AC10:** Document **retired VST-11** posture in compliance + data-models (**no** duplicate engagement rules for removed tables). (AC: #10)
 
 
 
@@ -186,17 +186,17 @@
 
 
 
-- **Prerequisites:** Read **`docs/data-models.md`**, **`docs/ops-console.md`**, **`src/lib/ops-auth.ts`** (**`ProfileRole`**, **`is_staff`**), **`public.ops_audit_log`** migrations, **`docs/close-protection-engagements.md`**, **`docs/field-tools.md`**, and **`src/lib/field-customer-contact.ts`** before schema/action work.
+- **Prerequisites:** Read **`docs/data-models.md`**, **`docs/ops-console.md`**, **`src/lib/ops-auth.ts`** (**`ProfileRole`**, **`is_staff`**), **`public.ops_audit_log`** migrations, **`docs/field-tools.md`**, and **`src/lib/field-customer-contact.ts`** before schema/action work.
 
 - **Policy hooks early:** Prefer **documented extension points** (e.g. retention columns, audit events, stub **export** UI) so later stories can add **cron** / **queues** without redesigning FKs.
 
-- **Server Actions:** Follow **`src/actions/opsDispatch.ts`** / **`src/actions/opsCloseProtection.ts`** for **staff JWT** patterns; **elevate** to **`admin`** checks for **DSR** per AC7–AC8 — **do not** expose compliance tables via **customer** or **chauffeur** clients.
+- **Server Actions:** Follow **`src/actions/opsDispatch.ts`** for **staff JWT** patterns; **elevate** to **`admin`** checks for **DSR** per AC7–AC8 — **do not** expose compliance tables via **customer** or **chauffeur** clients.
 
 - **Storage:** Use **Supabase Storage** with **server-side** signed access patterns where needed; **never** put **service role** keys in client bundles.
 
 - **RLS:** Customers **must** rely on **Server Actions** for any future “my data” features; this story’s MVP may be **admin-only** DSR — still **deny** direct table access.
 
-- **Testing:** **`vitest.config.ts`**; mirror **`src/actions/__tests__/opsCloseProtection.test.ts`**-style **auth** branching tests.
+- **Testing:** **`vitest.config.ts`**; mirror **`src/actions/__tests__/opsCompliance.test.ts`**-style **auth** branching tests.
 
 - **Legal:** **Engineering** delivers **checklist** and **controls**; **legal** sign-off is **explicitly** out of scope — avoid marketing copy that claims **POPIA compliance**.
 
@@ -224,7 +224,7 @@
 
 - **Tests:** `src/actions/__tests__/opsCompliance.test.ts` — Zod + staff vs admin branches; **`npm run test`** and **`npm run build`** pass.
 
-- **Build fix (related):** Moved **`opsCloseProtection`** Zod exports to **`src/lib/ops-close-protection-schemas.ts`** so existing ops pages satisfy the same Next.js server-action export rule.
+- **Build hygiene:** keep **Server Action** modules exporting only **async functions** (Next.js rule) — colocate heavy **Zod** schemas in **`src/lib/*-schemas.ts`** when needed.
 
 
 

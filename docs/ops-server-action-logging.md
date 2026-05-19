@@ -16,7 +16,6 @@ Ops-facing server actions under `src/actions/ops*.ts` emit **structured JSON lin
 | `entityId` | optional | Primary entity UUID when safe (trip, engagement, document, …) |
 | `bookingId` | optional | Booking UUID when part of the flow |
 | `tripId` | optional | Trip UUID |
-| `engagementId` | optional | Close protection engagement UUID |
 | `hint` | optional | **Internal only** — short redacted hint (e.g. gate message, Postgres summary). Never log raw multi-line SQL, stack traces, or secrets here |
 | `meta` | optional | Small scalar map only; long strings are truncated with a length marker |
 

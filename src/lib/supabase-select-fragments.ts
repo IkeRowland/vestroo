@@ -6,15 +6,29 @@
 export const TRIPS_BOARD_SELECT_COLUMNS =
 	'id, status, time_start_estimate, time_end_estimate, vehicle_id, chauffeur_id, ops_delay_note' as const
 
-export const TRIPS_OPS_LIST_SELECT_COLUMNS =
-	'id, status, time_start_estimate, time_end_estimate, vehicle_id, chauffeur_id, service_run_id, ops_delay_note, ops_revised_time_end_estimate' as const
+/** Ops `/ops/trips` live list — flat trip columns plus booking embed for queue parity with Bookings. */
+export const TRIPS_OPS_LIST_SELECT_COLUMNS = [
+	'id',
+	'status',
+	'time_start_estimate',
+	'time_end_estimate',
+	'vehicle_id',
+	'chauffeur_id',
+	'ops_delay_note',
+	'ops_revised_time_end_estimate',
+	'booking_trips(bookings(id,payment_reference,pickup_datetime,customer_name,customer_email,client_type,origin_name,destination_name,customer_accounts(id,name))))',
+].join(',')
 
 /** Ops calendar week: nested reads only where existing RLS already allows staff (`/ops/calendar`). */
 export const TRIPS_CALENDAR_SELECT_COLUMNS =
 	'id, status, time_start_estimate, time_end_estimate, vehicle_id, chauffeur_id, ops_delay_note, service_type, vehicles(name), booking_trips(bookings(customer_name, rider_name, origin_name, destination_name))' as const
 
 export const FIELD_TRIP_DETAIL_SELECT_COLUMNS =
-	'id, status, chauffeur_id, time_start_estimate, time_end_estimate, service_run_id, service_type, vehicle_id' as const
+	'id, status, chauffeur_id, time_start_estimate, time_end_estimate, service_type, vehicle_id' as const
+
+/** Fleet drivers page **Trip status** (in-window busy) — flat columns only. */
+export const TRIPS_FLEET_DRIVERS_STATUS_COLUMNS =
+	'id, status, chauffeur_id, time_start_estimate, time_end_estimate, ops_revised_time_end_estimate' as const
 
 export const DRIVER_SHIFT_SCHEDULE_TABLE = 'chauffeur_schedules' as const
 

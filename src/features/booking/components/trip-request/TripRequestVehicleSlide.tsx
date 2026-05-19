@@ -112,7 +112,7 @@ export function TripRequestVehicleSlide({
 
       {!loading && !error && vehicles.length === 0 && (
         <div className="rounded-xl border border-border bg-muted/30 p-6 text-center text-sm text-muted-foreground">
-          <p className="font-display font-semibold text-foreground">No vehicles match your party size</p>
+          <p className="font-display font-semibold text-foreground">No vehicle classes match your party size</p>
           <p className="mt-2">
             Adjust the number of passengers on the booking form and submit again, or contact us for
             special arrangements.

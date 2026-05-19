@@ -10,6 +10,7 @@ describe('ops-bookings-queue-pill-tones (17.10)', () => {
 		expect(getBookingsQueueStatusPillTone('ready_to_assign')).toBe('warning')
 		expect(getBookingsQueueStatusPillTone('cancelled')).toBe('danger')
 		expect(getBookingsQueueStatusPillTone('completed')).toBe('success')
+		expect(getBookingsQueueStatusPillTone('pending_confirmation')).toBe('warning')
 	})
 
 	it('maps payment_status separately from booking status', () => {

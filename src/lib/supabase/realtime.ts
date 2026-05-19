@@ -5,7 +5,6 @@ export const REALTIME_SCHEMA = 'public' as const
 export type VehicleTrackingRealtimeRow = {
 	id: string
 	chauffeur_assignment_id: string
-	service_run_id: string
 	vehicle_id: string
 	current_location: unknown
 	estimated_arrival: string | null
@@ -18,16 +17,6 @@ export type TripRealtimeRow = {
 	updated_at: string
 	time_start_estimate: string
 	time_end_estimate: string
-}
-
-export type ServiceRunRealtimeRow = {
-	id: string
-	service_route_id: string
-	service_date: string
-	scheduled_start: string
-	scheduled_end: string
-	trip_number: number
-	updated_at: string
 }
 
 /** Spec for ops bookings queue — INSERT + UPDATE only (no DELETE listener). */
@@ -45,6 +34,23 @@ export function bookingsOpsRealtimeSubscriptionSpec(): {
 	}
 }
 
+/** Spec for `/ops/bookings` live queue — bookings, trip rows, and booking↔trip links. */
+export function bookingsQueueLiveRealtimeSubscriptionSpec(): {
+	channelName: string
+	schema: typeof REALTIME_SCHEMA
+	sources: readonly { table: string; events: string }[]
+} {
+	return {
+		channelName: 'bookings_queue_live_v1',
+		schema: REALTIME_SCHEMA,
+		sources: [
+			{ table: 'bookings', events: 'INSERT,UPDATE' },
+			{ table: 'trips', events: '*' },
+			{ table: 'booking_trips', events: 'INSERT,UPDATE' },
+		],
+	}
+}
+
 export type ChauffeurAssignmentRealtimeRow = {
 	id: string
 	chauffeur_id: string
@@ -55,28 +61,6 @@ export type ChauffeurAssignmentRealtimeRow = {
 	trip_number: number
 	status: string
 	updated_at: string
-}
-
-/** Spec for tests and narrow channel naming (SH.9.4). */
-export function serviceRunsRealtimeSubscriptionSpec(options?: {
-	serviceRunId?: string
-}): {
-	channelName: string
-	filter: string | undefined
-	schema: typeof REALTIME_SCHEMA
-	table: 'service_runs'
-	event: '*'
-} {
-	const runId = options?.serviceRunId
-	const filter = runId ? `id=eq.${runId}` : undefined
-	const channelName = runId ? `service_runs_changes:${runId}` : 'service_runs_changes'
-	return {
-		channelName,
-		filter,
-		schema: REALTIME_SCHEMA,
-		table: 'service_runs',
-		event: '*',
-	}
 }
 
 /** Spec for tests — optional `chauffeur_id` filter for field-scoped subscriptions. */
@@ -194,36 +178,55 @@ export function subscribeBookingsOps(
 }
 
 /**
- * Subscribe to `service_runs` (patterned run metadata). RLS: staff, chauffeur/trip party, ticket/booking party.
- * Optional `serviceRunId` adds a `postgres_changes` filter to cut churn when scoped to one run.
+ * Subscribe for **`/ops/bookings`** live updates: **`bookings`**, **`trips`**, **`booking_trips`**.
+ * Use when **`bookings`** and **`booking_trips`** are in **`supabase_realtime`** (see migrations).
  */
-export function subscribeServiceRuns(
+export function subscribeBookingsQueueLive(
 	supabase: SupabaseClient,
 	handlers: {
 		onPayload: () => void
 		onSubscribeStatus?: (status: string, err?: Error) => void
 	},
-	options?: { serviceRunId?: string },
 ): RealtimeChannel {
-	const spec = serviceRunsRealtimeSubscriptionSpec(options)
-	const payload =
-		spec.filter !== undefined
-			? {
-					event: '*' as const,
-					schema: spec.schema,
-					table: spec.table,
-					filter: spec.filter,
-				}
-			: {
-					event: '*' as const,
-					schema: spec.schema,
-					table: spec.table,
-				}
+	const spec = bookingsQueueLiveRealtimeSubscriptionSpec()
+	const { schema } = spec
 	return supabase
 		.channel(spec.channelName)
-		.on('postgres_changes', payload, () => {
-			handlers.onPayload()
-		})
+		.on(
+			'postgres_changes',
+			{ event: 'INSERT', schema, table: 'bookings' },
+			() => {
+				handlers.onPayload()
+			},
+		)
+		.on(
+			'postgres_changes',
+			{ event: 'UPDATE', schema, table: 'bookings' },
+			() => {
+				handlers.onPayload()
+			},
+		)
+		.on(
+			'postgres_changes',
+			{ event: '*', schema, table: 'trips' },
+			() => {
+				handlers.onPayload()
+			},
+		)
+		.on(
+			'postgres_changes',
+			{ event: 'INSERT', schema, table: 'booking_trips' },
+			() => {
+				handlers.onPayload()
+			},
+		)
+		.on(
+			'postgres_changes',
+			{ event: 'UPDATE', schema, table: 'booking_trips' },
+			() => {
+				handlers.onPayload()
+			},
+		)
 		.subscribe((status, err) => {
 			handlers.onSubscribeStatus?.(status, err)
 		})

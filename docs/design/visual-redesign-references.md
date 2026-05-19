@@ -72,7 +72,7 @@ The customer portal uses the **same** Wheelzie images as references but **less**
 | 10 | KPI cards (no sparklines) | `/account` (dashboard) | "Trips this month" / "Upcoming trips" / "Open invoices" (admin only) / "Active members" (admin only) | FE.18.3 |
 | 10 | Recent activity feed | `/account` (dashboard) | Replaced by **upcoming trips rail** (more product-relevant for customers than abstract "activity") | FE.18.3 |
 | 4 | Trip detail with map snapshot | `/account/bookings?id=…` | Detail rail with static Google Static Maps snapshot, comms timeline, action footer | FE.18.4 |
-| 6 | Bookings table | `/account/bookings` | Trip type filter (point-to-point / hourly / tour / close protection), status pill, search, pagination | FE.18.4 |
+| 6 | Bookings table | `/account/bookings` | Trip type filter (point-to-point / hourly / tour / corporate pattern), status pill, search, pagination | FE.18.4 |
 | 2 | Payments KPI + table | `/account/invoices` (admin only) | KPI strip "Paid (90d)" / "Awaiting payment" / "Overdue", invoice table, detail rail with line items | FE.18.5 |
 | 1, 3 | Drivers / Clients roster | `/account/members` | Member roster with avatar + role pill (admin / booker), action menu (resend invite, change role, deactivate) | FE.18.6 |
 | 7, 9 | Card / list grid for fleet | **Not applicable** — customers don't manage a fleet | Skip. The "Preferred vehicle" picker on `/book/search` is the only customer surface that resembles vehicle cards, and it uses the simplified vehicle slide pattern. | — |

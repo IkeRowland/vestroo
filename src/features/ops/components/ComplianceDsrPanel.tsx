@@ -161,8 +161,7 @@ export function ComplianceDsrPanel() {
 					<AlertDialogHeader>
 						<AlertDialogTitle>Confirm irreversible anonymisation</AlertDialogTitle>
 						<AlertDialogDescription>
-							This replaces personal data on the profile, redacts linked booking guest fields, clears
-							close protection coordination notes for affected bookings, and clears customer linkage on
+							This replaces personal data on the profile, redacts linked booking guest fields, and clears customer linkage on
 							trips. It cannot be undone from the console — confirm only after legal/process sign-off.
 						</AlertDialogDescription>
 					</AlertDialogHeader>
@@ -183,8 +182,7 @@ export function ComplianceDsrPanel() {
 			<div className="mt-6 space-y-3 border-t border-amber-200 pt-4">
 				<p className="text-sm font-medium text-ops-foreground">Anonymise customer profile</p>
 				<p className="text-xs text-ops-muted">
-					Sets profile fields to placeholders, redacts linked booking guest fields, clears close protection
-					coordination notes for those bookings, and nulls <code className="text-ops-foreground">trips.customer_id</code>{' '}
+					Sets profile fields to placeholders, redacts linked booking guest fields, and nulls <code className="text-ops-foreground">trips.customer_id</code>{' '}
 					for the subject. Type <strong className="text-ops-foreground">ANONYMISE</strong> to unlock confirmation.
 				</p>
 				<div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end">

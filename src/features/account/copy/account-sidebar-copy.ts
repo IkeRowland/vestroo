@@ -3,6 +3,7 @@
  */
 export const accountSidebarCopy = {
 	navAriaLabel: 'Account sections',
+	billingSubNavAria: 'Billing sections',
 	brandLinkAria: 'Vestroo Account — home',
 	expandSidebar: 'Expand sidebar',
 	collapseSidebar: 'Collapse sidebar',
@@ -15,6 +16,7 @@ export const accountSidebarCopy = {
 	itemBookings: 'Bookings',
 	itemTrips: 'Trips',
 	itemInvoices: 'Invoices',
+	itemQuotes: 'Quotes',
 	itemMembers: 'Members',
 	itemPreferences: 'Preferences',
 	itemHelp: 'Help',

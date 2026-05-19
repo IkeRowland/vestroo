@@ -1,13 +1,16 @@
 import Link from 'next/link'
+import type { ReactNode } from 'react'
 
-import { BookingsQueueRowSecondaryLinks } from '@/features/ops/components/BookingsQueueRowSecondaryLinks'
+import { Button } from '@/components/ui/button'
+
+import { AccountQueueRowActions } from '@/features/ops/components/AccountQueueRowActions'
 import { BookingsQueueTableRow } from '@/features/ops/components/BookingsQueueTableRow'
 import { BookingsQueueStopNavCell } from '@/features/ops/components/bookings-queue-walk-in-actions-cell'
+import { FulfilQueueRowActions } from '@/features/ops/components/FulfilQueueRowActions'
 import { WalkInQueueRowActions } from '@/features/ops/components/WalkInQueueRowActions'
 import { OpsAvatarCell } from '@/features/ops/components/OpsAvatarCell'
 import { OpsBookingsQueuePresetChips } from '@/features/ops/components/OpsBookingsQueuePresetChips'
 import { OpsBookingsRealtimeBridge } from '@/features/ops/components/OpsBookingsRealtimeBridge'
-import { formatBookingIntentLabel } from '@/features/ops/booking-intent-labels'
 import { opsBookingsQueueCopy } from '@/features/ops/copy/ops-bookings-queue-copy'
 import {
 	getBookingsQueuePaymentPillTone,
@@ -16,7 +19,6 @@ import {
 import { OpsPagination } from '@/features/ops/components/OpsPagination'
 import { OpsStatusPill } from '@/features/ops/components/OpsStatusPill'
 import { OPS_BOOKINGS_PATH } from '@/features/ops/ops-bookings-url'
-import { OpsDataFreshnessBar } from '@/features/ops/components/OpsDataFreshnessBar'
 import { OpsFetchErrorIsland } from '@/features/ops/components/OpsFetchErrorIsland'
 import { OpsBookingsQueueOverviewBand } from '@/features/ops/components/OpsBookingsQueueOverviewBand'
 import { OpsBookingsQueueFilters } from '@/features/ops/components/OpsBookingsQueueFilters'
@@ -37,6 +39,7 @@ import {
 	getIgnoredBookingsQueueParamKeys,
 	hasActiveQueueFilters,
 	isReadyToAssignPreset,
+	OPS_BOOKINGS_QUEUE_NEEDS_ATTENTION_STATUSES,
 	OPS_BOOKINGS_READY_TO_ASSIGN_HREF,
 	OPS_BOOKINGS_READY_TO_ASSIGN_STATUS,
 	parseOpsBookingsQueueSearchParams,
@@ -47,10 +50,25 @@ import {
 	buildBookingsQueueOverviewBarSeries,
 	fetchBookingsQueueOverviewChartRows,
 } from '@/lib/ops-bookings-queue-overview-chart'
+import {
+	effectiveBookingStatusKeyForOps,
+	extractFirstLinkedTripStatus,
+	extractOpsBookingVehicleName,
+} from '@/lib/ops-booking-detail'
+import {
+	matchesPaidBucket,
+	matchesPendingBucket,
+	tripRequestAcceptedAtFromMetadata,
+} from '@/lib/fulfil-queue-buckets'
+import {
+	deriveAccountsQueueStageForBookingRow,
+} from '@/lib/ops-accounts-queue-query'
 import { opsFulfilAssignBookingHref } from '@/lib/ops-fulfil-nav'
-import { opsBookingsAvailabilityCheckPageExists } from '@/lib/ops-bookings-availability-route'
-import { deriveWalkInQueueStageForBookingRow } from '@/lib/ops-walk-in-queue-query'
-import type { PostgrestError, SupabaseClient } from '@supabase/supabase-js'
+import {
+	deriveWalkInQueueStageForBookingRow,
+	type OpsWalkInStageKey,
+} from '@/lib/ops-walk-in-queue-query'
+import type { PostgrestError } from '@supabase/supabase-js'
 import { createUserServerClient } from '@/lib/supabase/server'
 
 export const dynamic = 'force-dynamic'
@@ -72,7 +90,6 @@ type BookingsQueueRow = {
 	destination_name: string | null
 	customer_name: string | null
 	customer_email: string | null
-	rider_name: string | null
 	total_amount: number | null
 	availability_checked_at: string | null
 	created_at: string
@@ -82,21 +99,92 @@ type BookingsQueueRow = {
 	booking_trips: unknown
 	/** `bookings.current_quote_id` → `booking_quotes` (Epic 14 / Story 14.4). */
 	booking_quotes?: unknown
+	/** `bookings.booking_metadata` — trip-request accept timestamp, etc. */
+	booking_metadata?: unknown
 }
 
 const BOOKINGS_QUEUE_SELECT = `
   id, payment_reference, status, payment_status, booking_intent, client_type, customer_account_id,
-  pickup_datetime, origin_name, destination_name, customer_name, customer_email, rider_name,
-  total_amount, availability_checked_at, created_at,
+  pickup_datetime, origin_name, destination_name, customer_name, customer_email,
+  total_amount, availability_checked_at, created_at, booking_metadata,
   customer_accounts ( id, name ),
-  booking_quotes!bookings_current_quote_id_fkey ( status ),
+  booking_quotes!bookings_current_quote_id_fkey ( status, total_zar ),
   booking_trips (
+    sort_order,
     trip_id,
     trips (
+      status,
       vehicles ( name )
     )
   )
 `
+
+function bookingsQueueActionsCell(
+	row: BookingsQueueRow,
+	walkInStage: OpsWalkInStageKey | null,
+	amountZar: number | null,
+): ReactNode {
+	if (walkInStage != null) {
+		return (
+			<WalkInQueueRowActions
+				bookingId={row.id}
+				activeStage={walkInStage}
+				totalAmountZar={amountZar}
+			/>
+		)
+	}
+	if (row.client_type === 'account_client') {
+		const accountStage = deriveAccountsQueueStageForBookingRow({
+			client_type: row.client_type,
+			status: row.status,
+			availability_checked_at: row.availability_checked_at,
+		})
+		if (accountStage != null) {
+			return (
+				<AccountQueueRowActions
+					bookingId={row.id}
+					activeStage={accountStage}
+					totalAmountZar={amountZar}
+					dispatchGate={{ kind: 'unknown' }}
+				/>
+			)
+		}
+		return (
+			<Button type="button" size="sm" variant="outline" asChild>
+				<Link href={`/ops/bookings/${encodeURIComponent(row.id)}`}>Open booking</Link>
+			</Button>
+		)
+	}
+	const hasLink = extractFirstLinkedTripStatus(row.booking_trips) != null
+	const bucketInput = {
+		booking_intent: row.booking_intent,
+		status: row.status,
+		payment_status: row.payment_status,
+		hasBookingTripLink: hasLink,
+	}
+	if (row.booking_intent === 'trip_request' && !matchesPaidBucket(bucketInput)) {
+		const meta = row.booking_metadata as Record<string, unknown> | null | undefined
+		return (
+			<FulfilQueueRowActions
+				queue="trip_request"
+				bookingId={row.id}
+				isCancelled={row.status === 'cancelled'}
+				tripRequestAcceptedAt={tripRequestAcceptedAtFromMetadata(meta ?? null)}
+			/>
+		)
+	}
+	if (matchesPendingBucket(bucketInput)) {
+		return (
+			<FulfilQueueRowActions
+				queue="pending"
+				bookingId={row.id}
+				isCancelled={row.status === 'cancelled'}
+				tripRequestAcceptedAt={null}
+			/>
+		)
+	}
+	return <span className="text-xs text-ops-muted">—</span>
+}
 
 function truncateText(value: string | null, max: number): string {
 	if (value == null || value === '') {
@@ -143,68 +231,80 @@ function linkedAccountNameFromRow(row: BookingsQueueRow): string | null {
 	return null
 }
 
-function vehiclePreviewFromRow(row: BookingsQueueRow): string {
-	const bt = row.booking_trips
-	if (!bt || !Array.isArray(bt) || bt.length === 0) {
-		return ''
+function bookingQueueCurrentQuoteEmbed(row: BookingsQueueRow): {
+	status: string | null
+	total_zar: number | null
+} | null {
+	const raw = row.booking_quotes
+	if (!raw || typeof raw !== 'object') {
+		return null
 	}
-	const firstBt = bt[0] as { trips?: unknown }
-	const trips = firstBt?.trips
-	const trip = Array.isArray(trips) ? trips[0] : trips
-	if (!trip || typeof trip !== 'object') {
-		return ''
+	const obj = Array.isArray(raw)
+		? (raw[0] as Record<string, unknown> | undefined)
+		: (raw as Record<string, unknown>)
+	if (!obj || typeof obj !== 'object') {
+		return null
 	}
-	const rawV = (trip as { vehicles?: unknown }).vehicles
-	const veh = Array.isArray(rawV) ? rawV[0] : rawV
-	if (!veh || typeof veh !== 'object' || veh === null) {
-		return ''
+	const status = obj.status
+	const total_zar = obj.total_zar
+	const st = typeof status === 'string' ? status : null
+	let tz: number | null = null
+	if (typeof total_zar === 'number' && Number.isFinite(total_zar)) {
+		tz = total_zar
+	} else if (typeof total_zar === 'string') {
+		const n = Number(total_zar)
+		tz = Number.isFinite(n) ? n : null
 	}
-	const name = (veh as { name?: string | null }).name
-	return typeof name === 'string' && name.trim() !== '' ? name.trim() : ''
+	return { status: st, total_zar: tz }
+}
+
+/** Same rule as booking detail: current `booking_quotes` row total when valid, else `bookings.total_amount`. */
+function queueRowDisplayTotalZar(row: BookingsQueueRow): number | null {
+	const q = bookingQueueCurrentQuoteEmbed(row)
+	if (q?.total_zar != null && Number.isFinite(q.total_zar)) {
+		return q.total_zar
+	}
+	return row.total_amount
 }
 
 function currentQuoteIsRejectedFromRow(row: BookingsQueueRow): boolean {
-	const raw = row.booking_quotes
-	if (!raw || typeof raw !== 'object') {
-		return false
-	}
-	const obj = Array.isArray(raw) ? (raw[0] as { status?: unknown } | undefined) : (raw as { status?: unknown })
-	const st = obj && typeof obj === 'object' && 'status' in obj ? (obj as { status: unknown }).status : undefined
-	return st === 'rejected'
+	return bookingQueueCurrentQuoteEmbed(row)?.status === 'rejected'
 }
 
-function applyQueueFiltersToQuery(
-	supabase: SupabaseClient,
-	parsed: OpsBookingsQueueParsed,
-) {
-	let query = supabase.from('bookings').select(BOOKINGS_QUEUE_SELECT)
-
+/**
+ * Apply URL queue filters to a **`bookings`** query. **Do not** chain this after a `select()` that
+ * uses PostgREST embeds for **head count** queries — use `select('*', { count: 'exact', head: true })`
+ * first so counts match the list (see `/ops/bookings` server handler).
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function applyQueueFiltersToBookingsQuery(query: any, parsed: OpsBookingsQueueParsed) {
+	let q = query
 	if (parsed.statuses.length > 0) {
-		query = query.in('status', parsed.statuses)
+		q = q.in('status', parsed.statuses)
 	}
 	if (parsed.payments.length > 0) {
-		query = query.in('payment_status', parsed.payments)
+		q = q.in('payment_status', parsed.payments)
 	}
 
 	const hasNullIntent = parsed.intents.includes('_null')
 	const concreteIntents = parsed.intents.filter((i): i is Exclude<OpsBookingIntentFilterValue, '_null' | ''> => i !== '_null' && i !== '')
 	if (hasNullIntent && concreteIntents.length === 0) {
-		query = query.is('booking_intent', null)
+		q = q.is('booking_intent', null)
 	} else if (!hasNullIntent && concreteIntents.length > 0) {
-		query = query.in('booking_intent', concreteIntents)
+		q = q.in('booking_intent', concreteIntents)
 	} else if (hasNullIntent && concreteIntents.length > 0) {
-		query = query.or(
+		q = q.or(
 			`booking_intent.is.null,booking_intent.in.(${concreteIntents.join(',')})`,
 		)
 	}
 
 	if (parsed.clients.length === 1) {
-		query = query.eq('client_type', parsed.clients[0])
+		q = q.eq('client_type', parsed.clients[0])
 	} else if (parsed.clients.length > 1) {
-		query = query.in('client_type', parsed.clients)
+		q = q.in('client_type', parsed.clients)
 	}
 
-	return query
+	return q
 }
 
 function describeFilterSliceForEmptyState(parsed: OpsBookingsQueueParsed): string | null {
@@ -260,7 +360,6 @@ export default async function OpsBookingsPage({ searchParams }: PageProps) {
 
 	const parsed = parseOpsBookingsQueueSearchParams(raw)
 	const ignoredParamKeys = getIgnoredBookingsQueueParamKeys(raw)
-	const fetchedAtIso = new Date().toISOString()
 
 	const supabase = await createUserServerClient()
 
@@ -273,30 +372,63 @@ export default async function OpsBookingsPage({ searchParams }: PageProps) {
 	let readyToAssignCount: number | null = null
 	let completed7dUnavailable = false
 	let completed7dCount = 0
+	let needsAttentionUnavailable = false
+	let needsAttentionCount: number | null = null
+	let completedTotalUnavailable = false
+	let completedTotalCount: number | null = null
+	let cancelledUnavailable = false
+	let cancelledCount: number | null = null
+	let allBookingsUnavailable = false
+	let allBookingsCount: number | null = null
 	let barSeries = buildBookingsQueueOverviewBarSeries([])
 	let paginationFilterQuery = ''
 
 	const perPage = parsed.perPage
 
 	if (showMainQueue) {
-		const filteredBase = () => applyQueueFiltersToQuery(supabase, parsed)
-
 		const completed7dFrom = (() => {
 			const t = new Date()
 			return new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), t.getUTCDate() - 7))
 		})()
 
-		const [countRes, rtaCountRes, completed7dRes, chartRows] = await Promise.all([
-			filteredBase().select('id', { count: 'exact', head: true }),
+		const filteredListBase = () =>
+			applyQueueFiltersToBookingsQuery(
+				supabase.from('bookings').select(BOOKINGS_QUEUE_SELECT),
+				parsed,
+			)
+		const filteredCountBase = () =>
+			applyQueueFiltersToBookingsQuery(
+				supabase.from('bookings').select('*', { count: 'exact', head: true }),
+				parsed,
+			)
+
+		const [
+			countRes,
+			rtaCountRes,
+			completed7dRes,
+			needsAttentionRes,
+			completedTotalRes,
+			cancelledRes,
+			allBookingsRes,
+			chartRows,
+		] = await Promise.all([
+			filteredCountBase(),
 			supabase
 				.from('bookings')
-				.select('id', { count: 'exact', head: true })
+				.select('*', { count: 'exact', head: true })
 				.eq('status', OPS_BOOKINGS_READY_TO_ASSIGN_STATUS),
 			supabase
 				.from('bookings')
-				.select('id', { count: 'exact', head: true })
+				.select('*', { count: 'exact', head: true })
 				.eq('status', 'completed')
-				.gte('created_at', completed7dFrom.toISOString()),
+				.gte('updated_at', completed7dFrom.toISOString()),
+			supabase
+				.from('bookings')
+				.select('*', { count: 'exact', head: true })
+				.in('status', [...OPS_BOOKINGS_QUEUE_NEEDS_ATTENTION_STATUSES]),
+			supabase.from('bookings').select('*', { count: 'exact', head: true }).eq('status', 'completed'),
+			supabase.from('bookings').select('*', { count: 'exact', head: true }).eq('status', 'cancelled'),
+			supabase.from('bookings').select('*', { count: 'exact', head: true }),
 			fetchBookingsQueueOverviewChartRows(supabase),
 		])
 
@@ -308,7 +440,7 @@ export default async function OpsBookingsPage({ searchParams }: PageProps) {
 		const rangeTo = rangeFrom + perPage - 1
 		const listRes = countRes.error
 			? ({ data: null, error: countRes.error } as const)
-			: await filteredBase().order('created_at', { ascending: false }).range(rangeFrom, rangeTo)
+			: await filteredListBase().order('created_at', { ascending: false }).range(rangeFrom, rangeTo)
 
 		const { data, error: listError } = listRes
 		error = listError ?? null
@@ -316,6 +448,14 @@ export default async function OpsBookingsPage({ searchParams }: PageProps) {
 		readyToAssignCount = rtaCountUnavailable ? null : (rtaCountRes.count ?? 0)
 		completed7dUnavailable = Boolean(completed7dRes.error)
 		completed7dCount = completed7dUnavailable ? 0 : (completed7dRes.count ?? 0)
+		needsAttentionUnavailable = Boolean(needsAttentionRes.error)
+		needsAttentionCount = needsAttentionUnavailable ? null : (needsAttentionRes.count ?? 0)
+		completedTotalUnavailable = Boolean(completedTotalRes.error)
+		completedTotalCount = completedTotalUnavailable ? null : (completedTotalRes.count ?? 0)
+		cancelledUnavailable = Boolean(cancelledRes.error)
+		cancelledCount = cancelledUnavailable ? null : (cancelledRes.count ?? 0)
+		allBookingsUnavailable = Boolean(allBookingsRes.error)
+		allBookingsCount = allBookingsUnavailable ? null : (allBookingsRes.count ?? 0)
 		barSeries = buildBookingsQueueOverviewBarSeries(chartRows)
 
 		rows = (data ?? []) as unknown as BookingsQueueRow[]
@@ -324,7 +464,6 @@ export default async function OpsBookingsPage({ searchParams }: PageProps) {
 
 	const sliceDescription = describeFilterSliceForEmptyState(parsed)
 	const isRtaPreset = isReadyToAssignPreset(parsed)
-	const hasAvailabilityRoute = opsBookingsAvailabilityCheckPageExists()
 
 	return (
 		<div className="min-w-0 max-w-full space-y-6">
@@ -337,18 +476,12 @@ export default async function OpsBookingsPage({ searchParams }: PageProps) {
 				}
 			/>
 
-			<OpsDataFreshnessBar className="mt-0" fetchedAtIso={fetchedAtIso} />
+			<OpsBookingsRealtimeBridge />
 
-			<OpsBookingsAdvancedSearch
-				rawSearchParams={raw}
-				fetchedAtIso={fetchedAtIso}
-				showFreshnessBar={false}
-			/>
+			<OpsBookingsAdvancedSearch rawSearchParams={raw} queueFiltersAvailable={showMainQueue} />
 
 			{showMainQueue ? (
 				<>
-					<OpsBookingsRealtimeBridge />
-
 					<OpsBookingsQueueOverviewBand
 				totalInView={totalCount}
 				readyToAssign={readyToAssignCount}
@@ -375,8 +508,18 @@ export default async function OpsBookingsPage({ searchParams }: PageProps) {
 			<div className="overflow-hidden rounded-lg border border-ops-border">
 				<OpsBookingsQueuePresetChips
 					parsed={parsed}
-					readyToAssignCount={readyToAssignCount}
-					readyToAssignCountUnavailable={rtaCountUnavailable}
+					counts={{
+						all: allBookingsCount,
+						allUnavailable: allBookingsUnavailable,
+						needsAttention: needsAttentionCount,
+						needsAttentionUnavailable: needsAttentionUnavailable,
+						readyToAssign: readyToAssignCount,
+						readyToAssignUnavailable: rtaCountUnavailable,
+						completed: completedTotalCount,
+						completedUnavailable: completedTotalUnavailable,
+						cancelled: cancelledCount,
+						cancelledUnavailable: cancelledUnavailable,
+					}}
 				/>
 				<OpsBookingsQueueFilters parsed={parsed} className="rounded-none border-0" />
 			</div>
@@ -436,12 +579,6 @@ export default async function OpsBookingsPage({ searchParams }: PageProps) {
 								Customer
 							</th>
 							<th scope="col" className="px-3 py-2 font-medium">
-								Rider
-							</th>
-							<th scope="col" className="px-3 py-2 font-medium">
-								Email
-							</th>
-							<th scope="col" className="px-3 py-2 font-medium">
 								Pickup
 							</th>
 							<th scope="col" className="px-3 py-2 font-medium">
@@ -452,9 +589,6 @@ export default async function OpsBookingsPage({ searchParams }: PageProps) {
 							</th>
 							<th scope="col" className="px-3 py-2 font-medium">
 								Payment
-							</th>
-							<th scope="col" className="px-3 py-2 font-medium">
-								Intent
 							</th>
 							<th scope="col" className="px-3 py-2 font-medium">
 								Client
@@ -468,16 +602,20 @@ export default async function OpsBookingsPage({ searchParams }: PageProps) {
 							<th scope="col" className="px-3 py-2 font-medium">
 								Actions
 							</th>
-							<th scope="col" className="px-3 py-2 font-medium">
-								Other links
-							</th>
 						</tr>
 					</thead>
 					<tbody>
 						{rows.map((row) => {
 							const refLabel = row.payment_reference ?? `${row.id.slice(0, 8)}…`
-							const vehicle = vehiclePreviewFromRow(row)
-							const walkInStage = deriveWalkInQueueStageForBookingRow(row)
+							const vehicle = extractOpsBookingVehicleName(row.booking_trips) ?? ''
+							const walkInStage = deriveWalkInQueueStageForBookingRow({
+								client_type: row.client_type,
+								status: row.status,
+								availability_checked_at: row.availability_checked_at,
+								booking_trips: row.booking_trips,
+							})
+							const amountZar = queueRowDisplayTotalZar(row)
+							const statusKeyForDisplay = effectiveBookingStatusKeyForOps(row.status, row.booking_trips)
 							return (
 								<BookingsQueueTableRow
 									key={row.id}
@@ -503,12 +641,6 @@ export default async function OpsBookingsPage({ searchParams }: PageProps) {
 											}
 										/>
 									</td>
-									<td className="max-w-[10rem] truncate px-3 py-2 text-sm text-ops-muted">
-										{truncateText(row.rider_name, 40)}
-									</td>
-									<td className="max-w-[12rem] truncate px-3 py-2 text-sm text-ops-muted">
-										{truncateText(row.customer_email, 40)}
-									</td>
 									<td className="whitespace-nowrap px-3 py-2 text-sm text-ops-muted">
 										{row.pickup_datetime
 											? new Date(row.pickup_datetime).toLocaleString('en-ZA', {
@@ -517,12 +649,12 @@ export default async function OpsBookingsPage({ searchParams }: PageProps) {
 											: '—'}
 									</td>
 									<td className="whitespace-nowrap px-3 py-2 text-sm tabular-nums text-ops-foreground">
-										{formatZar(row.total_amount)}
+										{formatZar(amountZar)}
 									</td>
 									<td className="px-3 py-2 text-sm">
 										<div className="flex flex-wrap items-center gap-1.5">
-											<OpsStatusPill tone={getBookingsQueueStatusPillTone(row.status)}>
-												{row.status ? formatQueueStatusLabel(row.status) : '—'}
+											<OpsStatusPill tone={getBookingsQueueStatusPillTone(statusKeyForDisplay)}>
+												{statusKeyForDisplay ? formatQueueStatusLabel(statusKeyForDisplay) : '—'}
 											</OpsStatusPill>
 											{currentQuoteIsRejectedFromRow(row) ? (
 												<OpsStatusPill tone="danger" dot={false}>
@@ -536,11 +668,6 @@ export default async function OpsBookingsPage({ searchParams }: PageProps) {
 											{row.payment_status
 												? formatQueueStatusLabel(row.payment_status)
 												: '—'}
-										</OpsStatusPill>
-									</td>
-									<td className="px-3 py-2 text-sm text-ops-foreground">
-										<OpsStatusPill tone="neutral" dot={false}>
-											{formatBookingIntentLabel(row.booking_intent)}
 										</OpsStatusPill>
 									</td>
 									<td className="px-3 py-2 text-sm capitalize text-ops-muted">
@@ -559,25 +686,8 @@ export default async function OpsBookingsPage({ searchParams }: PageProps) {
 										{formatRouteSummary(row.origin_name, row.destination_name)}
 									</td>
 									<BookingsQueueStopNavCell>
-										{walkInStage != null ? (
-											<WalkInQueueRowActions
-												bookingId={row.id}
-												activeStage={walkInStage}
-												hasAvailabilityRoute={hasAvailabilityRoute}
-												totalAmountZar={row.total_amount}
-											/>
-										) : (
-											<span className="text-xs text-ops-muted">—</span>
-										)}
+										{bookingsQueueActionsCell(row, walkInStage, amountZar)}
 									</BookingsQueueStopNavCell>
-									<td className="px-3 py-2">
-										<BookingsQueueRowSecondaryLinks
-											bookingId={row.id}
-											paymentStatus={row.payment_status}
-											clientType={row.client_type}
-											linkedAccountName={linkedAccountNameFromRow(row)}
-										/>
-									</td>
 								</BookingsQueueTableRow>
 							)
 						})}

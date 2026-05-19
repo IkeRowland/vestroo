@@ -12,7 +12,7 @@ Use this as an **orientation** checklist for implementation reviews; **legal** i
 | **Minimisation** | Field app minimises chauffeur-visible PII (**[field-tools.md](field-tools.md)**); incident **`metadata`** must not store raw PII (below). |
 | **Security measures** | RLS on compliance tables; staff JWT for ops mutations; **admin-only** DSR actions (**[ops-console.md](ops-console.md)**); service role server-only (**[environment-vars.md](environment-vars.md)**). |
 | **Transparency / access** | **MVP:** admin-triggered **minimal JSON export** (`exportDataSubjectAction`) — not a self-service portal. |
-| **Correction / deletion** | **MVP:** admin **anonymise** pattern on **`profiles`** + linked **booking** guest fields + CP notes + **`trips.customer_id`** (`anonymiseDataSubjectAction`). **Hard delete** and **auth.users** cleanup are **documented follow-ups** (Dashboard / Admin API). |
+| **Correction / deletion** | **MVP:** admin **anonymise** pattern on **`profiles`** + linked **booking** guest fields + **`trips.customer_id`** (`anonymiseDataSubjectAction`). **Hard delete** and **auth.users** cleanup are **documented follow-ups** (Dashboard / Admin API). |
 | **Breach / incident readiness** | **`compliance_incidents`** for internal logging purposes (triage, safety, privacy-related events) — **not** automated regulator notification. |
 | **Retention** | **`retention_class`** / **`retention_until`** columns on incidents, document rows, **`profiles`**, **`bookings`**; **purge automation deferred** (optional stub below). |
 | **Third parties / cross-border** | Maps, email, PayFast: see **[api-reference.md](api-reference.md)** / **[front-end-api-interaction.md](front-end-api-interaction.md)**; sub-processor governance is **legal / ops** outside this file. |
@@ -48,7 +48,6 @@ All new compliance tables: **RLS enabled**; **no** policies for **anon**; **auth
 | **`operational`** | Trips, dispatch artefacts, short-lived ops data. |
 | **`financial`** | Bookings / payment references subject to tax/audit windows. |
 | **`compliance_document`** | Licences, PDP, insurance metadata rows. |
-| **`cp_engagement_related`** | Close protection rows — inherit export/anonymise hooks with engagements (**[close-protection-engagements.md](close-protection-engagements.md)**). |
 | **`marketing`** | Optional future consent-led data (stub). |
 
 **Purge:** **No cron or Edge purge ships in this story.** Operators may delete/archive per org policy using staff tools and Supabase backups. **Optional stub (commented sketch):**
@@ -66,13 +65,13 @@ All new compliance tables: **RLS enabled**; **no** policies for **anon**; **auth
 
 - **Subject:** **`profiles.role = customer`** only (MVP guard).
 - **Resolve by:** `profileId` **or** exact **`profiles.email`** (case-insensitive guest match on **`bookings.customer_email`** requires non-empty profile email).
-- **Payload (`vst12_dsr_minimal_v1`):** profile row subset (including retention fields), **deduped bookings** where `customer_id = profile.id` **or** guest rows with same email, **trips** with `customer_id = profile.id`, **`close_protection_engagements`** linked to those bookings (**ids + status + timestamps** — no **`coordination_notes`** in export).
+- **Payload (`vst12_dsr_minimal_v1`):** profile row subset (including retention fields), **deduped bookings** where `customer_id = profile.id` **or** guest rows with same email, **trips** with `customer_id = profile.id`.
 - **Out of MVP export:** full **`ops_audit_log`** history, **`tickets`**, **`notifications`**, raw Storage files, and **`auth.users`** metadata (document separate process).
 
 ### Scope of **`anonymiseDataSubjectAction`** (admin only)
 
 - **Subject:** **`customer`** profiles only; rejects if **`data_subject_anonymised_at`** already set.
-- **Writes:** **`profiles`**: placeholder name/phone/email, clear avatar, **`status = inactive`**, set **`data_subject_anonymised_at`**; **bookings** (by `customer_id` or guest email match): redact **`customer_name`**, **`customer_email`**, **`customer_phone`**; **`close_protection_engagements`** for those bookings: **`coordination_notes = null`** (VST-11 semantics for notes remain **[close-protection-engagements.md](close-protection-engagements.md)** — we do not redefine status rules); **`trips`**: **`customer_id` null** where it matched the subject (column nullable — **[data-models.md](data-models.md)**).
+- **Writes:** **`profiles`**: placeholder name/phone/email, clear avatar, **`status = inactive`**, set **`data_subject_anonymised_at`**; **bookings** (by `customer_id` or guest email match): redact **`customer_name`**, **`customer_email`**, **`customer_phone`**; **`trips`**: **`customer_id` null** where it matched the subject (column nullable — **[data-models.md](data-models.md)**).
 - **Follow-up:** **`auth.users`** email/phone may still exist — **Supabase Dashboard** or **Admin API** required for full account removal; flagged in audit payload `auth_users_followup_required: true`.
 - **Hard delete** of referential rows is **out of MVP** unless a migration plan is approved.
 
@@ -84,15 +83,10 @@ All new compliance tables: **RLS enabled**; **no** policies for **anon**; **auth
 
 **Payload rules:** continue to avoid PII in **`ops_audit_log.payload`** (ids and counts only for DSR).
 
-## VST-11 close protection integration
-
-**`close_protection_engagements`** rows **inherit** the same retention **labels** and **DSR** handling **as their anchor booking** (export lists engagements by booking; anonymise clears **coordination notes** for affected bookings). **Do not** duplicate engagement **status** or **coordination_notes** access rules here — see **[close-protection-engagements.md](close-protection-engagements.md)**.
-
 ## Related documentation
 
 - **[data-models.md](data-models.md)** — tables, RLS, retention columns.
 - **[ops-console.md](ops-console.md)** — `/ops/compliance`, JWT vs service role.
 - **[field-tools.md](field-tools.md)** — chauffeur PII boundaries (no compliance-table access).
-- **[close-protection-engagements.md](close-protection-engagements.md)** — CP lifecycle (VST-11 owner).
 - **[realtime-and-notifications.md](realtime-and-notifications.md)** — deferred compliance UI hooks (VST-9).
 - **[stories/vst-12.story.md](stories/vst-12.story.md)** — acceptance criteria source.

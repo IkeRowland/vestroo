@@ -10,15 +10,16 @@ import { fetchCatalogVehiclesForTripRequest } from '@/lib/trip-request-vehicle-c
 function mapCatalogRowToTripOffer(row: {
 	id: string
 	name: string
-	categoryName: string | null
+	description: string
 	passengerCapacity: number
 	imageUrl: string | null
 }): TripOfferVehicle | null {
 	if (row.passengerCapacity < 1) return null
+	const headline = row.description.trim() || row.name.trim() || 'Vehicle class'
 	const candidate: TripOfferVehicle = {
 		id: row.id,
-		name: row.name,
-		classification: classificationFromFleetCategoryName(row.categoryName, row.passengerCapacity),
+		name: headline,
+		classification: classificationFromFleetCategoryName(row.name, row.passengerCapacity),
 		passengerCapacity: row.passengerCapacity,
 		luggageCapacityLabel: `${Math.max(0, Math.floor(row.passengerCapacity / 2))} suitcases (capacity guide)`,
 		imageUrl: row.imageUrl?.trim() ? row.imageUrl : null,
@@ -44,7 +45,7 @@ export async function getTripRequestVehicleOffers(
 				mapCatalogRowToTripOffer({
 					id: r.id,
 					name: r.name,
-					categoryName: r.categoryName,
+					description: r.description,
 					passengerCapacity: r.passengerCapacity,
 					imageUrl: r.imageUrl,
 				}),
@@ -52,7 +53,7 @@ export async function getTripRequestVehicleOffers(
 			.filter((v): v is TripOfferVehicle => v !== null)
 		return { ok: true, vehicles }
 	} catch (e) {
-		const msg = e instanceof Error ? e.message : 'Unable to load vehicles'
+		const msg = e instanceof Error ? e.message : 'Unable to load vehicle classes'
 		return { ok: false, error: msg }
 	}
 }

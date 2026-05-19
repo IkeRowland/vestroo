@@ -12,11 +12,11 @@
 
 ## Acceptance Criteria (ACs)
 
-1. **Company profile alignment (`docs/Overview Vestroo-Pty-Ltd.pdf`):** Public marketing copy and page structure reflect the **authoritative positioning** in the PDF—**premium shuttle**, **corporate** transport, **VIP** transfers, **tours** (curated / experience-oriented), **close protection** where offered, and **fleet quality** as differentiators. Deviations MUST be intentional and documented in story notes if legal/comms constraints apply; default is **alignment with the PDF** and **`docs/epic-4.md`** design goals (discreet, punctual, safety-forward).
+1. **Company profile alignment (`docs/Overview Vestroo-Pty-Ltd.pdf`):** Public marketing copy and page structure reflect the **authoritative positioning** in the PDF—**premium shuttle**, **corporate** transport, **VIP** transfers, **tours** (curated / experience-oriented), and **fleet quality** as differentiators. Deviations MUST be intentional and documented in story notes if legal/comms constraints apply; default is **alignment with the PDF** and **`docs/epic-4.md`** design goals (discreet, punctual, safety-forward).
 
-2. **Domain vocabulary (`docs/epic-4.md` — Domain vocabulary table):** Visible marketing copy and UI labels use **preferred terms** (**chauffeur**, **vehicle** / class names, **service route** / **pattern** / **run** / **service point**, **booking** / **trip**, **corporate pattern**, **tour** / **experience package**, **close protection engagement**) and **avoid** misleading mass-transit framing (**“bus stop”**, generic **“bus route”** for VIP/corporate, **“bus tracking”** as a product name, **“ticket”** unless tickets are actually sold). Epic table is the **audit reference** for copy review.
+2. **Domain vocabulary (`docs/epic-4.md` — Domain vocabulary table):** Visible marketing copy and UI labels use **preferred terms** (**chauffeur**, **vehicle** / class names, **service route** / **pattern** / **run** / **service point**, **booking** / **trip**, **corporate pattern**, **tour** / **experience package**) and **avoid** misleading mass-transit framing (**“bus stop”**, generic **“bus route”** for VIP/corporate, **“bus tracking”** as a product name, **“ticket”** unless tickets are actually sold). Epic table is the **audit reference** for copy review.
 
-3. **Dedicated service coverage:** The site MUST expose **dedicated routes or clearly distinct on-page sections** for **premium shuttle**, **corporate**, **VIP**, **tours**, and **close protection** (scope may be **teaser + CTA** for close protection if PDF/commercial stance is high-level). Each area MUST state **who it is for**, **what to expect**, and **next step** (e.g. book, contact). Implementation MAY be separate **`src/app/(marketing)/…` pages** or a structured homepage with **anchor sections** plus **deep links**—developer chooses consistent IA; **discoverability** (AC12) MUST hold.
+3. **Dedicated service coverage:** The site MUST expose **dedicated routes or clearly distinct on-page sections** for **premium shuttle**, **corporate**, **VIP**, and **tours**. Each area MUST state **who it is for**, **what to expect**, and **next step** (e.g. book, contact). Implementation MAY be separate **`src/app/(marketing)/…` pages** or a structured homepage with **anchor sections** plus **deep links**—developer chooses consistent IA; **discoverability** (AC12) MUST hold.
 
 4. **Fleet (vehicle classes):** A **fleet** view (page or prominent homepage section) presents **vehicle classes** aligned with epic vocabulary (**sedan**, **SUV**, **MPV**, **minibus**, **armoured** where applicable) with **plain-language capacity / use-case** hints and **visual treatment** consistent with brand (photos or placeholders documented if assets pending). Copy MUST NOT imply public transit vehicle categories.
 
@@ -42,7 +42,7 @@
 
 - [x] **Task 2 — AC2:** Audit marketing copy against **`docs/epic-4.md`** **Domain vocabulary** table; replace **avoid** terms and align **preferred** terms in **headers, body, CTAs, and nav labels**. (AC: #2)
 
-- [x] **Task 3 — AC3:** Implement **premium shuttle**, **corporate**, **VIP**, **tours**, and **close protection** as **routes under `src/app/(marketing)/`** and/or **structured homepage sections** with **stable URLs**; ensure each has **audience, promise, CTA**. (AC: #3)
+- [x] **Task 3 — AC3:** Implement **premium shuttle**, **corporate**, **VIP**, and **tours** as **routes under `src/app/(marketing)/`** and/or **structured homepage sections** with **stable URLs**; ensure each has **audience, promise, CTA**. (AC: #3)
 
 - [x] **Task 4 — AC4:** Add **fleet** page or homepage **fleet** section using **vehicle class** vocabulary; wire content via **`src/content/`** module(s); align imagery/placeholders with **`docs/front-end-style-guide.md`**. (AC: #4)
 
@@ -80,8 +80,8 @@
 
 ### Completion Notes List
 
-- **IA & routes:** `/services` hub + `/services/[slug]` (premium-shuttle, corporate, vip, tours, close-protection), `/fleet`, `/safety`; homepage **ServicesOverview** + **TrustStrip** from `src/content/homepage.ts`.
-- **Content:** `src/content/services.ts`, `fleet.ts`, `safety.ts`; homepage/about/contact copy tuned for **chauffeur**, **vehicle**, **trip**, **booking**, **corporate pattern**, **service point** / **service route** language; close protection **teaser + confidential enquiry CTA**.
+- **IA & routes:** `/services` hub + `/services/[slug]` (premium-shuttle, corporate, vip, tours), `/fleet`, `/safety`; homepage **ServicesOverview** + **TrustStrip** from `src/content/homepage.ts`.
+- **Content:** `src/content/services.ts`, `fleet.ts`, `safety.ts`; homepage/about/contact copy tuned for **chauffeur**, **vehicle**, **trip**, **booking**, **corporate pattern**, **service point** / **service route** language.
 - **Lead capture:** `src/actions/submitContactEnquiry.ts` (Zod + server log stub; **TODO** Resend/CRM in VST-13+); `ContactEnquiryForm` with `useActionState`, field errors, success state.
 - **SEO:** `src/lib/marketing-metadata.ts` + `src/lib/site-url.ts`; `metadataBase` + title template in root `layout.tsx`; per-route `generateMetadata` on marketing corridors; **`src/app/sitemap.ts`** & **`src/app/robots.ts`**. **Open Graph:** title/description/url (no default OG image asset in repo—intentional per AC8 optional image).
 - **Nav:** `site-settings.ts` header/footer links for services, fleet, safety, about, contact, booking, login.

@@ -1,6 +1,8 @@
 /**
- * Copy for **`/ops/vehicles`** fleet UX (Story 17.12 / NFR.17.8).
+ * Copy for **`/ops/fleet/vehicles`** vehicles tab fleet UX (Story 17.12 / NFR.17.8).
  */
+import { OPS_FLEET_DRIVERS_PATH } from '@/lib/ops-fleet-drivers-url'
+
 export const opsVehiclesCopy = {
 	pageTitle: 'Fleet',
 	pageDescription:
@@ -13,11 +15,13 @@ export const opsVehiclesCopy = {
 	gridListAria: 'Fleet vehicles — grid view',
 	rowOpenDetailAria: (name: string) => `Open details for ${name}`,
 	cardOpenAria: (name: string) => `Open details for ${name}`,
-	cardAssignAria: (name: string) => `Assign a trip involving ${name} — opens Fulfil`,
+	cardAssignAria: (name: string) => `Assign a driver to ${name} — opens Drivers`,
 	openDetail: 'Open',
-	assignToTrip: 'Assign to trip',
+	assignToDriver: 'Assign to driver',
 	detailHeroAlt: (name: string) => `${name} — primary photo`,
-	detailStatusHeading: 'Status',
+	/** Former “Status” — shows assigned driver. */
+	detailDriverHeading: 'Driver',
+	driverNotAssigned: 'Not assigned',
 	detailSpecsHeading: 'Specifications',
 	detailRemindersHeading: 'Reminders',
 	detailRemindersPlaceholder:
@@ -25,12 +29,11 @@ export const opsVehiclesCopy = {
 	detailActivityHeading: 'Activity',
 	detailActivityPlaceholder:
 		'Trip activity for this vehicle will appear here when analytics are connected.',
-	operationStatusLabel: 'Operation status',
-	activeTripsLabel: 'Active trips',
 	seatsLabel: 'Seats',
 	transmissionLabel: 'Transmission',
 	fuelLabel: 'Fuel',
 	makeModelYear: (make: string, model: string, year: string) =>
 		[make, model, year].filter(Boolean).join(' · ') || '—',
-	fulfilAssignHref: '/ops/trips',
+	/** Opens fleet **Drivers** tab to set default vehicle on a driver profile. */
+	assignDriverHref: OPS_FLEET_DRIVERS_PATH,
 } as const
