@@ -31,7 +31,8 @@ const referrerUpsertSchema = z.object({
 		}),
 })
 
-export type ReferrerUpsertInput = z.infer<typeof referrerUpsertSchema>
+/** Client form payload (before transforms); server parses with {@link referrerUpsertSchema}. */
+export type ReferrerUpsertInput = z.input<typeof referrerUpsertSchema>
 
 export type ReferrerOpsResult =
 	| { ok: true; referrer?: ReferrerRow }
