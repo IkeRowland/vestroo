@@ -26,7 +26,6 @@ import {
 } from '@/lib/ops-bulk-invoice-eligibility'
 import { OPS_BOOKINGS_QUEUE_SELECT, type OpsBookingsQueueRow } from '@/lib/ops-bookings-queue-select'
 import {
-	creditTermsDaysForInvoicingRow,
 	dueDateYmdFromTripCompletedAndCreditDays,
 	tripCompletedAtIsoFromBookingTripsEmbed,
 } from '@/lib/ops-invoicing-queue'
@@ -188,7 +187,7 @@ export async function bulkSendAccountClientInvoiceAction(
 		Math.floor(
 			typeof accountRow.credit_terms_days === 'number' && Number.isFinite(accountRow.credit_terms_days)
 				? accountRow.credit_terms_days
-				: creditTermsDaysForInvoicingRow(anchorRow.account_snapshot, anchorRow.customer_accounts),
+				: 0,
 		),
 	)
 	const tripIso = tripCompletedAtIsoFromBookingTripsEmbed(anchorRow.booking_trips)
