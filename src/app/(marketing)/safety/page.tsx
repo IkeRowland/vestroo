@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { safetyContent } from '@/content/safety'
+import { marketingHeroVideoSrc } from '@/content/marketing-chrome'
 import { MarketingPageHero } from '@/components/marketing/MarketingPageHero'
 import { buildMarketingMetadata } from '@/lib/marketing-metadata'
 
@@ -18,6 +19,7 @@ export default function SafetyPage() {
       <MarketingPageHero
         title={safetyContent.page_title}
         subtitle="High-level commitment to safety and regulatory awareness—detail on request."
+        backgroundVideoSrc={marketingHeroVideoSrc}
       />
       <section className="py-16 px-4">
         <div className="container mx-auto max-w-3xl">

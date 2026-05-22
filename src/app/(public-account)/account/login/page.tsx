@@ -28,6 +28,7 @@ export default async function AccountLoginPage({
 
 	return (
 		<AccountPublicAuthCard
+			logoVariant="image"
 			title={accountAuthSurfacesCopy.login.title}
 			description={accountAuthSurfacesCopy.login.description}
 			ancillary={<AccountPublicAuthHelpRow />}

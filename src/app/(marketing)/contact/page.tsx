@@ -1,6 +1,8 @@
 import type { Metadata } from 'next'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { contactContent } from '@/content/contact'
+import { marketingHeroVideoSrc } from '@/content/marketing-chrome'
+import { MarketingPageHero } from '@/components/marketing/MarketingPageHero'
 import { ContactEnquiryForm } from '@/components/marketing/ContactEnquiryForm'
 import { buildMarketingMetadata } from '@/lib/marketing-metadata'
 
@@ -17,17 +19,13 @@ export default function ContactPage() {
   const contactInfo = contact.contact_info || {}
 
   return (
-    <div className="min-h-screen">
-      <section className="relative h-64 bg-gradient-to-r from-gray-800 to-gray-900 flex items-center justify-center">
-        <div className="absolute inset-0 bg-black/40" />
-        <div className="relative z-10 text-center text-white px-4">
-          <h1 className="text-4xl md:text-5xl font-bold mb-4">
-            {contact.page_title}
-          </h1>
-        </div>
-      </section>
+    <div className="min-h-screen bg-white">
+      <MarketingPageHero
+        title={contact.page_title}
+        backgroundVideoSrc={marketingHeroVideoSrc}
+      />
 
-      <section className="py-16 px-4 bg-white">
+      <section className="py-16 px-4">
         <div className="container mx-auto max-w-6xl">
           <div
             className="prose prose-lg max-w-none mb-12 text-center text-gray-700"

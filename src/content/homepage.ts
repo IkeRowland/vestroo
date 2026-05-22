@@ -110,7 +110,7 @@ export const homepageContent = {
     author_title: '',
   },
   app_download: {
-    title: 'Download the Vestroo App',
+    title: 'Vestroo App Coming Soon',
     headline: 'Safe reliable transfers in the palm of your hand',
     description:
       'Book, manage trips, and travel with confidence from your phone. iOS and Android availability will be announced here—watch this space.',

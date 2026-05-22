@@ -13,13 +13,19 @@ import { cn } from '@/lib/utils'
 
 function TopBar() {
   const topBar = siteSettings.top_bar
+  const hasBrandLeft = Boolean(topBar.brand_left?.trim())
 
   return (
     <div className="bg-vest-rust text-white py-2 px-4">
-      <div className="container mx-auto max-w-7xl flex flex-wrap items-center justify-between gap-2 text-sm">
-        <span className="font-semibold tracking-wide">
-          {topBar.brand_left}
-        </span>
+      <div
+        className={cn(
+          'container mx-auto max-w-7xl flex flex-wrap items-center gap-2 text-sm',
+          hasBrandLeft ? 'justify-between' : 'justify-end',
+        )}
+      >
+        {hasBrandLeft ? (
+          <span className="font-semibold tracking-wide">{topBar.brand_left}</span>
+        ) : null}
         <div className="flex flex-wrap items-center gap-x-5 gap-y-1">
           {topBar.phone_numbers?.map(
             (phone: { number?: string }, index: number) => (

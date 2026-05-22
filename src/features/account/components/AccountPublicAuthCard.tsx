@@ -1,9 +1,14 @@
+import Image from 'next/image'
 import Link from 'next/link'
 import type { ReactNode } from 'react'
 
 import { VestrooMark } from '@/components/brand/VestrooMark'
 
 import { accountAuthSurfacesCopy } from '@/features/account/copy/account-auth-surfaces-copy'
+
+/** Display width for wordmark on public auth surfaces (`vestro-logo.png` is 200×100). */
+const accountPublicAuthLogoWidth = 180
+const accountPublicAuthLogoHeight = 90
 
 /** Shared focus + muted styling for footer / secondary links on public account auth routes. */
 export const accountPublicAuthSecondaryLinkClassName =
@@ -12,6 +17,8 @@ export const accountPublicAuthSecondaryLinkClassName =
 export type AccountPublicAuthCardProps = {
 	/** **Task 0:** parity with login / signup — mark on invalid invite and unauthorized. */
 	showMark?: boolean
+	/** Login uses horizontal wordmark; signup / unauthorized keep circular mark by default. */
+	logoVariant?: 'mark' | 'image'
 	/** Page **`h1`** when set; omit when children supply the sole **`h1`** (e.g. invite panel). */
 	title?: string
 	description?: ReactNode
@@ -27,22 +34,39 @@ export type AccountPublicAuthCardProps = {
  */
 export function AccountPublicAuthCard({
 	showMark = true,
+	logoVariant = 'mark',
 	title,
 	description,
 	children,
 	ancillary,
 	footer,
 }: AccountPublicAuthCardProps) {
+	const brandLinkClassName =
+		logoVariant === 'image'
+			? 'inline-flex rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-account focus-visible:ring-offset-2 focus-visible:ring-offset-account-canvas'
+			: 'inline-flex min-h-11 min-w-11 items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-account focus-visible:ring-offset-2 focus-visible:ring-offset-account-canvas'
+
 	return (
 		<div className="w-full min-w-0 max-w-md">
 			{showMark ? (
 				<div className="mb-6 flex justify-center">
 					<Link
 						href="/"
-						className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-account focus-visible:ring-offset-2 focus-visible:ring-offset-account-canvas"
+						className={brandLinkClassName}
 						aria-label={accountAuthSurfacesCopy.brandHomeAria}
 					>
-						<VestrooMark size="footer" />
+						{logoVariant === 'image' ? (
+							<Image
+								src="/images/vestro-logo.png"
+								alt=""
+								width={accountPublicAuthLogoWidth}
+								height={accountPublicAuthLogoHeight}
+								className="h-auto w-[11.25rem] max-w-full object-contain sm:w-[12.5rem]"
+								priority
+							/>
+						) : (
+							<VestrooMark size="footer" />
+						)}
 					</Link>
 				</div>
 			) : null}

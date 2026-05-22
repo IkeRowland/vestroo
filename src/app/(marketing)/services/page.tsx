@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { servicesList } from '@/content/services'
+import { marketingHeroVideoSrc } from '@/content/marketing-chrome'
 import { MarketingPageHero } from '@/components/marketing/MarketingPageHero'
 import { buildMarketingMetadata } from '@/lib/marketing-metadata'
 
@@ -18,6 +19,7 @@ export default function ServicesHubPage() {
       <MarketingPageHero
         title="Our services"
         subtitle="Premium passenger transport tailored to your corridor, programme, and duty of care."
+        backgroundVideoSrc={marketingHeroVideoSrc}
       />
       <section className="py-16 px-4">
         <div className="container mx-auto max-w-5xl">

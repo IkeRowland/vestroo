@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import Image from 'next/image'
 import Link from 'next/link'
 import { fleetContent } from '@/content/fleet'
+import { marketingHeroVideoSrc } from '@/content/marketing-chrome'
 import { MarketingPageHero } from '@/components/marketing/MarketingPageHero'
 import { buildMarketingMetadata } from '@/lib/marketing-metadata'
 
@@ -19,6 +20,7 @@ export default function FleetPage() {
       <MarketingPageHero
         title={fleetContent.page_title}
         subtitle="Vehicle classes for private driver transport—not public transit categories."
+        backgroundVideoSrc={marketingHeroVideoSrc}
       />
       <section className="py-16 px-4">
         <div className="container mx-auto max-w-6xl">

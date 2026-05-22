@@ -4,10 +4,10 @@
  */
 export const siteSettings = {
   top_bar: {
-    brand_left: 'VESTROO',
-    phone_numbers: [{ number: '+27 (0)11 123 4567' }],
-    email: 'info@vestroo.com',
-    client_login_text: 'Client Login',
+    brand_left: '',
+    phone_numbers: [{ number: '+27 10 012 6681' }],
+    email: 'info@vestroo.co.za',
+    client_login_text: '',
     client_login_url: '/account/login',
   },
   header: {

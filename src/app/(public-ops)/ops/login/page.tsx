@@ -1,6 +1,6 @@
+import Image from 'next/image'
 import Link from 'next/link'
 
-import { VestrooMark } from '@/components/brand/VestrooMark'
 import { OpsLoginForm } from '@/features/ops/components/OpsLoginForm'
 import { opsLoginCopy } from '@/features/ops/copy/ops-login-copy'
 
@@ -17,10 +17,23 @@ export default async function OpsLoginPage({
 	const nextPath = sp.next && sp.next.startsWith('/ops') ? sp.next : '/ops'
 
 	return (
-		<main className="flex min-h-screen flex-col items-center justify-center px-4 py-12">
+		<main className="flex w-full flex-col items-center px-4 py-12">
 			<div className="flex w-full max-w-md flex-col items-center">
-				<div className="mb-8 flex justify-center" role="img" aria-label={C.brandAria}>
-					<VestrooMark className="shadow-ops-1" />
+				<div className="mb-8 flex justify-center">
+					<Link
+						href={C.backToSiteHref}
+						className="inline-flex rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ops-accent focus-visible:ring-offset-2 focus-visible:ring-offset-ops-surface"
+						aria-label={C.brandAria}
+					>
+						<Image
+							src="/images/vestro-logo.png"
+							alt=""
+							width={180}
+							height={90}
+							className="h-auto w-[11.25rem] max-w-full object-contain sm:w-[12.5rem]"
+							priority
+						/>
+					</Link>
 				</div>
 
 				<div className="w-full rounded-ops-card border border-ops-border bg-ops-surface p-6 shadow-ops-2">
