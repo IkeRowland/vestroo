@@ -60,7 +60,7 @@ export type PurchaseOrderAccountInsertCheck =
 export async function assertPurchaseOrderForAccountBookingInsert(
 	supabase: SupabaseClient,
 	args: {
-		clientType: 'walk_in' | 'account_client'
+		clientType: 'walk_in' | 'account_client' | 'referral'
 		customerAccountId: string | null
 		purchaseOrderRef: string | null | undefined
 	},
