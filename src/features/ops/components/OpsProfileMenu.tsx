@@ -78,7 +78,7 @@ export function OpsProfileMenu({ staff }: OpsProfileMenuProps) {
 			</DropdownMenuTrigger>
 			<DropdownMenuContent align="end" className="w-52">
 				<DropdownMenuItem asChild>
-					<Link href="/ops">{opsTopBarCopy.menuProfile}</Link>
+					<Link href="/ops/profile">{opsTopBarCopy.menuProfile}</Link>
 				</DropdownMenuItem>
 				<DropdownMenuItem asChild>
 					<Link href="/ops/settings">{opsTopBarCopy.menuSettings}</Link>

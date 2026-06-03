@@ -2,6 +2,8 @@
 
 Shuttle booking platform built with **Next.js 15** (App Router), **TypeScript**, **Tailwind CSS**, and **Supabase**.
 
+**Repository:** [github.com/juggernautafrica/vestroo](https://github.com/juggernautafrica/vestroo)
+
 ## Contributing
 
 Branches, CI, migrations in PRs, and pointers to setup and code layout: see [CONTRIBUTING.md](CONTRIBUTING.md).

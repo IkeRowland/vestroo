@@ -3,6 +3,10 @@ import {
 	getAccountMemberInviteStubHtml,
 } from './account-member-invite'
 import {
+	getOpsTeamMemberInviteStubHtml,
+	opsTeamMemberInviteTemplateId,
+} from './ops-team-member-invite'
+import {
 	accountTripConfirmationTemplateId,
 	getAccountTripConfirmationStubHtml,
 } from './account-trip-confirmation'
@@ -29,10 +33,18 @@ export {
 	buildWalkInQuotePlaintext,
 	type WalkInQuoteEmailProps,
 } from './walk-in-quote'
+export {
+	opsTeamMemberInviteTemplateId,
+	getOpsTeamMemberInviteStubHtml,
+	buildOpsTeamMemberInviteEmailSubject,
+	renderOpsTeamMemberInviteHtml,
+	type OpsTeamMemberInviteEmailProps,
+} from './ops-team-member-invite'
 
 /** Registry id → renderer (stub used for lazy import / smoke until full props wired at call site). */
 export const emailTemplateRegistry = {
 	[accountTripConfirmationTemplateId]: getAccountTripConfirmationStubHtml,
 	[walkInQuoteTemplateId]: getWalkInQuoteStubHtml,
 	[accountMemberInviteTemplateId]: getAccountMemberInviteStubHtml,
+	[opsTeamMemberInviteTemplateId]: getOpsTeamMemberInviteStubHtml,
 } as const

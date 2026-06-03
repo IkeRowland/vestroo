@@ -2,6 +2,14 @@
   "name": "vestroo",
   "version": "0.1.0",
   "private": true,
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/juggernautafrica/vestroo.git"
+  },
+  "bugs": {
+    "url": "https://github.com/juggernautafrica/vestroo/issues"
+  },
+  "homepage": "https://github.com/juggernautafrica/vestroo#readme",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

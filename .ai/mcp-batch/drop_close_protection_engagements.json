@@ -1,0 +1,1 @@
+{"project_id":"hovrqiqcfztntrxdqjqj","name":"drop_close_protection_engagements","query":"-- Retire legacy VST-11 engagements table (product surface removed).\r\n\r\ndrop table if exists public.close_protection_engagements cascade;\r\n"}

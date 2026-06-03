@@ -4,6 +4,7 @@ Single entry point for running Vestroo locally. Staging and production use the s
 
 ## Prerequisites
 
+- **Repository:** clone [github.com/juggernautafrica/vestroo](https://github.com/juggernautafrica/vestroo) (`git clone https://github.com/juggernautafrica/vestroo.git`).
 - **Node.js:** 20.x LTS recommended (matches CI; `package.json` engines are not pinned — use 20+ for Next.js 15).
 - **npm:** bundled with Node.
 - **Supabase project:** create one for development (free tier is fine). Use **hosted** Supabase projects for **dev** and **staging**; this repository does **not** use local Supabase via Docker.

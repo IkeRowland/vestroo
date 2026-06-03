@@ -26,13 +26,14 @@ export async function getStaffSession(): Promise<StaffSession | null> {
 
 	const { data: profile, error: profileErr } = await supabase
 		.from('profiles')
-		.select('role, full_name, avatar_url')
+		.select('role, status, full_name, avatar_url')
 		.eq('id', user.id)
 		.maybeSingle()
 
 	if (profileErr || !profile?.role) return null
 	const role = profile.role as ProfileRole
 	if (!STAFF_ROLES.has(role)) return null
+	if (profile.status === 'inactive') return null
 
 	const fullName = (profile.full_name as string | null | undefined)?.trim()
 	return {
@@ -59,7 +60,7 @@ export async function requireOpsStaffPage(): Promise<StaffSession> {
 
 	const { data: profile, error: profileErr } = await supabase
 		.from('profiles')
-		.select('role, full_name, avatar_url')
+		.select('role, status, full_name, avatar_url')
 		.eq('id', user.id)
 		.maybeSingle()
 
@@ -69,6 +70,9 @@ export async function requireOpsStaffPage(): Promise<StaffSession> {
 
 	const role = profile.role as ProfileRole
 	if (!STAFF_ROLES.has(role)) {
+		redirect('/ops/unauthorized')
+	}
+	if (profile.status === 'inactive') {
 		redirect('/ops/unauthorized')
 	}
 
@@ -117,7 +121,7 @@ export async function getOpsStaffForAction(): Promise<OpsActionGate> {
 
 	const { data: profile, error: profileErr } = await supabase
 		.from('profiles')
-		.select('role, full_name, avatar_url')
+		.select('role, status, full_name, avatar_url')
 		.eq('id', user.id)
 		.maybeSingle()
 
@@ -127,6 +131,9 @@ export async function getOpsStaffForAction(): Promise<OpsActionGate> {
 
 	const role = profile.role as ProfileRole
 	if (!STAFF_ROLES.has(role)) {
+		return { ok: false, message: 'Forbidden' }
+	}
+	if (profile.status === 'inactive') {
 		return { ok: false, message: 'Forbidden' }
 	}
 

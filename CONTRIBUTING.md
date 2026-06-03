@@ -1,5 +1,12 @@
 # Contributing to Vestroo
 
+Source: [github.com/juggernautafrica/vestroo](https://github.com/juggernautafrica/vestroo)
+
+```bash
+git clone https://github.com/juggernautafrica/vestroo.git
+cd vestroo
+```
+
 ## Branching
 
 Use **short-lived feature branches** from **`main`**. Name branches in a readable way, for example:

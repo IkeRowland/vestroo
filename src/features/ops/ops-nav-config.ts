@@ -122,15 +122,21 @@ export const OPS_NAV_GROUPS: readonly OpsNavGroup[] = [
 			},
 		],
 	},
-	...(OPS_NAV_SHOW_EXPERIENCES
-		? [
-				{
-					id: 'configuration' as const,
-					title: 'Configuration',
-					items: [{ href: '/ops/experiences', label: 'Experiences', icon: Sparkles }],
-				} satisfies OpsNavGroup,
-			]
-		: []),
+	{
+		id: 'configuration',
+		title: 'Configuration',
+		items: [
+			{
+				href: '/ops/team',
+				label: 'Team',
+				icon: Users,
+				visibleRoles: ['admin'],
+			},
+			...(OPS_NAV_SHOW_EXPERIENCES
+				? [{ href: '/ops/experiences', label: 'Experiences', icon: Sparkles } satisfies OpsNavItem]
+				: []),
+		],
+	},
 ]
 
 const SEGMENT_LABELS: Record<string, string> = {
@@ -156,6 +162,8 @@ const SEGMENT_LABELS: Record<string, string> = {
 	reports: 'Reports',
 	suggestions: 'Suggestions',
 	experiences: 'Experiences',
+	team: 'Team',
+	profile: 'Profile',
 	// Epic 16 / US-A3 — breadcrumb labels for workflow + future ops paths
 	'walk-in': 'Walk-in bookings',
 	accounts: 'Account bookings',

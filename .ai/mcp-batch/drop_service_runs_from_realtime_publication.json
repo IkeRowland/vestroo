@@ -1,0 +1,1 @@
+{"project_id":"hovrqiqcfztntrxdqjqj","name":"drop_service_runs_from_realtime_publication","query":"-- Charter-first ops: stop fan-out on `service_runs` via Realtime (no app subscribers).\r\nalter publication supabase_realtime drop table public.service_runs;\r\n"}
