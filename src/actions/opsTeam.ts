@@ -9,7 +9,7 @@ import { appendOpsAuditLog } from '@/lib/ops-audit'
 import { getOpsAdminForAction } from '@/lib/ops-auth'
 import { logOpsAction, newOpsCorrelationId } from '@/lib/ops-action-log'
 import { sendOpsTeamMemberInviteEmail } from '@/lib/ops-team-invite-send'
-import { absoluteUrl } from '@/lib/site-url'
+import { opsAuthCallbackUrl } from '@/lib/ops-auth-callback-url'
 import { createServiceRoleClient, createUserServerClient } from '@/lib/supabase/server'
 import type { ProfileRole } from '@/types/database.types'
 
@@ -89,7 +89,7 @@ async function mintOpsTeamAccessLink(
 		isExistingAuthUser: boolean
 	},
 ): Promise<{ ok: true; userId: string; actionLink: string } | { ok: false; message: string }> {
-	const redirectTo = absoluteUrl('/ops/login')
+	const redirectTo = opsAuthCallbackUrl()
 	const metadata = {
 		full_name: params.fullName,
 		phone: params.phone ?? '',

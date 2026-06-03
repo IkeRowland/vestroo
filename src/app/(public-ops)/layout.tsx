@@ -1,5 +1,5 @@
 /**
- * Public ops routes (`/ops/login`, `/ops/unauthorized`) — light ops theme scope only.
+ * Public ops routes (`/ops/login`, `/ops/auth/*`, `/ops/unauthorized`) — light ops theme scope only.
  * Authenticated `/ops/*` sets `data-ops-theme="dark"` on the dashboard shell (Story 17.19 / FE.17.11).
  */
 export default function PublicOpsLayout({ children }: { children: React.ReactNode }) {
