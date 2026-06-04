@@ -9,7 +9,10 @@ import { appendOpsAuditLog } from '@/lib/ops-audit'
 import { getOpsAdminForAction } from '@/lib/ops-auth'
 import { logOpsAction, newOpsCorrelationId } from '@/lib/ops-action-log'
 import { sendOpsTeamMemberInviteEmail } from '@/lib/ops-team-invite-send'
-import { opsAuthCallbackUrl } from '@/lib/ops-auth-callback-url'
+import {
+	buildOpsTeamInviteAcceptUrl,
+	opsAuthCallbackUrlWithType,
+} from '@/lib/ops-auth-callback-url'
 import { createServiceRoleClient, createUserServerClient } from '@/lib/supabase/server'
 import type { ProfileRole } from '@/types/database.types'
 
@@ -67,12 +70,12 @@ function isOpsTeamRole(role: string): role is (typeof OPS_TEAM_ROLES)[number] {
 
 type AdminGenerateLinkResponse = {
 	user: { id: string } | null
-	properties: { action_link?: string }
+	properties: { action_link?: string; hashed_token?: string }
 }
 
-function extractAuthActionLink(data: AdminGenerateLinkResponse | null | undefined): string | null {
-	const link = data?.properties?.action_link
-	return typeof link === 'string' && link.trim().length > 0 ? link.trim() : null
+function extractHashedToken(data: AdminGenerateLinkResponse | null | undefined): string | null {
+	const token = data?.properties?.hashed_token
+	return typeof token === 'string' && token.trim().length > 0 ? token.trim() : null
 }
 
 /**
@@ -89,12 +92,13 @@ async function mintOpsTeamAccessLink(
 		isExistingAuthUser: boolean
 	},
 ): Promise<{ ok: true; userId: string; actionLink: string } | { ok: false; message: string }> {
-	const redirectTo = opsAuthCallbackUrl()
 	const metadata = {
 		full_name: params.fullName,
 		phone: params.phone ?? '',
 		role: params.role,
 	}
+	const authFlowType = params.isExistingAuthUser ? 'recovery' : 'invite'
+	const redirectTo = opsAuthCallbackUrlWithType(authFlowType)
 	const linkOptions = { redirectTo, data: metadata }
 
 	let data: AdminGenerateLinkResponse | null = null
@@ -131,11 +135,13 @@ async function mintOpsTeamAccessLink(
 		return { ok: false, message: error.message }
 	}
 
-	const actionLink = extractAuthActionLink(data as AdminGenerateLinkResponse | null)
+	const hashedToken = extractHashedToken(data as AdminGenerateLinkResponse | null)
 	const userId = data?.user?.id ?? null
-	if (!actionLink || !userId) {
+	if (!hashedToken || !userId) {
 		return { ok: false, message: 'Could not create invitation link.' }
 	}
+
+	const actionLink = buildOpsTeamInviteAcceptUrl(hashedToken, authFlowType)
 
 	return { ok: true, userId, actionLink }
 }

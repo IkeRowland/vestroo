@@ -2,94 +2,131 @@
 
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 import { opsAuthCallbackCopy } from '@/features/ops/copy/ops-auth-callback-copy'
 import { OpsLoadingRegion } from '@/features/ops/components/OpsLoadingRegion'
+import {
+	hashHasImplicitSessionTokens,
+	isOpsPasswordSetupAuthType,
+	opsAuthNextPath,
+	parseAuthHashParams,
+} from '@/lib/ops-auth-callback'
 import { createClientClient } from '@/lib/supabase/client'
 
 const C = opsAuthCallbackCopy
 
-function parseHashParams(hash: string): URLSearchParams {
-	const raw = hash.startsWith('#') ? hash.slice(1) : hash
-	return new URLSearchParams(raw)
+function stripHashFromUrl(): void {
+	const url = new URL(window.location.href)
+	url.hash = ''
+	const next = url.searchParams.get('next')
+	const path = url.pathname + (next ? `?next=${encodeURIComponent(next)}` : '')
+	window.history.replaceState(null, '', path)
 }
 
-function opsNextPath(next: string | null): string {
-	return next && next.startsWith('/ops') ? next : '/ops'
+function userNeedsPasswordSetup(user: { invited_at?: string | null } | null): boolean {
+	return Boolean(user?.invited_at)
 }
 
 export function OpsAuthCallbackClient() {
 	const router = useRouter()
 	const searchParams = useSearchParams()
 	const [error, setError] = useState<string | null>(null)
+	const effectRunRef = useRef(0)
+
+	const queryType = searchParams.get('type')
+	const next = searchParams.get('next')
 
 	useEffect(() => {
-		let cancelled = false
+		const runId = ++effectRunRef.current
+		const isStale = () => runId !== effectRunRef.current
+		const supabase = createClientClient()
+		let authType = queryType
+
+		function goAfterSignIn(): void {
+			if (isOpsPasswordSetupAuthType(authType)) {
+				router.replace('/ops/auth/set-password')
+				return
+			}
+			router.replace(opsAuthNextPath(next))
+		}
 
 		async function complete() {
-			const supabase = createClientClient()
-			const code = searchParams.get('code')
+			const hash = window.location.hash
+			if (hashHasImplicitSessionTokens(hash)) {
+				const params = parseAuthHashParams(hash)
+				const access_token = params.get('access_token')
+				const refresh_token = params.get('refresh_token')
+				authType = params.get('type') ?? authType
 
-			if (code) {
-				const { error: exchangeErr } = await supabase.auth.exchangeCodeForSession(code)
-				if (cancelled) return
-				if (exchangeErr) {
-					setError(exchangeErr.message)
+				if (!access_token || !refresh_token) {
+					setError(C.errorMissingTokens)
 					return
 				}
-				window.history.replaceState(null, '', window.location.pathname)
-				const dest = opsNextPath(searchParams.get('next'))
-				router.replace(dest)
-				router.refresh()
+
+				const { error: sessionErr } = await supabase.auth.setSession({
+					access_token,
+					refresh_token,
+				})
+
+				stripHashFromUrl()
+
+				if (isStale()) return
+				if (sessionErr) {
+					setError(sessionErr.message)
+					return
+				}
+
+				if (isOpsPasswordSetupAuthType(authType)) {
+					router.replace('/ops/auth/set-password')
+					return
+				}
+
+				const {
+					data: { user },
+				} = await supabase.auth.getUser()
+				if (isStale()) return
+				if (userNeedsPasswordSetup(user)) {
+					router.replace('/ops/auth/set-password')
+					return
+				}
+
+				router.replace(opsAuthNextPath(next))
 				return
 			}
 
-			const hash = window.location.hash
-			if (!hash || !hash.includes('access_token')) {
-				setError(C.errorMissingTokens)
+			const {
+				data: { session },
+			} = await supabase.auth.getSession()
+			if (isStale()) return
+
+			if (session) {
+				if (isOpsPasswordSetupAuthType(authType) || userNeedsPasswordSetup(session.user)) {
+					router.replace('/ops/auth/set-password')
+					return
+				}
+				router.replace(opsAuthNextPath(next))
 				return
 			}
 
-			const params = parseHashParams(hash)
-			const access_token = params.get('access_token')
-			const refresh_token = params.get('refresh_token')
-			const type = params.get('type')
-
-			if (!access_token || !refresh_token) {
-				setError(C.errorMissingTokens)
-				return
-			}
-
-			const { error: sessionErr } = await supabase.auth.setSession({
-				access_token,
-				refresh_token,
-			})
-
-			window.history.replaceState(null, '', window.location.pathname + window.location.search)
-
-			if (cancelled) return
-			if (sessionErr) {
-				setError(sessionErr.message)
-				return
-			}
-
-			if (type === 'invite' || type === 'recovery') {
-				router.replace('/ops/auth/set-password')
-				router.refresh()
-				return
-			}
-
-			router.replace(opsNextPath(searchParams.get('next')))
-			router.refresh()
+			setError(C.errorMissingTokens)
 		}
+
+		const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+			if (isStale() || event !== 'SIGNED_IN' || !session) return
+			if (isOpsPasswordSetupAuthType(authType) || userNeedsPasswordSetup(session.user)) {
+				router.replace('/ops/auth/set-password')
+				return
+			}
+			goAfterSignIn()
+		})
 
 		void complete()
 
 		return () => {
-			cancelled = true
+			authListener.subscription.unsubscribe()
 		}
-	}, [router, searchParams])
+	}, [queryType, next, router])
 
 	if (error) {
 		return (

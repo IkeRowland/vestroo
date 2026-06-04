@@ -6,7 +6,8 @@ import { opsAuthCallbackCopy } from '@/features/ops/copy/ops-auth-callback-copy'
 
 const C = opsAuthCallbackCopy
 
-export default function OpsAuthCallbackPage() {
+/** Client completion for legacy implicit-flow redirects (`#access_token=…`). */
+export default function OpsAuthCallbackHashPage() {
 	return (
 		<OpsPublicAuthPage title={C.pageTitle} subtitle={C.subtitle}>
 			<Suspense

@@ -13,7 +13,7 @@ export function OpsAuthHashRedirect() {
 		if (pathname !== '/') return
 		const hash = window.location.hash
 		if (!hash.includes('access_token')) return
-		window.location.replace(`/ops/auth/callback${hash}`)
+		window.location.replace(`/ops/auth/callback/hash${hash}`)
 	}, [pathname])
 
 	return null
