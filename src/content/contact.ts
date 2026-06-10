@@ -11,7 +11,7 @@ export const contactContent = {
     <p>We would love to help with your next trip. Reach us by phone, email, or the form below and our team will respond as soon as possible.</p>
   `,
   contact_info: {
-    phone: '+27 (0) 861 397 488',
+    phone: '+27 10 012 6681',
     email: 'info@vestroo.co.za',
     address: 'South Africa',
     office_hours: 'Monday – Sunday: 07:00 – 21:00',
